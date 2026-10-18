@@ -55,6 +55,16 @@ export function select(target: AgentTarget | undefined) {
   reveal();
 }
 
+// This fork: #open=<device>/<session>/<agent> selects an agent, e.g. from a desktop-app notification.
+function openFromHash() {
+  const m = location.hash.match(/^#open=([^/]+)\/([^/]+)\/(\d+)$/);
+  if (!m) return;
+  select({ deviceId: decodeURIComponent(m[1]), sessionId: decodeURIComponent(m[2]), agentId: Number(m[3]) });
+  history.replaceState(null, "", location.pathname + location.search);
+}
+window.addEventListener("hashchange", openFromHash);
+setTimeout(openFromHash);
+
 // Expand the selected agent's device, session and ancestors once it shows up in the tree (a new
 // fork or agent appears a moment after the call that created it).
 let pendingReveal = false;

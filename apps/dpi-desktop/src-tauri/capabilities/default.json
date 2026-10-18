@@ -1,0 +1,6 @@
+{
+  "identifier": "default",
+  "description": "The bundled loading page only; the web UI is a remote page without IPC.",
+  "windows": ["main"],
+  "permissions": ["core:default"]
+}

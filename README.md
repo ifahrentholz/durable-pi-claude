@@ -425,6 +425,13 @@ reads). A banner above the composer counts open requests.
 - API: `POST /v1/sessions/:s/agents/:a/demo/approvals/:callId {decision: allow|always|deny, message?}`,
   `GET|POST .../demo/approval-rules {add?, remove?}`.
 
+### macOS app
+
+`just desktop install` builds a native app (Tauri, ~7 MB) into `/Applications/Durable Pi.app`: the web UI in its own
+window, the stack started on open and stopped on quit, a menu bar icon (status, approvals, incident demo),
+notifications when a tool call waits for approval or an agent finishes, and a Dock badge. See
+[`apps/dpi-desktop`](apps/dpi-desktop/README.md).
+
 ### Start and stop everything
 
 ```bash

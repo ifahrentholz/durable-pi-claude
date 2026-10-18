@@ -30,3 +30,7 @@ test-results/
 tmp/
 *.log
 .DS_Store
+
+# desktop app (Tauri) build output
+apps/dpi-desktop/src-tauri/target/
+apps/dpi-desktop/src-tauri/gen/

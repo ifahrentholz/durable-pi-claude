@@ -24,6 +24,9 @@ mod proactive 'just/proactive'
 # Local decision model for damage control: Kev or Ollama (this fork)
 mod judge 'just/judge'
 
+# Durable Pi as a macOS app: build, install, open (this fork)
+mod desktop 'just/desktop'
+
 # List command groups
 default:
     @just --list

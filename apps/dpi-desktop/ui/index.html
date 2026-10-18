@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8" />
+<title>Durable Pi</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #160f10; color: #e9dcd0; font: 15px -apple-system, BlinkMacSystemFont, sans-serif; }
+  main { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; }
+  .logo { width: 120px; opacity: .9; }
+  .dots i { display: inline-block; width: 8px; height: 8px; margin: 0 3px; border-radius: 50%; background: #ff8997; animation: p 1.2s infinite; }
+  .dots i:nth-child(2) { animation-delay: .2s } .dots i:nth-child(3) { animation-delay: .4s }
+  @keyframes p { 50% { opacity: .25 } }
+  #status { color: #c9a87c; font-size: 13px; }
+</style>
+</head>
+<body>
+<main>
+  <svg class="logo" viewBox="0 0 9 5" aria-label="Durable Pi"><g fill="#fff" transform="translate(.5 .5)"><path d="M0 0H1V4H0Z"/><path d="M1 0H2V1H3V2H2V1H1Z"/><path d="M2 2H3V3H2V4H1V3H2Z"/><g transform="translate(4)"><path d="M0 0H3V2H2V1H0Z"/><path d="M0 1H1V2H2V3H1V4H0Z"/><path d="M3 2H4V4H3Z"/></g></g></svg>
+  <div class="dots"><i></i><i></i><i></i></div>
+  <div id="status">Starte Kev, Backend und Oberfläche …</div>
+</main>
+</body>
+</html>
