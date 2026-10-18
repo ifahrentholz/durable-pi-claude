@@ -51,6 +51,10 @@ export function v1(store: Store) {
   // ---------------------------------------------------------- device
   r.get("/device", (_req, res) => res.json(store.deviceInfo()));
   r.get("/tree", route(async (_req, res) => res.json(await store.tree())));
+  // Archived sessions (this fork): list, restore, delete for good.
+  r.get("/archive", route(async (_req, res) => res.json(await store.archives())));
+  r.post("/archive/:dir/restore", route(async (req, res) => res.json(await store.restoreArchive(param(req, "dir")))));
+  r.delete("/archive/:dir", route(async (req, res) => res.json(await store.deleteArchive(param(req, "dir")))));
   r.get("/events", (req, res, next) => {
     try {
       deviceStream(store, req, res);

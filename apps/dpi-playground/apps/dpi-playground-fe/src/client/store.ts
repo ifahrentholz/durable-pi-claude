@@ -257,6 +257,7 @@ export const ui = reactive({
 
 export type Dialog =
   | { kind: "new-session"; deviceId?: string }
+  | { kind: "archive"; deviceId: string }
   | { kind: "models" }
   | { kind: "help" }
   | { kind: "path"; path: string }

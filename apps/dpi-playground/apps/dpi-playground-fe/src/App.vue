@@ -20,6 +20,7 @@ import OfflinePanel from "./components/OfflinePanel.vue";
 import NewSessionDialog from "./components/NewSessionDialog.vue";
 import PromptDialog from "./components/PromptDialog.vue";
 import ModelPicker from "./components/ModelPicker.vue";
+import ArchiveDialog from "./components/ArchiveDialog.vue";
 import {
   attempt,
   boot,
@@ -213,6 +214,11 @@ onBeforeUnmount(() => {
       @close="ui.dialog = undefined"
     />
     <ModelPicker v-else-if="ui.dialog?.kind === 'models'" @close="ui.dialog = undefined" />
+    <ArchiveDialog
+      v-else-if="ui.dialog?.kind === 'archive'"
+      :device-id="ui.dialog.deviceId"
+      @close="ui.dialog = undefined"
+    />
     <div
       v-else-if="ui.dialog?.kind === 'path'"
       class="modal-backdrop"

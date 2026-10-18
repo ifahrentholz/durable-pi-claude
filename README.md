@@ -425,7 +425,15 @@ reads). A banner above the composer counts open requests.
   with an effect outside this machine: push, deploy, publish, POST, tickets; without a judge it asks) and **yolo**
   (nothing asks). Auto decisions are durable records with the judge's verdict.
 - "Always allow" turns dangerous commands (rm, git push/reset, kill …) into an exact rule, never a prefix.
-- The **Approvals** switch in the Extend tab turns it off per agent. On other providers it is off by default
+- The **Approvals** switch in the Extend tab turns it off per agent.
+
+### Archive, restore and delete
+
+The archive button on a device row opens its archived sessions: **Restore** moves one back into the tree (name, agent
+names and deleted agents come from the `session.json` written at archive time; older archives are named after their
+first message and take their folder from the root agent), **Delete** removes it for good. API: `GET /v1/archive`,
+`POST /v1/archive/:dir/restore`, `DELETE /v1/archive/:dir`. A trash button deletes single agents (not Main) together
+with the forks and subagents that started from them. On other providers it is off by default
   (`DPI_APPROVALS=on` selects it for every agent).
 - API: `POST /v1/sessions/:s/agents/:a/demo/approvals/:callId {decision: allow|always|deny, message?}`,
   `GET|POST .../demo/approval-rules {add?, remove?}`.

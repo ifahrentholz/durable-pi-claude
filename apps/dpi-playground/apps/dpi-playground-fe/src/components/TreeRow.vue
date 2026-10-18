@@ -118,7 +118,15 @@ const title = computed(() => {
           title="Check connection now"
           @click="emit('action', 'check')"
         >
-          <RefreshCw :size="16" />
+          <RefreshCw :size="16" /></button
+        ><button
+          class="icon-button"
+          :disabled="!online"
+          :aria-label="`Archived sessions on ${label}`"
+          title="Archived sessions: restore or delete"
+          @click="emit('action', 'archive')"
+        >
+          <Archive :size="16" />
         </button>
       </span>
     </template>

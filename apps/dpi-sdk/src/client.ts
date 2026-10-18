@@ -15,6 +15,7 @@ import type {
   Page,
   SendResult,
   SessionSummary,
+  ArchivedSession,
   TaskOutcome,
   WhenBusy,
   WireEntry,
@@ -141,6 +142,16 @@ export class DpiClient {
   // ------------------------------------------------------------ sessions
   sessions() {
     return this.request<SessionSummary[]>("GET", "/v1/sessions");
+  }
+  /** This fork: archived sessions, newest first. */
+  archive() {
+    return this.request<ArchivedSession[]>("GET", "/v1/archive");
+  }
+  restoreArchive(dir: string) {
+    return this.request<SessionSummary>("POST", `/v1/archive/${enc(dir)}/restore`, {});
+  }
+  deleteArchive(dir: string) {
+    return this.request<{ deleted: string }>("DELETE", `/v1/archive/${enc(dir)}`);
   }
   createSession(body: CreateSessionBody, idempotencyKey = newId()) {
     return this.request<SessionSummary>("POST", "/v1/sessions", body, { idempotencyKey });

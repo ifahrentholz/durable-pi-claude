@@ -5,6 +5,7 @@ import type {
   AgentExtensions,
   AgentRef,
   AgentSummary,
+  ArchivedSession,
   CreateSessionBody,
   DeviceInfo,
   DeviceTree,
@@ -31,7 +32,7 @@ import {
 import { lastAssistantText, messageText, toMarkdown, toTranscript } from "../../dpi-sdk/src/transcript.js";
 import { ApiFault, invalid, notFound } from "./errors.js";
 import { DatabaseSync } from "node:sqlite";
-import { mkdir, readdir, realpath, rename as renamePath, stat } from "node:fs/promises";
+import { mkdir, readdir, realpath, rename as renamePath, rm, stat, writeFile } from "node:fs/promises";
 import { mkdirSync, writeFileSync, readFileSync, unlinkSync } from "node:fs";
 import { join, dirname, resolve } from "node:path";
 import { homedir, hostname, platform } from "node:os";
@@ -69,6 +70,25 @@ import { APPROVALS_DOC, type ApprovalDecision } from "../../dpi-sdk/src/approval
 import { JOB_RUNS_DOC } from "../../dpi-sdk/src/jobs.js";
 
 export const DURABLE_VERSION = "1.0.3";
+
+/** The first user message of a session database's Main agent, read without opening a harness. */
+function firstUserMessage(dbPath: string): string | undefined {
+  try {
+    const db = new DatabaseSync(dbPath, { readOnly: true });
+    try {
+      const row = db
+        .prepare(
+          "SELECT coalesce(json_extract(record,'$.model[0].content[0].text'), json_extract(record,'$.model[0].content')) AS text FROM entries WHERE conversation_id=1 AND json_extract(record,'$.kind')='pi.user' ORDER BY id LIMIT 1",
+        )
+        .get() as { text?: string } | undefined;
+      return typeof row?.text === "string" ? row.text.slice(0, 300) : undefined;
+    } finally {
+      db.close();
+    }
+  } catch {
+    return undefined;
+  }
+}
 
 /**
  * A short session name from a first message: its first line, ticket and review links shortened to their keys
@@ -558,7 +578,11 @@ export class Store {
       this.opened.delete(row.id);
     }
     await mkdir(this.archiveDir, { recursive: true });
-    const target = join(this.archiveDir, `${row.id}-${Date.now()}`);
+    const archivedAt = Date.now();
+    const target = join(this.archiveDir, `${row.id}-${archivedAt}`);
+    // This fork: what a restore needs, next to the database.
+    const meta = { ...row, archivedAt, names: Object.fromEntries(this.names(row.id)), removedAgents: [...this.removed(row.id)] };
+    await writeFile(join(dirname(row.dbPath), "session.json"), JSON.stringify(meta, null, 2)).catch(() => {});
     try {
       await renamePath(dirname(row.dbPath), target);
     } catch (e) {
@@ -570,6 +594,113 @@ export class Store {
     this.errors.delete(row.id);
     this.notify();
     return { archived: target };
+  }
+
+  // ------------------------------------------------------------ archive (this fork)
+
+  private archiveEntry(dir: string) {
+    const m = dir.match(/^([0-9a-f-]{36})-(\d+)$/);
+    if (!m) throw invalid(`Not an archived session: ${dir}`);
+    return { path: join(this.archiveDir, dir), sessionId: m[1], archivedAt: Number(m[2]) };
+  }
+
+  /** Archived sessions, newest first. Older archives carry no session.json: their first message stands in for a name. */
+  async archives(): Promise<ArchivedSession[]> {
+    let dirs: string[] = [];
+    try {
+      dirs = await readdir(this.archiveDir);
+    } catch {
+      return [];
+    }
+    const out: ArchivedSession[] = [];
+    for (const dir of dirs) {
+      let entry;
+      try {
+        entry = this.archiveEntry(dir);
+      } catch {
+        continue;
+      }
+      const meta = (() => {
+        try {
+          return JSON.parse(readFileSync(join(entry.path, "session.json"), "utf8")) as Partial<SessionRow> & { archivedAt?: number };
+        } catch {
+          return undefined;
+        }
+      })();
+      const db = join(entry.path, "agent.sqlite");
+      let bytes = 0;
+      try {
+        bytes = (await stat(db)).size;
+      } catch {}
+      out.push({
+        dir,
+        sessionId: entry.sessionId,
+        name: meta?.name ?? "",
+        ...(meta?.cwd ? { cwd: meta.cwd } : {}),
+        ...(meta?.createdAt ? { createdAt: meta.createdAt } : {}),
+        archivedAt: entry.archivedAt,
+        bytes,
+        ...(!meta?.name ? { firstMessage: firstUserMessage(db) } : {}),
+      });
+    }
+    return out.sort((a, b) => b.archivedAt - a.archivedAt);
+  }
+
+  /** Move an archived session back, with its name, agent names and deleted agents; it resumes its work. */
+  async restoreArchive(dir: string): Promise<SessionSummary> {
+    const entry = this.archiveEntry(dir);
+    if (this.list().some((r) => r.id === entry.sessionId)) throw new ApiFault("conflict", "That session is already in the tree");
+    const meta = (() => {
+      try {
+        return JSON.parse(readFileSync(join(entry.path, "session.json"), "utf8")) as SessionRow & {
+          names?: Record<string, string>;
+          removedAgents?: number[];
+        };
+      } catch {
+        return undefined;
+      }
+    })();
+    const first = firstUserMessage(join(entry.path, "agent.sqlite"));
+    const row: SessionRow = {
+      id: entry.sessionId,
+      name: meta?.name || (first ? sessionTitle(first) : "") || "Restored session",
+      cwd: meta?.cwd ?? homedir(),
+      dbPath: join(this.sessionsDir, entry.sessionId, "agent.sqlite"),
+      createdAt: meta?.createdAt ?? entry.archivedAt,
+      model: meta?.model ?? this.defaultModel(),
+      provider: meta?.provider ?? this.options.provider,
+    };
+    await mkdir(this.sessionsDir, { recursive: true });
+    await renamePath(entry.path, dirname(row.dbPath));
+    try {
+      await this.openAgent(row);
+      // Older archives: the root agent knows its folder.
+      if (!meta) {
+        const agent = await (await this.harness(row).root(ctx)).agent(ctx);
+        if (agent.cwd) row.cwd = agent.cwd;
+      }
+    } catch (e) {
+      await renamePath(dirname(row.dbPath), entry.path).catch(() => {});
+      throw e;
+    }
+    this.catalog
+      .prepare("INSERT INTO sessions VALUES(?,?,?,?,?,?,?)")
+      .run(row.id, row.name, row.cwd, row.dbPath, row.createdAt, row.model, row.provider);
+    for (const [id, name] of Object.entries(meta?.names ?? {}))
+      this.catalog.prepare("INSERT OR REPLACE INTO conversation_names VALUES(?,?,?)").run(row.id, Number(id), name);
+    for (const id of meta?.removedAgents ?? [])
+      this.catalog.prepare("INSERT OR IGNORE INTO removed_agents VALUES(?,?,?)").run(row.id, id, Date.now());
+    await this.refitCompaction(row).catch(() => {});
+    this.harness(row).resume();
+    this.notify();
+    return this.sessionSummary(row);
+  }
+
+  /** Delete an archived session for good. */
+  async deleteArchive(dir: string) {
+    const entry = this.archiveEntry(dir);
+    await rm(entry.path, { recursive: true, force: true });
+    return { deleted: dir };
   }
 
   async openAgent(row: SessionRow, create = false, thinkingLevel: ThinkingLevel = "low") {

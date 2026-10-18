@@ -112,8 +112,14 @@ Fahr mit der Maus über eine Session im Baum links. Rechts erscheinen drei Knöp
 | Stift | Session umbenennen |
 | **Archiv-Kasten** | Session **archivieren**: stoppt ihre Arbeit und nimmt sie aus dem Baum |
 
-Archivieren löscht nichts. Die Dateien wandern nach `~/.dpi/backend/archive/`. Endgültig löschen:
-`rm -rf ~/.dpi/backend/archive/*`.
+Archivieren löscht nichts. **Archiv öffnen:** Maus über die Geräte-Zeile (`local`) ganz oben im Baum → das
+**Archiv-Symbol**. Dort siehst du alle archivierten Sessions mit Ordner, Datum und Größe:
+
+- **Restore** holt eine Session zurück in den Baum, mit Agents, Verlauf, Agent-Namen und gelöschten Agents. Ihre
+  Agents machen dort weiter, wo sie aufgehört haben.
+- **Delete** löscht sie endgültig. Ein zweiter Klick bestätigt.
+
+Auf der Festplatte liegt das Archiv unter `~/.dpi/backend/archive/`.
 
 **Agents löschen:** Fahr mit der Maus über einen Agent. Neben dem Stift (umbenennen) erscheint ein **Papierkorb**. Er
 stoppt die Arbeit des Agents und entfernt ihn aus der Session, zusammen mit Forks und Subagents, die von ihm

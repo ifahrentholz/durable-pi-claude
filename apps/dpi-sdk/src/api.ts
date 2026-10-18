@@ -162,6 +162,20 @@ export function compactionThresholds(window: number, s: CompactionSettings) {
   return { wait, auto: s.backgroundTokens > 0 ? Math.max(0, wait - s.backgroundTokens) : undefined };
 }
 
+/** An archived session (this fork): restorable, or deletable for good. */
+export interface ArchivedSession {
+  /** Folder name under the device's archive/: "<session id>-<archived at>". */
+  dir: string;
+  sessionId: string;
+  name: string;
+  cwd?: string;
+  archivedAt: number;
+  createdAt?: number;
+  bytes: number;
+  /** The first message, when the archive carries no name of its own. */
+  firstMessage?: string;
+}
+
 export interface DeviceTree {
   uid: string;
   name: string;
