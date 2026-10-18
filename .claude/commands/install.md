@@ -111,9 +111,8 @@ ready count.
 Next steps, each in its own terminal:
 
 ```bash
-just backend run              # this machine's device server on :4780
-just hub start                # web UI: http://localhost:4781
-just judge kev                # optional: the local judge on :8009
+just start                    # judge (Kev/Ollama), backend and web UI: http://127.0.0.1:4781 (Ctrl+C stops)
+just start --detach           # the same in the background; `just stop` / `just status`
 just tui attach local         # terminal client on the same device
 ```
 

@@ -28,6 +28,18 @@ mod judge 'just/judge'
 default:
     @just --list
 
+# Start judge (Kev/Ollama), backend and web hub; follows logs, Ctrl+C stops (--detach, --restart, --no-judge)
+start *ARGS:
+    @scripts/dpi.sh start {{ ARGS }}
+
+# Stop backend, web hub and the local judge (--keep-judge leaves Kev running)
+stop *ARGS:
+    @scripts/dpi.sh stop {{ ARGS }}
+
+# Show what runs: backend, web hub, judge
+status:
+    @scripts/dpi.sh status
+
 # Install dependencies for every network app
 install:
     cd apps/dpi-sdk && npm install --no-audit --no-fund

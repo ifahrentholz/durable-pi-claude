@@ -422,6 +422,19 @@ reads). A banner above the composer counts open requests.
 - API: `POST /v1/sessions/:s/agents/:a/demo/approvals/:callId {decision: allow|always|deny, message?}`,
   `GET|POST .../demo/approval-rules {add?, remove?}`.
 
+### Start and stop everything
+
+```bash
+just start            # local judge (Kev or Ollama, from DPI_JUDGE), backend and web hub; follows the logs, Ctrl+C stops them
+just start --detach   # the same in the background
+just start --restart  # restart backend and web hub (keeps a running Kev)
+just status           # what runs
+just stop             # stop backend, web hub and Kev (--keep-judge leaves Kev running)
+```
+
+[`scripts/dpi.sh`](scripts/dpi.sh) reads `~/.dpi/backend.env`, reuses services that already run, builds the web UI when
+it is missing, and waits until each service answers. Logs go to `~/.dpi/logs/`.
+
 ### Local judge for damage control (Kev, Laya or Ollama instead of Jev)
 
 The **Damage control** extension (`jev-damage-control`, Extend tab) asks a decision model about every bash command and
