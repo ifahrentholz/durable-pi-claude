@@ -10,14 +10,31 @@
   .dots i { display: inline-block; width: 8px; height: 8px; margin: 0 3px; border-radius: 50%; background: #ff8997; animation: p 1.2s infinite; }
   .dots i:nth-child(2) { animation-delay: .2s } .dots i:nth-child(3) { animation-delay: .4s }
   @keyframes p { 50% { opacity: .25 } }
-  #status { color: #c9a87c; font-size: 13px; }
+  #status { color: #c9a87c; font-size: 13px; white-space: pre-wrap; text-align: center; max-width: 720px; }
+  #steps { list-style: none; margin: 4px 0 0; padding: 0; min-height: 96px; font: 13px ui-monospace, Menlo, monospace; }
+  #steps li { padding: 2px 0; color: #b9d7c4; }
+  #steps li.wait { color: #e9dcd0; }
+  #steps li.warn { color: #f2c94c; }
 </style>
 </head>
 <body>
 <main>
   <svg class="logo" viewBox="0 0 9 5" aria-label="Durable Pi"><g fill="#fff" transform="translate(.5 .5)"><path d="M0 0H1V4H0Z"/><path d="M1 0H2V1H3V2H2V1H1Z"/><path d="M2 2H3V3H2V4H1V3H2Z"/><g transform="translate(4)"><path d="M0 0H3V2H2V1H0Z"/><path d="M0 1H1V2H2V3H1V4H0Z"/><path d="M3 2H4V4H3Z"/></g></g></svg>
   <div class="dots"><i></i><i></i><i></i></div>
-  <div id="status">Starte Kev, Backend und Oberfläche …</div>
+  <div id="status">Durable Pi startet …</div>
+  <ul id="steps"></ul>
 </main>
+<script>
+  // The app sends the start-up steps of scripts/dpi.sh as they happen: [text, kind], kind = ok | wait | warn.
+  window.__dpiSteps = (steps) => {
+    const ul = document.getElementById("steps");
+    ul.replaceChildren(...steps.map(([text, kind]) => {
+      const li = document.createElement("li");
+      li.textContent = text;
+      li.className = kind;
+      return li;
+    }));
+  };
+</script>
 </body>
 </html>

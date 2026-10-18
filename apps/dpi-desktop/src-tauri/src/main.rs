@@ -497,15 +497,111 @@ mod terminate {
     }
 }
 
-/// Start the stack, then swap the loading page for the web UI.
+/// One line of `scripts/dpi.sh start`, as the loading page shows it: (text, kind) with kind ok | wait | warn.
+fn start_step(line: &str) -> Option<(String, &'static str)> {
+    let clean = strip_ansi(line).trim().to_string();
+    let (kind, rest) = if let Some(r) = clean.strip_prefix("✓ ") {
+        ("ok", r)
+    } else if let Some(r) = clean.strip_prefix("… ") {
+        ("wait", r)
+    } else if let Some(r) = clean.strip_prefix("! ").or_else(|| clean.strip_prefix("✗ ")) {
+        ("warn", r)
+    } else {
+        return None;
+    };
+    let port = |s: &str| s.rsplit(':').next().unwrap_or("").chars().take_while(|c| c.is_ascii_digit()).collect::<String>();
+    let text = if rest.starts_with("starting Kev") {
+        let first = if rest.contains("first start") { " (erster Start: Modell wird geladen, einige GB)" } else { "" };
+        format!("… Kev wird gestartet{first}")
+    } else if kind == "ok" && rest.starts_with("judge: Kev") {
+        format!("✓ Kev läuft (:{})", port(rest.split(" on ").nth(1).unwrap_or("")))
+    } else if kind == "ok" && rest.starts_with("judge: Ollama") {
+        "✓ Ollama läuft".to_string()
+    } else if kind == "ok" && rest.starts_with("judge: Ollama") {
+        "✓ Ollama läuft".to_string()
+    } else if let Some(r) = rest.strip_prefix("judge: ") {
+        format!("{} {r}", if kind == "ok" { "✓ Judge:" } else { "!" })
+    } else if let Some(r) = rest.strip_prefix("backend already running on ").or_else(|| rest.strip_prefix("backend on ")) {
+        let provider = r.split("provider: ").nth(1).map(|p| format!(", {}", p.trim_end_matches(')'))).unwrap_or_default();
+        format!("✓ Backend läuft (:{}{provider})", port(r.split(' ').next().unwrap_or("")))
+    } else if let Some(r) = rest.strip_prefix("web hub already running on ").or_else(|| rest.strip_prefix("web hub on ")) {
+        format!("✓ Oberfläche läuft (:{})", port(r))
+    } else if rest.starts_with("starting backend") {
+        "… Backend wird gestartet".to_string()
+    } else if rest.starts_with("starting web hub") {
+        "… Oberfläche wird gestartet".to_string()
+    } else if rest.starts_with("building the web UI") {
+        "… Oberfläche wird gebaut".to_string()
+    } else if let Some(r) = rest.strip_prefix("still waiting for ") {
+        format!("… warte auf {r}")
+    } else if rest.starts_with("stopping backend and hub") {
+        "… Backend und Oberfläche werden gestoppt".to_string()
+    } else {
+        format!("{} {rest}", match kind { "ok" => "✓", "wait" => "…", _ => "!" })
+    };
+    Some((text, kind))
+}
+
+/// Start the stack, show each step on the loading page, then swap the loading page for the web UI.
 fn start_stack(app: AppHandle, ctx: Ctx, restart: bool) {
     thread::spawn(move || {
+        let steps: Arc<Mutex<Vec<(String, &'static str)>>> = Arc::new(Mutex::new(Vec::new()));
+        let render = {
+            let (app, steps) = (app.clone(), steps.clone());
+            move || {
+                let json = serde_json::to_string(&*steps.lock().unwrap()).unwrap_or_else(|_| "[]".into());
+                let handle = app.clone();
+                let _ = app.run_on_main_thread(move || {
+                    let _ = main_window(&handle).eval(&format!("window.__dpiSteps && window.__dpiSteps({json})"));
+                });
+            }
+        };
         let args: &[&str] = if restart { &["start", "--detach", "--restart"] } else { &["start", "--detach"] };
-        let out = ctx.dpi(args);
+        let mut output = String::new();
+        let child = Command::new("/bin/bash")
+            .arg(ctx.root.join("scripts/dpi.sh"))
+            .args(args)
+            .current_dir(&ctx.root)
+            .env("PATH", &ctx.path)
+            .stdin(Stdio::null())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::null())
+            .spawn();
+        match child {
+            Ok(mut child) => {
+                if let Some(out) = child.stdout.take() {
+                    for line in BufReader::new(out).lines().map_while(Result::ok) {
+                        output.push_str(&line);
+                        output.push('\n');
+                        if let Some((text, kind)) = start_step(&line) {
+                            let mut list = steps.lock().unwrap();
+                            // A finished step replaces its "…" line (e.g. Kev starting → Kev running).
+                            if kind == "ok" {
+                                if let Some(last) = list.last() {
+                                    if last.1 == "wait" && !last.0.starts_with("… warte") {
+                                        list.pop();
+                                    }
+                                }
+                                list.retain(|(t, k)| !(*k == "wait" && t.starts_with("… warte")));
+                            }
+                            trace(&format!("start step: {text}"));
+                            list.push((text, kind));
+                            drop(list);
+                            render();
+                        }
+                    }
+                }
+                let _ = child.wait();
+            }
+            Err(e) => output = format!("scripts/dpi.sh: {e}"),
+        }
         let deadline = Instant::now() + Duration::from_secs(300);
         while !up(HUB) && Instant::now() < deadline {
             thread::sleep(Duration::from_millis(500));
         }
+        render();
+        // Let the last line show for a moment before the web UI takes over.
+        thread::sleep(Duration::from_millis(600));
         let handle = app.clone();
         let _ = app.run_on_main_thread(move || {
             let w = main_window(&handle);
@@ -514,7 +610,7 @@ fn start_stack(app: AppHandle, ctx: Ctx, restart: bool) {
                     let _ = w.navigate(url);
                 }
             } else {
-                let text = out.replace('\\', "\\\\").replace('`', "'").replace('$', "");
+                let text = output.replace('\\', "\\\\").replace('`', "'").replace('$', "");
                 let _ = w.eval(&format!(
                     "document.getElementById('status').innerText = `Start fehlgeschlagen. Ausgabe von scripts/dpi.sh:\\n\\n{text}`"
                 ));
@@ -646,4 +742,34 @@ fn main() {
         }
         _ => {}
     });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::start_step;
+
+    #[test]
+    fn start_steps_from_dpi_sh_output() {
+        let cases = [
+            ("  \u{1b}[32m✓\u{1b}[0m judge: Kev already running on :8009", Some(("✓ Kev läuft (:8009)", "ok"))),
+            ("  ✓ judge: Kev on :8009", Some(("✓ Kev läuft (:8009)", "ok"))),
+            ("  … starting Kev (jaredpalmer/kev-4b@v1.0) on :8009", Some(("… Kev wird gestartet", "wait"))),
+            ("  ✓ backend on :4780 (provider: claude-code)", Some(("✓ Backend läuft (:4780, claude-code)", "ok"))),
+            ("  ✓ backend already running on :4780", Some(("✓ Backend läuft (:4780)", "ok"))),
+            ("  ✓ web hub on :4781", Some(("✓ Oberfläche läuft (:4781)", "ok"))),
+            ("    … still waiting for Kev (30s)", Some(("… warte auf Kev (30s)", "wait"))),
+            ("  ! judge: Kev not installed at /x. Run: just judge kev-install", Some(("! Kev not installed at /x. Run: just judge kev-install", "warn"))),
+            ("  ✓ judge: Ollama started", Some(("✓ Ollama läuft", "ok"))),
+            ("  ✓ judge: System One at https://x (remote, not managed here)", Some(("✓ Judge: System One at https://x (remote, not managed here)", "ok"))),
+            ("  ! Claude Code is not logged in. Run: claude auth login", Some(("! Claude Code is not logged in. Run: claude auth login", "warn"))),
+            ("  … starting backend on :4780", Some(("… Backend wird gestartet", "wait"))),
+            ("  … starting web hub on :4781", Some(("… Oberfläche wird gestartet", "wait"))),
+            ("Durable Pi (/Users/x/repo)", None),
+            ("  Open: http://127.0.0.1:4781", None),
+        ];
+        for (line, want) in cases {
+            let got = start_step(line);
+            assert_eq!(got.as_ref().map(|(t, k)| (t.as_str(), *k)), want, "line: {line}");
+        }
+    }
 }

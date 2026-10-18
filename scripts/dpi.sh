@@ -164,6 +164,7 @@ start_backend() {
     fail "port $BACKEND_PORT is taken by something else ($NAME start --restart frees it)"
     return 1
   fi
+  say "  … starting backend on :$BACKEND_PORT"
   start_bg backend "$ROOT/apps/dpi-backend" npm start
   if wait_for backend "http://127.0.0.1:$BACKEND_PORT/healthz" 90 "$LOGS/backend.log"; then
     ok "backend on :$BACKEND_PORT ($(grep -o 'provider: [a-z-]*' "$LOGS/backend.log" | tail -1))"
@@ -185,6 +186,7 @@ start_hub() {
     say "  … building the web UI"
     (cd "$ROOT/apps/dpi-playground" && npm run build >>"$LOGS/hub.log" 2>&1) || { fail "web UI build failed (see $LOGS/hub.log)"; return 1; }
   fi
+  say "  … starting web hub on :$HUB_PORT"
   start_bg hub "$ROOT/apps/dpi-playground" env DPI_HUB_PORT="$HUB_PORT" npm start
   if wait_for "web hub" "http://127.0.0.1:$HUB_PORT/" 60 "$LOGS/hub.log"; then ok "web hub on :$HUB_PORT"; else return 1; fi
 }

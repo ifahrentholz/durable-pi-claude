@@ -48,6 +48,9 @@ Statt `duracel` und Browser-Tab geht es auch als App: **Durable Pi** in `~/Appli
 - **Menüleiste** (Durable-Pi-Symbol oben rechts): Status, offene Freigaben öffnen, **Incident-Demo starten/öffnen**
   (eigenes Fenster) und stoppen, neu starten, **Beenden**. Beenden (auch ⌘Q) **stoppt alles**. Solange das dauert
   (einige Sekunden), zeigt das Fenster „Durable Pi wird beendet …“ mit den gestoppten Diensten.
+- Beim **Start** zeigt der Ladebildschirm live, was gerade passiert: „… Kev wird gestartet“, „✓ Kev läuft“,
+  „✓ Backend läuft (claude-code)“, „✓ Oberfläche läuft“. Warnungen (z. B. Kev nicht installiert, Claude Code nicht
+  angemeldet) erscheinen gelb.
 - **Mitteilungen**, wenn ein Agent auf eine Freigabe wartet („🔐 Freigabe nötig: bash“ mit dem Befehl) oder fertig
   ist, während du woanders arbeitest. **Klick darauf** öffnet genau diesen Agent. Beim ersten Mal fragt macOS, ob
   Durable Pi Mitteilungen senden darf: erlauben.
