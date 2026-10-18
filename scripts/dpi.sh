@@ -8,6 +8,7 @@
 #   scripts/dpi.sh start [--detach] [--restart] [--no-judge]    (start is the default)
 #   scripts/dpi.sh stop [--keep-judge]
 #   scripts/dpi.sh status
+#   scripts/dpi.sh demo [--detach] [--keep] [demo options]   the proactive incident demo (Kev + incident agent)
 #
 # Works through a symlink, e.g. `just link duracel` → ~/.local/bin/duracel, then `duracel`, `duracel stop`, ….
 #
@@ -35,6 +36,8 @@ envval() { [ -f "$ENV_FILE" ] && sed -n "s/^$1=//p" "$ENV_FILE" | tail -1; }
 BACKEND_PORT=${DPI_PORT:-$(envval DPI_PORT)}
 BACKEND_PORT=${BACKEND_PORT:-4780}
 HUB_PORT=${DPI_HUB_PORT:-4781}
+DEMO_PORT=${DPI_DEMO_PORT:-4790}
+DEMO_DIR=$ROOT/apps/proactive-dpi-demo
 JUDGE=${DPI_JUDGE:-$(envval DPI_JUDGE)}
 JUDGE_URL=${DPI_JUDGE_URL:-$(envval DPI_JUDGE_URL)}
 JUDGE_URL=${JUDGE_URL:-http://127.0.0.1:8009}
@@ -104,6 +107,7 @@ port_of() {
     backend) echo "$BACKEND_PORT" ;;
     hub) echo "$HUB_PORT" ;;
     kev) echo "$KEV_PORT" ;;
+    demo) echo "$DEMO_PORT" ;;
     ollama) echo "$OLLAMA_URL" | sed -E 's#^https?://[^:]+:([0-9]+).*#\1#' ;;
   esac
 }
@@ -237,6 +241,64 @@ cmd_start() {
   wait "$TAIL"
 }
 
+# The proactive demo: a mock shop's log stream, judged row by row by Kev; failures open an incident and a durable
+# agent fixes it, then waits for your deploy approval. Fresh take by default (--keep continues the last one).
+cmd_demo() {
+  local detach=0 keep=0 args=()
+  for arg in "$@"; do
+    case $arg in
+      --detach | -d) detach=1 ;;
+      --keep) keep=1 ;;
+      *) args+=("$arg") ;;
+    esac
+  done
+  say "${bold}Proactive demo${reset} ${dim}(incident agent + Kev)${reset}"
+  if up "http://127.0.0.1:$DEMO_PORT/api/config"; then
+    ok "already running: http://localhost:$DEMO_PORT   (fresh take: $NAME demo-stop, then $NAME demo)"
+    return
+  fi
+  STARTED=""
+  start_judge
+  if [ "$JUDGE" = "systemone" ] && [ -n "$KEV_PORT" ] && ! up "$JUDGE_URL/v1/models"; then
+    fail "the demo needs Kev; it is not running"
+    exit 1
+  fi
+  if [ ! -d "$DEMO_DIR/node_modules" ]; then
+    say "  … installing the demo (once)"
+    (cd "$DEMO_DIR" && npm install --no-audit --no-fund >>"$LOGS/demo.log" 2>&1) || { fail "npm install failed (see $LOGS/demo.log)"; exit 1; }
+  fi
+  if [ ! -f "$DEMO_DIR/apps/proactive-dpi-fe/dist/index.html" ]; then
+    say "  … building the demo UI (once)"
+    (cd "$DEMO_DIR" && npm run build >>"$LOGS/demo.log" 2>&1) || { fail "build failed (see $LOGS/demo.log)"; exit 1; }
+  fi
+  if [ "$keep" = 0 ]; then
+    (cd "$DEMO_DIR" && npm run reset --silent >>"$LOGS/demo.log" 2>&1) || { fail "reset failed (see $LOGS/demo.log)"; exit 1; }
+    ok "fresh take: the bug goes live 5 s after the start"
+  fi
+  if [ "$detach" = 1 ]; then
+    start_bg demo "$DEMO_DIR" npm start --silent -- ${args[@]+"${args[@]}"}
+    if wait_for demo "http://127.0.0.1:$DEMO_PORT/api/config" 90 "$LOGS/demo.log"; then
+      ok "demo on http://localhost:$DEMO_PORT"
+      say "  ${dim}Open it now: the incident opens about 11 s after the start. Stop with: $NAME demo-stop${reset}"
+    else
+      exit 1
+    fi
+    return
+  fi
+  say "  ${bold}Open: http://localhost:$DEMO_PORT${reset}  ${dim}(Ctrl+C stops the demo; Kev keeps running)${reset}"
+  cd "$DEMO_DIR" && exec npm start --silent -- ${args[@]+"${args[@]}"}
+}
+
+cmd_demo_stop() {
+  if [ -f "$RUN/demo.pid" ] || listening "$DEMO_PORT"; then
+    stop_name demo "$DEMO_PORT"
+    pkill -INT -f "$DEMO_DIR/node_modules/.bin/tsx scripts/demo.ts" 2>/dev/null
+    ok "demo stopped"
+  else
+    say "  ${dim}demo not running${reset}"
+  fi
+}
+
 cleanup() {
   [ -n "${TAIL:-}" ] && kill "$TAIL" 2>/dev/null
   [ -z "${STARTED:-}" ] && return
@@ -254,6 +316,7 @@ cmd_stop() {
   local keep_judge=0
   [ "${1:-}" = "--keep-judge" ] && keep_judge=1
   say "${bold}Stopping Durable Pi${reset}"
+  if listening "$DEMO_PORT"; then cmd_demo_stop; fi
   stop_name hub "$HUB_PORT" && ok "web hub"
   stop_name backend "$BACKEND_PORT" && ok "backend"
   if [ "$keep_judge" = 0 ]; then
@@ -274,6 +337,7 @@ cmd_status() {
     ollama) if up "$OLLAMA_URL/api/tags"; then ok "judge        Ollama $OLLAMA_MODEL"; else fail "judge        Ollama not running"; fi ;;
     *) say "  ${dim}judge        none configured${reset}" ;;
   esac
+  if up "http://127.0.0.1:$DEMO_PORT/api/config"; then ok "demo         http://localhost:$DEMO_PORT"; else say "  ${dim}demo         not running ($NAME demo)${reset}"; fi
 }
 
 usage() {
@@ -284,7 +348,12 @@ usage() {
   say "  $NAME start --restart    restart backend and web UI (keeps a running Kev)"
   say "  $NAME start --no-judge   without the local judge"
   say "  $NAME status             what runs"
-  say "  $NAME stop               stop backend, web UI and Kev (--keep-judge leaves Kev running)"
+  say "  $NAME stop               stop backend, web UI, Kev and the demo (--keep-judge leaves Kev running)"
+  say ""
+  say "  $NAME demo               the proactive incident demo with Kev: fresh take, opens on :$DEMO_PORT (Ctrl+C stops it)"
+  say "  $NAME demo -d            the same in the background ($NAME demo-stop stops it)"
+  say "  $NAME demo --keep        continue the last take instead of starting fresh"
+  say "                           demo options pass through, e.g. --tts off, --model claude-opus-5-5"
   say ""
   say "  Web UI: http://127.0.0.1:$HUB_PORT   Logs: $LOGS"
 }
@@ -294,6 +363,8 @@ case "${1:-start}" in
   -*) case $1 in -h | --help) usage ;; *) cmd_start "$@" ;; esac ;;
   stop) shift; cmd_stop "$@" ;;
   status) cmd_status ;;
+  demo) shift; cmd_demo "$@" ;;
+  demo-stop) cmd_demo_stop ;;
   help) usage ;;
   *) usage; exit 2 ;;
 esac

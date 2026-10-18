@@ -470,10 +470,9 @@ read from `~/.dpi/backend.env`. Without an ElevenLabs key, macOS `say` speaks th
 (`DPI_SAY_VOICE`, default Samantha).
 
 ```bash
-duracel -d                 # Kev must run first (or: just judge kev)
-just proactive install     # once
-just proactive build       # once, and after UI changes
-just proactive take        # fresh take: prints http://localhost:4790
+duracel demo               # starts Kev if needed, installs and builds once, fresh take on http://localhost:4790
+duracel demo -d            # in the background; duracel demo-stop stops it
+just proactive take        # the same without the PATH command (Kev must run: duracel -d)
 ```
 
 Kev on an Apple M3 Pro answers about 1.5 rows a second, so with a local judge the stream defaults to 1.2 rows a second

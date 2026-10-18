@@ -28,6 +28,7 @@ duracel          # startet Kev, Backend und Oberfläche; zeigt die Logs; Ctrl+C 
 duracel -d       # dasselbe im Hintergrund
 duracel status   # was läuft
 duracel stop     # alles stoppen
+duracel demo     # zusätzlich die Incident-Demo mit Kev (Abschnitt 7)
 ```
 
 Es ist **egal, in welchem Ordner** du `duracel` startest. Den Projektordner wählst du in der Oberfläche, pro Session.
@@ -222,17 +223,21 @@ Shop und erfundenen Logs, nicht mit `contitrade-aem`. Siehe Abschnitt 7.
 ## 7. Die Proactive-Demo (Incident-Ansicht)
 
 ```bash
-duracel -d                      # Kev muss laufen
-just proactive take             # frisch zurücksetzen und starten → http://localhost:4790
-just proactive start            # weitermachen, ohne zurückzusetzen
-just proactive take --tts off   # ohne Sprachansage
+duracel demo                    # frisch starten → http://localhost:4790 (startet Kev bei Bedarf; Ctrl+C stoppt die Demo)
+duracel demo -d                 # dasselbe im Hintergrund; stoppen mit: duracel demo-stop
+duracel demo --keep             # weitermachen, ohne zurückzusetzen
+duracel demo --tts off          # ohne Sprachansage (alle Optionen unten funktionieren auch hier)
 ```
+
+Die Demo ist eine eigene App neben der Arbeitsoberfläche. `duracel -d` startet sie **nicht** mit, `duracel demo`
+schon. `duracel status` zeigt, ob sie läuft. Öffne die Seite gleich nach dem Start: Nach etwa 10 Sekunden öffnet sich
+der Incident.
 
 Ablauf: T+5 s geht ein fehlerhafter Deploy live, ~T+11 s öffnet sich **INC-0001** von selbst, ~T+34 s wartet der
 Fix auf deine **Deploy-Freigabe** (mit Sprachansage). Alle Fehlerzeilen mit gleichem Fingerabdruck (Service, Route,
 Fehlertyp) gehören zu **einem** Incident. Sie sind Belege, kein eigener Auslöser.
 
-**Einstellungen** (hinter `just proactive take`):
+**Einstellungen** (hinter `duracel demo` oder `just proactive take`):
 
 | Option | Standard | Bedeutung |
 |---|---|---|
