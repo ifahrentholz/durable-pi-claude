@@ -30,6 +30,7 @@ apps/dpi-backend/src/approvals.ts        # tool approvals
 apps/dpi-backend/src/project-context.ts  # CLAUDE.md / AGENTS.md and developer-tool instructions
 apps/dpi-backend/src/jev.ts              # pluggable judge: Jev, local Kev/Laya (System One), Ollama
 apps/dpi-backend/prompts/developer-tools.md
+scripts/dpi.sh           # start | stop | status for judge, backend and web UI; `just start`, `just link <name>` for a PATH command
 ```
 
 ## Instructions
@@ -96,16 +97,31 @@ ones. Without a judge it uses built-in offline rules. Ask the user which they wa
 
 If a judge is configured and running, `just judge probe` shows its verdicts for a few commands.
 
-### Step 6 — Verify Readiness
+### Step 6 — Optional: a command on the PATH
+
+Ask whether the user wants one command for the whole stack (judge, backend, web UI) that works from any folder, and
+which name (default `dpi`; any free name works, e.g. `duracel`). Then:
+
+1. Pick the folder: `~/.local/bin` if it is on the PATH (`echo "$PATH" | tr ':' '\n' | grep -qx "$HOME/.local/bin"`),
+   otherwise ask the user for a folder that is, or tell them to add `export PATH="$HOME/.local/bin:$PATH"` to their
+   shell profile.
+2. Check the name is free: `command -v <name>` must print nothing, or point at an existing link to this checkout's
+   `scripts/dpi.sh` (`readlink "$(command -v <name>)"`). Never replace another program; ask for another name instead.
+3. `just link <name>` (or `just link <name> <folder>`): a symlink to `scripts/dpi.sh`. The script resolves the link to
+   find this checkout, so it works from any folder; rerun the recipe if the checkout moves.
+4. Verify from another folder: `(cd /tmp && <name> --help)` names the command and shows this checkout's path.
+5. Tell the user that an already open shell may need `hash -r` (or a new terminal) to find it.
+
+### Step 7 — Verify Readiness
 
 1. `just --list`: shows the groups net, backend, hub, tui, test, proactive and judge.
 2. `just check`: type checks and unit tests for every app (faux model and a fake Claude Code; no network, no cost).
 3. Optional, if Chrome is installed: `just test ui`.
 
-### Step 7 — Report
+### Step 8 — Report
 
 Print a table with one row per check (prerequisites, Claude login, `just install`, `just net ids`, `just net up local`,
-`just hub build`, `just check`, the optional CLIs and the judge). Mark each `pass`, `fail` or `skipped`, then give a
+`just hub build`, `just check`, the optional CLIs, the judge and the PATH command). Mark each `pass`, `fail` or `skipped`, then give a
 ready count.
 
 Next steps, each in its own terminal:
@@ -113,6 +129,7 @@ Next steps, each in its own terminal:
 ```bash
 just start                    # judge (Kev/Ollama), backend and web UI: http://127.0.0.1:4781 (Ctrl+C stops)
 just start --detach           # the same in the background; `just stop` / `just status`
+<name>                        # the same from any folder, if a PATH command was set up (<name> -d, status, stop)
 just tui attach local         # terminal client on the same device
 ```
 
