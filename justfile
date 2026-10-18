@@ -40,6 +40,10 @@ stop *ARGS:
 status:
     @scripts/dpi.sh status
 
+# Put a command for scripts/dpi.sh on your PATH: just link [name] [dir] (default: dpi in ~/.local/bin)
+link NAME="dpi" DIR=(env("HOME") / ".local/bin"):
+    @mkdir -p "{{ DIR }}" && ln -sfn "{{ justfile_directory() }}/scripts/dpi.sh" "{{ DIR }}/{{ NAME }}" && echo "{{ DIR }}/{{ NAME }} → scripts/dpi.sh. Try: {{ NAME }} --help"
+
 # Install dependencies for every network app
 install:
     cd apps/dpi-sdk && npm install --no-audit --no-fund

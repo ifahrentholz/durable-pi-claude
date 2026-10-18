@@ -432,6 +432,9 @@ just status           # what runs
 just stop             # stop backend, web hub and Kev (--keep-judge leaves Kev running)
 ```
 
+As a command on your PATH: `just link duracel` puts a symlink in `~/.local/bin` (any name; default `dpi`). Then
+`duracel`, `duracel -d`, `duracel status` and `duracel stop` work from any folder.
+
 [`scripts/dpi.sh`](scripts/dpi.sh) reads `~/.dpi/backend.env`, reuses services that already run, builds the web UI when
 it is missing, and waits until each service answers. Logs go to `~/.dpi/logs/`.
 

@@ -5,16 +5,26 @@
 #   dpi-backend   the device server (DPI_PORT, default 4780)
 #   web hub       the web UI (DPI_HUB_PORT, default 4781)
 #
-#   scripts/dpi.sh start [--detach] [--restart] [--no-judge]
+#   scripts/dpi.sh start [--detach] [--restart] [--no-judge]    (start is the default)
 #   scripts/dpi.sh stop [--keep-judge]
 #   scripts/dpi.sh status
+#
+# Works through a symlink, e.g. `just link duracel` → ~/.local/bin/duracel, then `duracel`, `duracel stop`, ….
 #
 # Settings come from ~/.dpi/backend.env (written by `just net up local`); environment variables override them.
 # `start` runs in the foreground and follows the logs; Ctrl+C stops what this run started. Services that already
 # run are reused, never started twice. Logs: ~/.dpi/logs/*.log.
 set -uo pipefail
 
-ROOT=$(cd "$(dirname "$0")/.." && pwd)
+# Resolve symlinks (a link in ~/.local/bin points here), then the checkout is one level up.
+SELF=$0
+while [ -L "$SELF" ]; do
+  target=$(readlink "$SELF")
+  case $target in /*) SELF=$target ;; *) SELF=$(dirname "$SELF")/$target ;; esac
+done
+ROOT=$(cd "$(dirname "$SELF")/.." && pwd)
+NAME=$(basename "$0")
+[ "$NAME" = "dpi.sh" ] && NAME="just"
 DPI_HOME=${DPI_HOME:-$HOME/.dpi}
 ENV_FILE=${DPI_ENV_FILE:-$DPI_HOME/backend.env}
 LOGS=$DPI_HOME/logs
@@ -147,7 +157,7 @@ start_backend() {
     return
   fi
   if listening "$BACKEND_PORT"; then
-    fail "port $BACKEND_PORT is taken by something else (scripts/dpi.sh start --restart frees it)"
+    fail "port $BACKEND_PORT is taken by something else ($NAME start --restart frees it)"
     return 1
   fi
   start_bg backend "$ROOT/apps/dpi-backend" npm start
@@ -164,7 +174,7 @@ start_hub() {
     return
   fi
   if listening "$HUB_PORT"; then
-    fail "port $HUB_PORT is taken by something else (scripts/dpi.sh start --restart frees it)"
+    fail "port $HUB_PORT is taken by something else ($NAME start --restart frees it)"
     return 1
   fi
   if [ ! -f "$ROOT/apps/dpi-playground/apps/dpi-playground-fe/dist/index.html" ]; then
@@ -209,11 +219,11 @@ cmd_start() {
   say "  ${dim}Logs: $LOGS/{backend,hub,kev,ollama}.log${reset}"
 
   if [ "$detach" = 1 ]; then
-    say "  ${dim}Running in the background. Stop with: just stop${reset}"
+    say "  ${dim}Running in the background. Stop with: $([ "$NAME" = just ] && echo "just stop" || echo "$NAME stop")${reset}"
     exit 0
   fi
   if [ -z "$STARTED" ]; then
-    say "  ${dim}Everything was already running; nothing to follow. Stop with: just stop${reset}"
+    say "  ${dim}Everything was already running; nothing to follow. Stop with: $([ "$NAME" = just ] && echo "just stop" || echo "$NAME stop")${reset}"
     exit 0
   fi
   say "  ${dim}Following the logs. Ctrl+C stops what this run started:${STARTED}${reset}"
@@ -266,9 +276,24 @@ cmd_status() {
   esac
 }
 
+usage() {
+  say "${bold}$NAME${reset}: Durable Pi on your Claude subscription ($ROOT)"
+  say ""
+  say "  $NAME [start]            judge (Kev/Ollama), backend and web UI; follows the logs, Ctrl+C stops them"
+  say "  $NAME start --detach     the same in the background"
+  say "  $NAME start --restart    restart backend and web UI (keeps a running Kev)"
+  say "  $NAME start --no-judge   without the local judge"
+  say "  $NAME status             what runs"
+  say "  $NAME stop               stop backend, web UI and Kev (--keep-judge leaves Kev running)"
+  say ""
+  say "  Web UI: http://127.0.0.1:$HUB_PORT   Logs: $LOGS"
+}
+
 case "${1:-start}" in
   start) shift || true; cmd_start "$@" ;;
+  -*) case $1 in -h | --help) usage ;; *) cmd_start "$@" ;; esac ;;
   stop) shift; cmd_stop "$@" ;;
   status) cmd_status ;;
-  *) say "usage: scripts/dpi.sh start [--detach] [--restart] [--no-judge] | stop [--keep-judge] | status"; exit 2 ;;
+  help) usage ;;
+  *) usage; exit 2 ;;
 esac
