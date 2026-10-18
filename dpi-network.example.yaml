@@ -38,6 +38,7 @@ defaults:
   env_keys: [OPENROUTER_API_KEY]   # secrets: copied by name from .env, never written here
   # env:                           # plain settings, written as-is
   #   DPI_PROVIDER: faux           # the free deterministic model, for tests
+  #   DPI_PROVIDER: claude-code    # this fork: Claude Code on your Claude subscription (claude auth login); no key needed
 
 devices:
   local:

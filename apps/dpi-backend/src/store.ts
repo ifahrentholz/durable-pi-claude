@@ -41,6 +41,7 @@ import { createModels } from "@earendil-works/pi-ai/models";
 import { openrouterProvider } from "@earendil-works/pi-ai/providers/openrouter";
 import { curatedModels, defaultModelId } from "./model-catalog.js";
 import { fauxModels, installFaux } from "./faux.js";
+import { CLAUDE_CODE_PROVIDER, claudeCodeModels, installClaudeCode } from "./claude-code.js";
 import {
   Harness,
   createRegistry,
@@ -90,12 +91,13 @@ export interface StoreOptions {
   dataDir: string;
   startDirs: string[];
   name: string;
-  provider: "openrouter" | "faux";
+  provider: "openrouter" | "faux" | "claude-code";
 }
 
 /** Agent documents a client may read or stream, by kind. */
 /** apps/dpi-backend/src → the checkout root. */
 const CODE_DIR = resolve(import.meta.dirname, "../../..");
+const CLAUDE_CODE_DEFAULT = "claude-sonnet-5-5";
 const AGENT_DOCS = { [JOB_RUNS_DOC]: JobRuns, "demo.workspace": Workspace } as const;
 export const AGENT_DOC_KINDS = Object.keys(AGENT_DOCS);
 export const DEVICE_DOC_KINDS = ["app.shared-state"];
@@ -178,6 +180,7 @@ export class Store {
 
   private constructor(readonly options: StoreOptions) {
     if (options.provider === "faux") installFaux(this.models);
+    else if (options.provider === "claude-code") installClaudeCode(this.models);
     else {
       const provider = openrouterProvider();
       const catalog = provider.getModels();
@@ -264,10 +267,22 @@ export class Store {
   }
 
   private defaultModel() {
+    if (this.options.provider === "claude-code") return CLAUDE_CODE_DEFAULT;
     return this.options.provider === "faux" ? fauxModels[0].id : defaultModelId;
   }
 
   private async loadModels(): Promise<ModelInfo[]> {
+    if (this.options.provider === "claude-code")
+      return claudeCodeModels.map((m) => ({
+        id: m.id,
+        provider: CLAUDE_CODE_PROVIDER,
+        name: `${m.name} · Abo`,
+        tier: "S+",
+        icon: "anthropic.png",
+        contextWindow: m.contextWindow,
+        reasoning: m.reasoning,
+        cost: { input: m.cost.input, output: m.cost.output },
+      }));
     if (this.options.provider === "faux")
       return fauxModels.map((m) => ({
         id: m.id,
@@ -300,6 +315,12 @@ export class Store {
   }
 
   routedModel(model?: ModelRef): ModelRef {
+    if (this.options.provider === "claude-code") {
+      // An OpenRouter id like anthropic/claude-sonnet-5.5 maps to its subscription twin when there is one.
+      const wanted = (model?.modelId ?? "").replace(/^anthropic\//, "").replace(/\./g, "-");
+      const id = claudeCodeModels.some((m) => m.id === wanted) ? wanted : CLAUDE_CODE_DEFAULT;
+      return { provider: CLAUDE_CODE_PROVIDER, modelId: id };
+    }
     if (this.options.provider === "faux") {
       const id = fauxModels.some((m) => m.id === model?.modelId) ? model!.modelId : fauxModels[0].id;
       return { provider: "faux", modelId: id };
@@ -316,7 +337,9 @@ export class Store {
     if (!m || typeof m.provider !== "string" || typeof m.modelId !== "string")
       throw invalid("model must be { provider, modelId }");
     const known =
-      this.options.provider === "faux"
+      this.options.provider === "claude-code"
+        ? m.provider === CLAUDE_CODE_PROVIDER && claudeCodeModels.some((c) => c.id === m.modelId)
+        : this.options.provider === "faux"
         ? m.provider === "faux" && fauxModels.some((f) => f.id === m.modelId)
         : m.provider === "openrouter" &&
           curatedModels.some((c) => c.id === m.modelId) &&
@@ -510,7 +533,12 @@ export class Store {
       const playground = createPlayground(this.shared, row.id, this.spawnSession, jobs);
       registry.install(playground);
       // Custom extensions are installed but not selected: an agent turns them on in its own selection.
-      const addons = createAddons({ offline: this.options.provider === "faux" });
+      // Jev (jev-damage-control) needs an OpenRouter or TypeSafe key; without one it stays offline.
+      const addons = createAddons({
+        offline:
+          this.options.provider === "faux" ||
+          (this.options.provider === "claude-code" && !process.env.OPENROUTER_API_KEY && !process.env.TYPESAFE_API_KEY),
+      });
       for (const extension of addons.list) registry.install(extension);
       const harness = await Harness.open(
         await openNodeSqliteStorage(row.dbPath),

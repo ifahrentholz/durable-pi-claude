@@ -1,5 +1,11 @@
 # Durable Pi: The Durable Agent Network
 
+> **This fork: Durable Pi on your Claude subscription.** It adds a `claude-code` provider: agents answer through
+> [Claude Code](https://code.claude.com) via the official [Claude Agent SDK](https://github.com/anthropics/claude-agent-sdk-typescript),
+> logged in with your own `claude auth login`, so usage counts against your Claude plan instead of an OpenRouter key.
+> pi-durable stays the durable loop: every tool call is still a checkpointed pi-durable task. See
+> [Claude Code provider](#claude-code-provider-this-fork). Upstream: [disler/durable-pi](https://github.com/disler/durable-pi).
+
 > **Proactive agents start working before you sit down. They don't wait for you to work. They work for you, then wait.**
 > Durable pi agents on any machine you own, driven from a web UI, a terminal or one curl.
 
@@ -360,3 +366,36 @@ Follow the [IndyDevDan YouTube channel](https://www.youtube.com/@indydevdan) to 
 Stay Focused and Keep Building
 
 - IndyDevDan
+
+
+---
+
+## Claude Code provider (this fork)
+
+Set `DPI_PROVIDER: claude-code` for a device in `dpi-network.yaml` (or `DPI_PROVIDER=claude-code` in its
+`backend.env`), log in once with `claude auth login`, and the model picker offers Claude Opus 5.5, Sonnet 5.5,
+Fable 5.1 and Haiku 4.5 marked **Abo**. No OpenRouter key is needed.
+
+```yaml
+defaults:
+  env_keys: []
+  env:
+    DPI_PROVIDER: claude-code
+```
+
+How it works ([`apps/dpi-backend/src/claude-code.ts`](apps/dpi-backend/src/claude-code.ts)):
+
+- A pi-ai provider keeps one long-lived Claude Code process per agent conversation, through the Agent SDK.
+- Claude Code runs **unmodified with its own system prompt** (`preset: "claude_code"`); durable-pi's prompt sections
+  are appended. Its built-in tools, local MCP servers and claude.ai connectors are off.
+- The agent's pi tools (`bash`, `read`, `update_state`, `run_durable_job`, …) are offered through an in-process MCP
+  server. When Claude calls one, the response ends with `toolUse`, pi-durable runs the tool as a durable task, and the
+  next request hands the result back to the waiting Claude Code call. Steers join the current tool round.
+- After a restart, abort, fork or compaction the Claude Code process is rebuilt from the pi transcript, which stays
+  the source of truth. A tool cut off by a crash comes back as interrupted, exactly as with any other provider.
+- Compaction summaries are single Claude Code completions without tools.
+- Requests fail if Claude Code reports any credential other than the subscription login (`ANTHROPIC_API_KEY` is never
+  passed on). Costs shown in the UI are API-equivalent estimates; your plan's usage limits apply.
+
+Debug log: `DPI_CLAUDE_DEBUG=1 just backend run`. Usage of Claude subscriptions through the Agent SDK is subject to
+Anthropic's terms; this provider does not alter Claude Code's prompt or identity.
