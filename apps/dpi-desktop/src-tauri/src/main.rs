@@ -341,11 +341,24 @@ fn poll(app: AppHandle, state: Arc<Mutex<State>>, menus: Arc<Menus>, tray: TrayI
     }
 }
 
+/// Append a line to ~/.dpi/logs/desktop.log (lifecycle events, for diagnosis).
+fn trace(event: &str) {
+    use std::io::Write;
+    let home = std::env::var("HOME").unwrap_or_default();
+    let dir = format!("{home}/.dpi/logs");
+    let _ = std::fs::create_dir_all(&dir);
+    if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(format!("{dir}/desktop.log")) {
+        let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_millis()).unwrap_or(0);
+        let _ = writeln!(f, "{now} {event}");
+    }
+}
+
 /// Quit: show the shutdown overlay, stop the stack line by line, then exit for real.
 fn shutdown(app: &AppHandle, ctx: &Ctx) {
     if SHUTTING_DOWN.swap(true, Ordering::SeqCst) {
         return;
     }
+    trace("shutdown: overlay shown, stopping the stack");
     if let Some(demo) = app.get_webview_window("demo") {
         let _ = demo.close();
     }
@@ -408,6 +421,80 @@ fn strip_ansi(text: &str) -> String {
         }
     }
     out
+}
+
+/// macOS quits through `applicationShouldTerminate:` (⌘Q, Dock → Quit, the quit Apple Event), which tao does not
+/// implement, so Tauri never sees those as exit requests. This adds it to tao's app delegate: the first quit shows the
+/// shutdown overlay and cancels; once the stack is down the app exits for real. Logout, restart and shutdown of the Mac
+/// quit at once (the stack stops while the app exits) so the app never blocks them.
+#[cfg(target_os = "macos")]
+mod terminate {
+    use super::{shutdown, trace, Ctx, STOPPED};
+    use objc2::runtime::{AnyClass, AnyObject, Imp, Sel};
+    use objc2::{class, msg_send, sel};
+    use std::sync::atomic::Ordering;
+    use std::sync::OnceLock;
+    use tauri::AppHandle;
+
+    static APP: OnceLock<(AppHandle, Ctx)> = OnceLock::new();
+    const TERMINATE_CANCEL: usize = 0;
+    const TERMINATE_NOW: usize = 1;
+
+    fn fourcc(code: &[u8; 4]) -> u32 {
+        u32::from_be_bytes(*code)
+    }
+
+    /// The quit Apple Event says why: logout, restart or shutdown of the Mac.
+    unsafe fn system_quit() -> bool {
+        let manager: *mut AnyObject = msg_send![class!(NSAppleEventManager), sharedAppleEventManager];
+        if manager.is_null() {
+            return false;
+        }
+        let event: *mut AnyObject = msg_send![manager, currentAppleEvent];
+        if event.is_null() {
+            return false;
+        }
+        let why: *mut AnyObject = msg_send![event, attributeDescriptorForKeyword: fourcc(b"why?")];
+        if why.is_null() {
+            return false;
+        }
+        let code: u32 = msg_send![why, enumCodeValue];
+        [b"logo", b"rlgo", b"shut", b"rest", b"rrst", b"rsdn"].iter().any(|c| fourcc(c) == code)
+    }
+
+    extern "C-unwind" fn should_terminate(_this: &AnyObject, _sel: Sel, _sender: *mut AnyObject) -> usize {
+        if STOPPED.load(Ordering::SeqCst) {
+            return TERMINATE_NOW;
+        }
+        if unsafe { system_quit() } {
+            trace("quit: logout, restart or shutdown of the Mac; exiting now");
+            return TERMINATE_NOW;
+        }
+        trace("quit requested (⌘Q, Dock or Apple Event)");
+        if let Some((app, ctx)) = APP.get() {
+            shutdown(app, ctx);
+        }
+        TERMINATE_CANCEL
+    }
+
+    pub fn install(app: &AppHandle, ctx: &Ctx) {
+        let _ = APP.set((app.clone(), ctx.clone()));
+        unsafe {
+            let ns_app: *mut AnyObject = msg_send![class!(NSApplication), sharedApplication];
+            let delegate: *mut AnyObject = msg_send![ns_app, delegate];
+            let class: *const AnyClass = if delegate.is_null() {
+                match AnyClass::get(c"TaoAppDelegateParent") {
+                    Some(c) => c,
+                    None => return trace("quit hook: no app delegate"),
+                }
+            } else {
+                (*delegate).class()
+            };
+            let imp: Imp = std::mem::transmute(should_terminate as extern "C-unwind" fn(&AnyObject, Sel, *mut AnyObject) -> usize);
+            let added = objc2::ffi::class_addMethod(class as *mut AnyClass, sel!(applicationShouldTerminate:), imp, c"Q@:@".as_ptr());
+            trace(&format!("quit hook installed: {}", added.as_bool()));
+        }
+    }
 }
 
 /// Start the stack, then swap the loading page for the web UI.
@@ -526,6 +613,8 @@ fn main() {
                     })
                     .build(app)?;
 
+                #[cfg(target_os = "macos")]
+                terminate::install(&handle, &ctx);
                 start_stack(handle.clone(), ctx.clone(), false);
                 let (state, menus, handle) = (state.clone(), menus.clone(), handle.clone());
                 thread::spawn(move || poll(handle, state, menus, tray));
@@ -545,12 +634,14 @@ fn main() {
             }
         }
         // Quit (menu, ⌘Q): keep the app until the stack is down, with the shutdown overlay on screen.
-        RunEvent::ExitRequested { api, .. } if !STOPPED.load(Ordering::SeqCst) => {
+        RunEvent::ExitRequested { api, code, .. } if !STOPPED.load(Ordering::SeqCst) => {
+            trace(&format!("exit requested (code {code:?})"));
             api.prevent_exit();
             shutdown(app, &ctx);
         }
         // Last resort (exit without the request, e.g. a crash path): stop what runs.
         RunEvent::Exit if !STOPPED.load(Ordering::SeqCst) => {
+            trace("exit without request: blocking stop, no overlay");
             ctx.dpi(&["stop"]);
         }
         _ => {}

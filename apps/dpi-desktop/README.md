@@ -2,8 +2,11 @@
 
 The web UI in a native window, plus what a browser tab cannot do:
 
-- **Starts the stack** (Kev, backend, web hub) through `scripts/dpi.sh` when it opens; **Quit** (menu bar or ⌘Q)
-  stops it all and shows a shutdown screen with each stopped service until it is done.
+- **Starts the stack** (Kev, backend, web hub) through `scripts/dpi.sh` when it opens; **Quit** stops it all and
+  shows a shutdown screen with each stopped service until it is done, whichever way you quit: the menu bar, ⌘Q, the
+  Dock or a quit Apple Event. tao has no `applicationShouldTerminate:`, so the app adds it to tao's app delegate; a
+  logout, restart or shutdown of the Mac quits at once instead of holding it up. Lifecycle events go to
+  `~/.dpi/logs/desktop.log`.
 - **Closing the window only hides it**: agents keep working. The menu bar icon and the Dock bring it back.
 - **Menu bar**: status (running, Kev), open pending approvals, start, open and stop the proactive incident demo
   (own window), restart backend and web UI, quit.
