@@ -61,6 +61,7 @@ import { NodeExecutionEnv } from "@earendil-works/pi-durable/env/node";
 import { openNodeSqliteStorage } from "@earendil-works/pi-durable/storage/sqlite/node";
 import { createPlayground, Workspace, type SpawnSession } from "./extensions.js";
 import { createJobs, JobRuns, JOB_DEFS, jobDef, resolveJobInput, type Jobs } from "./jobs.js";
+import { judge } from "./jev.js";
 import { ADDON_INFO, createAddons, PROMPTS, PromptChecklist, type Addons } from "./addons.js";
 import { ApprovalRules, Approvals, APPROVALS_INFO, createApprovals, decideApproval, editRules } from "./approvals.js";
 import { createProjectContext, PROJECT_CONTEXT_INFO, projectFiles } from "./project-context.js";
@@ -548,12 +549,8 @@ export class Store {
       const playground = createPlayground(this.shared, row.id, this.spawnSession, jobs);
       registry.install(playground);
       // Custom extensions are installed but not selected: an agent turns them on in its own selection.
-      // Jev (jev-damage-control) needs an OpenRouter or TypeSafe key; without one it stays offline.
-      const addons = createAddons({
-        offline:
-          this.options.provider === "faux" ||
-          (this.options.provider === "claude-code" && !process.env.OPENROUTER_API_KEY && !process.env.TYPESAFE_API_KEY),
-      });
+      // jev-damage-control needs a judge (DPI_JUDGE: local Kev / Laya / Ollama, or a Jev key); otherwise offline rules.
+      const addons = createAddons({ offline: this.options.provider === "faux" || !judge() });
       for (const extension of addons.list) registry.install(extension);
       // Approvals (this fork): selected by default, so every agent asks before bash and other changes.
       let opened: Harness | undefined;

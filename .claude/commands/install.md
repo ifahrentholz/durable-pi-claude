@@ -1,43 +1,47 @@
 ---
-description: Install Durable Pi: prerequisites, .env, app dependencies, the web UI build, this machine's device config and the optional proactive demo
+description: Install Durable Pi (Claude subscription fork): prerequisites, Claude Code login, app dependencies, the web UI build, this machine's device config, an optional local judge and the optional proactive demo
 ---
 
-# Install Durable Pi (Durable Agent Network)
+# Install Durable Pi on a Claude subscription
 
 ## Purpose
 
-Set up this checkout so this machine can run a `dpi-backend` device, the web hub and the terminal client. Check prerequisites, confirm the OpenRouter key, install the four network apps, build the web UI, write this machine's device config, and verify with the test suite. This is an interactive, agentic process: ask the user when a choice is needed.
+Set up this checkout so this machine can run a `dpi-backend` device whose agents answer through Claude Code on the
+user's Claude subscription (the `claude-code` provider), plus the web hub and the terminal client. Check prerequisites,
+confirm the Claude Code login, install the network apps, build the web UI, write this machine's device config,
+optionally set up a local decision model for damage control (Kev or Ollama), and verify with the test suite. This is
+an interactive, agentic process: ask the user when a choice is needed.
 
 ## Variables
 
 SOURCE_REPO: the directory this command runs from (the repo root, where `justfile` lives)
 NETWORK_FILE: `dpi-network.yaml` (gitignored device declarations; template `dpi-network.example.yaml`; every `just net` recipe takes an id from it)
-ENV_FILE: `.env` at the repo root (template: `.env.example`)
-DEVICE_HOME: `~/.dpi` (`backend.env` with the device token, `backend/` data, `network.sqlite` hub registry)
+ENV_FILE: `.env` at the repo root (template: `.env.example`; only needed for the openrouter provider and the proactive demo)
+DEVICE_HOME: `~/.dpi` (`backend.env` with the device token, `backend/` data, `network.sqlite` hub registry, optional `instructions.md`)
 APPS: `apps/dpi-sdk`, `apps/dpi-backend`, `apps/dpi-playground`, `apps/dpi-tui`
 
 ## Codebase Structure
 
 ```text
-justfile                 # groups: net, backend, hub, tui, test, proactive (just/<group>/mod.just)
-dpi-network.example.yaml # template: defaults + the local device, commented ssh and exe-dev examples
-.env.example             # OPENROUTER_API_KEY (copied into each device's backend.env), optional TypeSafe and ElevenLabs settings
-apps/dpi-sdk/            # contract, client, models, registry, ops drivers (scripts/net.ts)
-apps/dpi-backend/        # the device server (port 4780)
-apps/dpi-playground/     # hub + Vue web UI (port 4781)
-apps/dpi-tui/            # terminal client
-apps/proactive-dpi-demo/ # the hook: proactive incident agent (just proactive install, reset, build)
+justfile                 # groups: net, backend, hub, tui, test, proactive, judge (just/<group>/mod.just)
+dpi-network.example.yaml # template: defaults (DPI_PROVIDER: claude-code) + the local device, commented ssh and exe-dev examples
+apps/dpi-backend/src/claude-code.ts      # the claude-code provider (Claude Agent SDK bridge)
+apps/dpi-backend/src/approvals.ts        # tool approvals
+apps/dpi-backend/src/project-context.ts  # CLAUDE.md / AGENTS.md and developer-tool instructions
+apps/dpi-backend/src/jev.ts              # pluggable judge: Jev, local Kev/Laya (System One), Ollama
+apps/dpi-backend/prompts/developer-tools.md
 ```
 
 ## Instructions
 
 - Run every check via Bash. Do not assume anything is installed.
 - Show a status line right after each check (pass or fail).
-- Install auto-installable items without asking. Ask the user before anything that needs their input.
-- Never read, print or echo an API key value. Only confirm that it is set.
-- Never start servers or long-running processes (`just backend run`, `just hub start`, `just tui attach`). Only verify readiness.
-- Do not run `just net up` for any device except `local`. Remote devices need the user's own ssh hosts or exe.dev account, so leave them for the user to add.
-- Do not run the device suites (`just test device`, `just test e2e`): they call a real model and cost money.
+- Install auto-installable items without asking. Ask the user before anything that needs their input or downloads a model.
+- Never read, print or echo an API key, token or credential. Only confirm that it is set.
+- Never run `claude auth login` yourself: it opens a browser. Ask the user to run it.
+- Never start servers or long-running processes (`just backend run`, `just hub start`, `just tui attach`, `just judge kev`). Only verify readiness.
+- Do not run `just net up` for any device except `local`.
+- Do not run the device suites (`just test device`, `just test e2e`): they call a real model.
 
 ## Workflow
 
@@ -45,56 +49,74 @@ apps/proactive-dpi-demo/ # the hook: proactive incident agent (just proactive in
 
 Critical, so stop and guide the user if any is missing:
 
-1. `command -v node && node -v`: Node.js **24 or newer** (the backend uses `node:sqlite`). Install with nvm (https://github.com/nvm-sh/nvm): `nvm install 24 && nvm use 24`, or from https://nodejs.org.
+1. `command -v node && node -v`: Node.js **24 or newer** (the backend uses `node:sqlite`). `nvm install 24 && nvm use 24`.
 2. `command -v npm && npm -v`.
-3. `command -v just && just --version`: install with `brew install just` or see https://github.com/casey/just.
-4. `command -v zsh`: every `just` recipe runs in zsh. macOS ships it; on Linux install it with `sudo apt install zsh` (or your package manager).
+3. `command -v just && just --version`: `brew install just`.
+4. `command -v zsh`: every `just` recipe runs in zsh.
 5. `command -v git`.
+6. `command -v claude && claude --version`: Claude Code. Install from https://code.claude.com if missing.
 
 Optional, so report them and continue:
 
-6. `command -v ssh && command -v rsync`: needed only to deploy to remote `ssh` or `exe-dev` devices.
-7. `command -v tmux`: the TUI smoke test and the e2e scenario (`just test smoke`, `just test e2e`). `brew install tmux`.
-8. Google Chrome (`test -d "/Applications/Google Chrome.app"` on macOS, `command -v google-chrome` on Linux): the Playwright UI suites drive installed Chrome. https://www.google.com/chrome/
-9. `command -v curl && command -v sqlite3 && command -v openssl`: the one-request curl recipe and the smoke script.
+7. `command -v jira`, `command -v glab`, `command -v gh`: the developer-tool instructions tell agents to read Jira tickets, GitLab merge requests and GitHub pull requests with them. For each that exists, check it is logged in without printing secrets: `jira me`, `glab auth status`, `gh auth status`.
+8. `command -v uv` (for a local Kev judge) and `command -v ollama` (for an Ollama judge).
+9. `command -v ssh && command -v rsync`, `command -v tmux`, Google Chrome (Playwright UI suites), `curl`, `sqlite3`, `openssl`, as upstream.
 
-### Step 2 — Check Environment
+### Step 2 — Check the Claude login
 
-1. If `.env` is missing, copy the template: `cp .env.example .env`, then ask the user to paste their OpenRouter key into `.env` (https://openrouter.ai/keys). Do not ask for the key in chat.
-2. Confirm the key is set without printing it: `grep -Eq '^OPENROUTER_API_KEY=sk-' .env && echo set || ([ -n "$OPENROUTER_API_KEY" ] && echo "set in environment") || echo missing`.
-3. If it is missing and the user wants to continue without a key, tell them the backend can run with the free deterministic model: `DPI_PROVIDER=faux just backend run`.
-4. Optional, for the proactive demo's voice line: `grep -Eq '^ELEVENLABS_API_KEY=.+' .env && echo set || echo "not set (the demo runs, the voice line is skipped)"`. The line plays through `afplay` on macOS and in the browser elsewhere; `ELEVENLABS_VOICE_ID` picks another voice from the user's ElevenLabs account.
+1. `claude auth status`: must report `"loggedIn": true` with a claude.ai login (`authMethod` `claude.ai`). If not, ask the user to run `claude auth login` in their own terminal, then re-check.
+2. `[ -z "$ANTHROPIC_API_KEY" ] && echo unset || echo "set (it is never passed to Claude Code, requests use the subscription login)"`.
+3. Tell the user in one sentence: agents run through Claude Code on their Claude plan, so the plan's usage limits apply; dollar amounts in the UI are API equivalents for comparison.
 
 ### Step 3 — Install Dependencies
 
 1. `just install`: `npm install` in the four network apps.
-2. Ask whether to also set up the proactive demo, the video's hook: a watcher sends every log row to Jev, and a durable agent fixes the incident and waits for deploy approval. If yes, run `just proactive install`, `just proactive reset` (builds the mock checkout-api git repo with the bug) and `just proactive build`. It uses `OPENROUTER_API_KEY` for Sonnet 5.5 and Jev, and serves `http://localhost:4790` on loopback only (`--host 0.0.0.0` opts in to the LAN; the UI has no login).
+2. Ask whether to set up the proactive demo. It needs an OpenRouter key in `.env` (Sonnet through OpenRouter and Jev); skip it otherwise.
 
 ### Step 4 — Verify Configuration
 
-1. If `dpi-network.yaml` is missing, create it: `cp dpi-network.example.yaml dpi-network.yaml`. Never overwrite an existing one.
-2. `just net ids`: the file parses and lists device ids. Confirm `local` is among them.
-3. `just net up local`: writes `~/.dpi/backend.env` with a fresh `DPI_TOKEN` (or keeps an existing one), copies `OPENROUTER_API_KEY` from `.env`, and registers the device in `~/.dpi/network.sqlite`. Then confirm `test -f ~/.dpi/backend.env && stat -f '%Lp' ~/.dpi/backend.env` (Linux: `stat -c '%a'`) shows `600`. Never print the file.
-4. `just hub build`: type-checks and builds the web UI that `just hub start` serves.
-5. Tell the user that new sessions start in `~/dpi-work` (created by `just net up local`) unless they set `start_dirs`, that any existing folder on the device works as a session cwd, and that remote machines are added by uncommenting the `ssh` or `exe-dev` example in `dpi-network.yaml` and running `just net up <id>`.
+1. If `dpi-network.yaml` is missing, create it: `cp dpi-network.example.yaml dpi-network.yaml`. Never overwrite an existing one. Confirm its defaults set `DPI_PROVIDER: claude-code`.
+2. Ask which folders new sessions should start in and set `start_dirs` accordingly (default `~/dpi-work`).
+3. `just net ids`: lists device ids, including `local`.
+4. `just net up local`: writes `~/.dpi/backend.env` (mode 600) and registers the device. Never print the file.
+5. `just hub build`.
 
-### Step 5 — Verify Readiness
+### Step 5 — Optional: local judge for damage control
 
-1. `just --list`: shows the groups net, backend, hub, tui, test and proactive.
-2. `just check`: type checks and unit tests for every app. They use the faux model, so they need no network and cost nothing (under a minute).
-3. Optional, if Chrome is installed: `just test ui`, the 28-check web UI suite against two faux devices (under a minute).
+The Extend tab's **Damage control** extension asks a decision model about every bash command and blocks destructive
+ones. Without a judge it uses built-in offline rules. Ask the user which they want:
 
-### Step 6 — Report
+- **Kev (recommended)**: a small Jev-like decision model with calibrated probabilities, about 300 ms per command on
+  Apple Silicon. Needs `uv`; the first start downloads the model (several GB). Run `just judge kev-install`, then tell
+  the user to start it with `just judge kev` (port 8009) and set `DPI_JUDGE: systemone` under the device's `env` in
+  `dpi-network.yaml`, followed by `just net up local`.
+- **Ollama**: if Ollama runs already. `just judge ollama-pull` (default `qwen3:4b-instruct`; thinking-only models do not
+  work), then `DPI_JUDGE: ollama` in `dpi-network.yaml` and `just net up local`.
+- **None**: offline rules.
 
-Print a table with one row per check: each required prerequisite (node, npm, just, zsh, git), the `.env` key, `just install`, `just net ids`, `just net up local`, `just hub build`, `just check` and the optional items (including the proactive demo setup and the ElevenLabs key). Mark each `pass`, `fail` or `skipped`, then give a ready count (for example `11 of 11 required checks pass`).
+If a judge is configured and running, `just judge probe` shows its verdicts for a few commands.
 
-Next steps, in order (each in its own terminal):
+### Step 6 — Verify Readiness
+
+1. `just --list`: shows the groups net, backend, hub, tui, test, proactive and judge.
+2. `just check`: type checks and unit tests for every app (faux model and a fake Claude Code; no network, no cost).
+3. Optional, if Chrome is installed: `just test ui`.
+
+### Step 7 — Report
+
+Print a table with one row per check (prerequisites, Claude login, `just install`, `just net ids`, `just net up local`,
+`just hub build`, `just check`, the optional CLIs and the judge). Mark each `pass`, `fail` or `skipped`, then give a
+ready count.
+
+Next steps, each in its own terminal:
 
 ```bash
 just backend run              # this machine's device server on :4780
 just hub start                # web UI: http://localhost:4781
+just judge kev                # optional: the local judge on :8009
 just tui attach local         # terminal client on the same device
-just net status               # probe every device in dpi-network.yaml
-just net up <id>              # after uncommenting an ssh or exe-dev example in dpi-network.yaml
-just proactive take           # the proactive demo: prints the URL; the agent asks to deploy within about 30s
 ```
+
+In the web UI, create a session in a project folder and pick a model marked **Abo**. Agents ask before bash and other
+changes (Approvals), read the folder's CLAUDE.md / AGENTS.md (Project context), and fetch Jira tickets with the
+`jira` CLI. Personal instructions for every agent on this machine go in `~/.dpi/instructions.md`.

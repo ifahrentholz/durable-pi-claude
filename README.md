@@ -372,7 +372,7 @@ Stay Focused and Keep Building
 
 ## Claude Code provider (this fork)
 
-Set `DPI_PROVIDER: claude-code` for a device in `dpi-network.yaml` (or `DPI_PROVIDER=claude-code` in its
+Run `/install` in Claude Code for a guided setup. Manually: set `DPI_PROVIDER: claude-code` for a device in `dpi-network.yaml` (the template's default) (or `DPI_PROVIDER=claude-code` in its
 `backend.env`), log in once with `claude auth login`, and the model picker offers Claude Opus 5.5, Sonnet 5.5,
 Fable 5.1 and Haiku 4.5 marked **Abo**. No OpenRouter key is needed.
 
@@ -401,7 +401,7 @@ How it works ([`apps/dpi-backend/src/claude-code.ts`](apps/dpi-backend/src/claud
   the source of truth. A tool cut off by a crash comes back as interrupted, exactly as with any other provider.
 - Compaction summaries are single Claude Code completions without tools.
 - Requests fail if Claude Code reports any credential other than the subscription login (`ANTHROPIC_API_KEY` is never
-  passed on). Costs shown in the UI are API-equivalent estimates; your plan's usage limits apply.
+  passed on). The UI labels costs as **API equivalent**: your plan pays, and its usage limits apply.
 
 ### Tool approvals
 
@@ -421,6 +421,27 @@ reads). A banner above the composer counts open requests.
   (`DPI_APPROVALS=on` selects it for every agent).
 - API: `POST /v1/sessions/:s/agents/:a/demo/approvals/:callId {decision: allow|always|deny, message?}`,
   `GET|POST .../demo/approval-rules {add?, remove?}`.
+
+### Local judge for damage control (Kev, Laya or Ollama instead of Jev)
+
+The **Damage control** extension (`jev-damage-control`, Extend tab) asks a decision model about every bash command and
+blocks irreversible or destructive ones. Upstream that model is Jev in the cloud. This fork makes the judge pluggable,
+so it can run on your machine (set it under the device's `env` in `dpi-network.yaml`, then `just net up local`):
+
+| `DPI_JUDGE` | Judge | Notes |
+|---|---|---|
+| `systemone` | Any [System One](https://docs.typesafe.ai/api) server: a local [Kev](https://github.com/jaredpalmer/kev) or [Laya](https://laya-ai.com) | **Recommended.** Same request as Jev, calibrated probabilities. Kev-4B on Apple Silicon (MLX): ~300 ms per command. `DPI_JUDGE_URL` (default `http://127.0.0.1:8009`), `DPI_JUDGE_API_KEY`, `DPI_JUDGE_MODEL` |
+| `ollama` | A local Ollama model | One question per request, options as letters, probabilities from the answer token's log-probabilities (not calibrated). ~0.5 s with `qwen3:4b-instruct` (default `DPI_JUDGE_MODEL`); thinking-only models do not work. `OLLAMA_HOST` |
+| unset | Jev via `TYPESAFE_API_KEY` or `OPENROUTER_API_KEY` | As upstream; without a key, built-in offline rules |
+
+```bash
+just judge kev-install   # clone Kev next to this checkout and install its server (uv)
+just judge kev           # serve Kev-4B on :8009 (first start downloads the model)
+just judge ollama-pull   # or: pull the Ollama judge model
+just judge probe         # verdicts of the configured judge for a few commands
+```
+
+With Approvals on, both layers apply: you approve a command first, then the judge can still block it.
 
 ### Compaction with mixed models
 
@@ -443,5 +464,7 @@ On `claude-code` devices every agent also gets the **Project context** extension
 
 The Extend tab lists the files an agent reads. Edits apply from the next request.
 
-Debug log: `DPI_CLAUDE_DEBUG=1 just backend run`. Usage of Claude subscriptions through the Agent SDK is subject to
+Debug log: `DPI_CLAUDE_DEBUG=1 just backend run` (`=2` also logs every stream event). The bridge is covered by tests
+against a scripted fake Claude Code (`apps/dpi-backend/tests/claude-code.test.ts`): tool loop, parallel and early MCP
+calls, steering, rebuild, model switch, the subscription check and compaction; `just check` runs them without network. Usage of Claude subscriptions through the Agent SDK is subject to
 Anthropic's terms; this provider does not alter Claude Code's prompt or identity.

@@ -35,10 +35,13 @@ defaults:
   code_dir: ~/dpi                  # where apps/dpi-backend + apps/dpi-sdk are synced (ssh / exe-dev)
   home_dir: ~/.dpi                 # backend.env, data and logs; deploys never touch it
   start_dirs: ["~/dpi-work"]       # where new sessions start (created if missing); any existing folder works as a cwd
-  env_keys: [OPENROUTER_API_KEY]   # secrets: copied by name from .env, never written here
-  # env:                           # plain settings, written as-is
+  env_keys: []                     # secrets copied by name from .env, e.g. [OPENROUTER_API_KEY] for the openrouter provider
+  env:                             # this fork: agents on your Claude subscription (claude auth login), no key needed
+    DPI_PROVIDER: claude-code
+    # DPI_JUDGE: systemone         # damage control with a local Kev on :8009 (`just judge kev`); or: ollama
+  # Other providers (plain settings in env, written as-is):
+  #   DPI_PROVIDER: openrouter     # upstream: OpenRouter models, needs env_keys: [OPENROUTER_API_KEY]
   #   DPI_PROVIDER: faux           # the free deterministic model, for tests
-  #   DPI_PROVIDER: claude-code    # this fork: Claude Code on your Claude subscription (claude auth login); no key needed
 
 devices:
   local:

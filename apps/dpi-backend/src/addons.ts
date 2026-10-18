@@ -3,12 +3,13 @@
 // request on. Neither is selected by default.
 //
 //   system-prompts       a checklist of built-in system prompts, rendered as one section
-//   jev-damage-control   Jev judges every bash command before it runs and blocks destructive ones
+//   jev-damage-control   a decision model (Jev, or a local Kev / Laya / Ollama: see jev.ts) judges every bash command
+//                        before it runs and blocks destructive ones
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { defineDoc, defineExtension, hook, section, ToolTask, type Extension } from "@earendil-works/pi-durable";
 import type { HarnessExtensionInfo } from "../../dpi-sdk/src/api.js";
-import { askJev, type JevAnswer, type JevQuestion } from "./jev.js";
+import { askJev, judge as configuredJudge, type JevAnswer, type JevQuestion } from "./jev.js";
 
 const PROMPTS_DIR = join(import.meta.dirname, "../prompts");
 
@@ -89,9 +90,13 @@ export const ADDON_INFO: Omit<HarnessExtensionInfo, "enabled" | "prompts">[] = [
   },
   {
     name: "jev-damage-control",
-    title: "Jev damage control",
-    description:
-      "Before every bash call, Jev judges the command in about 300 ms and blocks irreversible or destructive ones. The decision is a durable memo, so a restart never re-asks. If Jev is down, commands run.",
+    title: "Damage control",
+    // A getter: the device's env file (DPI_JUDGE, keys) is loaded after this module.
+    get description() {
+      return `Before every bash call, ${
+      configuredJudge()?.label ?? "built-in offline rules (set DPI_JUDGE to use a local Kev, Laya or Ollama model, or a Jev key)"
+    } judges the command and blocks irreversible or destructive ones. The decision is a durable memo, so a restart never re-asks. If the judge is down, commands run.`;
+    },
   },
 ];
 

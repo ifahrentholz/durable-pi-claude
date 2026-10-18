@@ -21,6 +21,9 @@ mod test 'just/test'
 # Proactive DPI demo: just proactive <command>
 mod proactive 'just/proactive'
 
+# Local decision model for damage control: Kev or Ollama (this fork)
+mod judge 'just/judge'
+
 # List command groups
 default:
     @just --list

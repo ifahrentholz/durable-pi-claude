@@ -15,6 +15,14 @@
 // What we never do: rewrite or disguise Claude Code's prompt, spoof headers, or use an API key. If Claude Code
 // reports any credential other than the subscription login, requests fail.
 import { createSdkMcpServer, query, type Query, type SDKMessage, type SDKUserMessage } from "@anthropic-ai/claude-agent-sdk";
+
+/** The Agent SDK entry points; tests swap them for a scripted fake Claude Code. */
+const sdk = { query, createSdkMcpServer };
+export function setClaudeSdkForTests(fake: Partial<typeof sdk> | undefined) {
+  sdk.query = fake?.query ?? query;
+  sdk.createSdkMcpServer = fake?.createSdkMcpServer ?? createSdkMcpServer;
+  for (const bridge of [...bridges.values()]) bridge.close("test reset");
+}
 import { calculateCost, createProvider, type MutableModels } from "@earendil-works/pi-ai/models";
 import { anthropicProvider } from "@earendil-works/pi-ai/providers/anthropic";
 import { createAssistantMessageEventStream } from "@earendil-works/pi-ai/utils/event-stream";
@@ -133,7 +141,7 @@ async function completeOnce(
   const prompt = conversation.map((m) => (m.role === "user" ? textOf(m.content) : "")).join("\n\n");
   const abortController = linkedAbort(options?.signal);
   let text = "";
-  for await (const m of query({
+  for await (const m of sdk.query({
     prompt,
     options: {
       ...baseOptions(model, options, abortController),
@@ -147,6 +155,7 @@ async function completeOnce(
       if (m.subtype !== "success" || m.is_error) throw new Error(`Claude Code: ${m.subtype === "success" ? m.result : m.subtype}`);
       text = m.result;
       addUsage(message.usage, m.usage as never);
+      break; // one completion: nothing follows the result
     }
   }
   message.content.push({ type: "text", text });
@@ -188,7 +197,7 @@ class Bridge {
   ) {
     this.modelId = model.id;
     const tools = toolsOf(system);
-    const server = createSdkMcpServer({
+    const server = sdk.createSdkMcpServer({
       name: MCP_SERVER,
       version: "1.0.0",
       alwaysLoad: true,
@@ -199,7 +208,7 @@ class Bridge {
         handler: (args: unknown) => this.toolCalled(tool.name, args),
       })),
     } as never);
-    this.q = query({
+    this.q = sdk.query({
       prompt: this.input,
       options: {
         ...baseOptions(model, options, this.abortController),

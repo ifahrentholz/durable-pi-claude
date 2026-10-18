@@ -59,6 +59,8 @@ const tabs = [
   { id: "tools", label: "Tools", icon: Wrench },
   { id: "extensions", label: "Extend", icon: Puzzle },
 ];
+/** This fork: claude-code models run on the user's Claude plan; their costs are API equivalents. */
+const subscription = computed(() => currentModel.value?.provider === "claude-code");
 const usageRows = computed(() => [
   { label: "Input", tokens: usage.value.input, cost: usage.value.inputCost },
   { label: "Output", tokens: usage.value.output, cost: usage.value.outputCost },
@@ -280,9 +282,15 @@ const offeredTools = computed(() => detail.value?.tools.filter((t) => t.offered)
                   <span>{{ number(usage.tokens) }}</span
                   ><small>total tokens</small>
                 </div>
-                <div>
+                <div
+                  :title="
+                    subscription
+                      ? 'Your Claude plan pays for this agent. The amount is what the same tokens would cost on the API, for comparison.'
+                      : 'What this agent cost'
+                  "
+                >
                   <span>${{ usage.cost.toFixed(4) }}</span
-                  ><small>agent cost</small>
+                  ><small>{{ subscription ? "API equivalent" : "agent cost" }}</small>
                 </div>
                 <div>
                   <span>{{ detail?.tools.length ?? 0 }}</span
@@ -294,7 +302,7 @@ const offeredTools = computed(() => detail.value?.tools.filter((t) => t.offered)
                   <tr>
                     <th scope="col">Type</th>
                     <th scope="col">Tokens</th>
-                    <th scope="col">Cost (USD)</th>
+                    <th scope="col">{{ subscription ? "API equiv. (USD)" : "Cost (USD)" }}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -305,6 +313,10 @@ const offeredTools = computed(() => detail.value?.tools.filter((t) => t.offered)
                   </tr>
                 </tbody>
               </table>
+              <p v-if="subscription" class="hint">
+                Runs on your Claude plan through Claude Code. Your plan's usage limits apply; the dollar amounts are
+                API prices for comparison only.
+              </p>
             </section>
           </section>
         </template>

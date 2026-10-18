@@ -258,8 +258,9 @@ try {
 
   // Extensions: custom harness capabilities turn on and off per agent and apply from the next request.
   await tab("Extend");
-  await expect(page.locator(".ext-card")).toHaveCount(2);
-  const jevSwitch = page.getByRole("switch", { name: "Jev damage control" });
+  // This fork adds Approvals and Project context (off on faux devices) before the two upstream extensions.
+  await expect(page.locator(".ext-card")).toHaveCount(4);
+  const jevSwitch = page.getByRole("switch", { name: "Damage control" });
   await expect(jevSwitch).toHaveAttribute("aria-checked", "false");
   await jevSwitch.click();
   await expect(jevSwitch).toHaveAttribute("aria-checked", "true");
