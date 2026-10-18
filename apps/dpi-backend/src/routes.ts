@@ -152,6 +152,8 @@ export function v1(store: Store) {
     `${a}/inbox/:submissionId`,
     route(async (req, res) => res.json(await store.withdraw(L(res).h, L(res).c, int(req.params.submissionId, "submissionId")))),
   );
+  // This fork: remove a chat (and its forks and subagents) from the session.
+  r.delete(`${a}`, route(async (_req, res) => res.json(await store.removeAgent(L(res).row, L(res).c))));
   r.post(`${a}/abort`, route(async (req, res) => res.json(await store.abort(L(res).c, req.body?.background === true))));
   r.post(`${a}/fork`, create, route(async (req, res) => res.status(201).json(await store.fork(L(res).row, L(res).c, req.body ?? {}))));
   r.get(`${a}/config`, route(async (_req, res) => res.json((await store.agentDetail(L(res).row, L(res).c)).config)));

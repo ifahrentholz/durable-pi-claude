@@ -86,7 +86,7 @@ Neue Sessions ohne eigenen Namen heißen nach ihrer **ersten Nachricht**, z. B. 
 Ticket-Key gekürzt, GitLab-MRs zu `!3305`, GitHub-PRs zu `#12`. Einen Namen, den du selbst vergeben hast, ändert das
 nie.
 
-Neben der **aktuellen Session** stehen immer drei Knöpfe, bei den anderen erscheinen sie, wenn die Maus darüber steht:
+Fahr mit der Maus über eine Session im Baum links. Rechts erscheinen drei Knöpfe:
 
 | Knopf | Funktion |
 |---|---|
@@ -97,8 +97,13 @@ Neben der **aktuellen Session** stehen immer drei Knöpfe, bei den anderen ersch
 Archivieren löscht nichts. Die Dateien wandern nach `~/.dpi/backend/archive/`. Endgültig löschen:
 `rm -rf ~/.dpi/backend/archive/*`.
 
-Einzelne Agents (Forks, Subagents) lassen sich nur umbenennen (Stift beim Agent), nicht entfernen. Tipp: eine Session
-pro Aufgabe oder Ticket, und nach Abschluss archivieren. So bleibt der Baum übersichtlich.
+**Agents löschen:** Fahr mit der Maus über einen Agent. Neben dem Stift (umbenennen) erscheint ein **Papierkorb**. Er
+stoppt die Arbeit des Agents und entfernt ihn aus der Session, zusammen mit Forks und Subagents, die von ihm
+ausgehen. Der Dialog nennt sie vorher. **Main** lässt sich nicht löschen, dafür gibt es „Session archivieren“. Wie
+beim Archivieren bleibt der Verlauf in der Datenbank der Session, bis du die Session archivierst.
+
+Tipp: eine Session pro Aufgabe oder Ticket, Neben-Agents nach Gebrauch löschen, die Session nach Abschluss
+archivieren. So bleibt der Baum übersichtlich.
 
 ---
 

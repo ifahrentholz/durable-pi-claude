@@ -11,6 +11,7 @@ import {
   Plus,
   RefreshCw,
   Archive,
+  Trash2,
 } from "lucide-vue-next";
 import DeviceIcon from "./DeviceIcon.vue";
 import type { TreeNode } from "@sdk/models";
@@ -21,8 +22,6 @@ const props = defineProps<{
   depth: number;
   open: boolean;
   selected: boolean;
-  /** The selected agent or its session: buttons stay visible (this fork). */
-  current?: boolean;
   focused: boolean;
   online: boolean;
 }>();
@@ -78,7 +77,7 @@ const title = computed(() => {
 <template>
   <div
     class="tree-row"
-    :class="[node.type, { sel: selected, current, focus: focused, stale: node.stale }]"
+    :class="[node.type, { sel: selected, focus: focused, stale: node.stale }]"
     :style="{ '--depth': depth }"
     role="treeitem"
     :aria-level="depth + 1"
@@ -182,7 +181,16 @@ const title = computed(() => {
           title="Rename agent"
           @click="emit('action', 'rename')"
         >
-          <Pencil :size="16" />
+          <Pencil :size="16" /></button
+        ><button
+          v-if="agent.id !== 1"
+          class="icon-button"
+          :disabled="!online"
+          :aria-label="`Delete agent ${label}`"
+          title="Delete agent"
+          @click="emit('action', 'delete')"
+        >
+          <Trash2 :size="16" />
         </button>
       </span>
     </template>

@@ -44,11 +44,6 @@ const deviceOf = (node: TreeNode) =>
     (d) => d.id === (node.type === "device" ? node.device.id : node.deviceId),
   );
 const isOnline = (node: TreeNode) => deviceOf(node)?.status === "online";
-/** This fork: the selected agent's session and the agent itself show their buttons without hovering. */
-const isCurrent = (node: TreeNode) =>
-  node.type === "session"
-    ? selected.value?.deviceId === node.deviceId && selected.value?.sessionId === node.session.id
-    : node.type === "agent" && isSelected(node);
 const isSelected = (node: TreeNode) =>
   node.type === "agent" &&
   selected.value?.deviceId === node.deviceId &&
@@ -116,6 +111,40 @@ async function action(node: TreeNode, name: string) {
       submit: "Save name",
       run: (value) => client.agent(node.sessionId, a.id).rename(value),
     };
+  else if (name === "delete") {
+    // This fork: forks of this agent and subagents it started go with it.
+    const agents = device.tree?.sessions.find((s) => s.id === node.sessionId)?.agents ?? [];
+    const ids = new Set([a.id]);
+    for (let grew = true; grew; ) {
+      grew = false;
+      for (const x of agents)
+        if (!ids.has(x.id) && ((x.parentId !== undefined && ids.has(x.parentId)) || (x.ownerAgentId !== undefined && ids.has(x.ownerAgentId)))) {
+          ids.add(x.id);
+          grew = true;
+        }
+    }
+    const more = ids.size - 1;
+    const count = (kind: string, word: string) => {
+      const n = agents.filter((x) => ids.has(x.id) && x.id !== a.id && x.kind === kind).length;
+      return n ? `${n} ${word}${n === 1 ? "" : "s"}` : "";
+    };
+    const with_ = [count("fork", "fork"), count("subagent", "subagent"), count("root", "agent")].filter(Boolean).join(" and ");
+    ui.dialog = {
+      kind: "prompt",
+      title: `Delete ${a.name}?`,
+      hint: `Stops its work and removes it from this session${
+        more ? `, together with the ${with_} that started from it` : ""
+      }. Its history stays in the session's database until you archive the session.`,
+      submit: more ? `Delete ${ids.size} agents` : "Delete agent",
+      danger: true,
+      run: async () => {
+        await client.agent(node.sessionId, a.id).remove();
+        const sel = selected.value;
+        if (sel?.deviceId === node.deviceId && sel.sessionId === node.sessionId && ids.has(sel.agentId))
+          select({ deviceId: node.deviceId, sessionId: node.sessionId, agentId: 1 });
+      },
+    };
+  }
 }
 
 function move(delta: number) {
@@ -185,7 +214,6 @@ function keydown(e: KeyboardEvent) {
           :depth="row.depth"
           :open="expanded.has(row.node.key)"
           :selected="isSelected(row.node)"
-          :current="isCurrent(row.node)"
           :focused="focusKey === row.node.key"
           :online="isOnline(row.node)"
           @toggle="toggle(row.node.key)"

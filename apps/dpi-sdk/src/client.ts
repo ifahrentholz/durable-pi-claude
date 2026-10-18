@@ -214,6 +214,10 @@ export class AgentHandle {
   get() {
     return this.client.request<AgentDetail>("GET", this.base);
   }
+  /** This fork: stop the chat and remove it (with its forks and subagents) from the session. */
+  remove() {
+    return this.client.request<{ removed: number[] }>("DELETE", this.base);
+  }
   rename(name: string) {
     return this.client.request<AgentSummary>("PATCH", this.base, { name });
   }

@@ -229,6 +229,7 @@ export class Store {
     this.catalog.exec(`PRAGMA journal_mode=WAL;
       CREATE TABLE IF NOT EXISTS sessions(id TEXT PRIMARY KEY,name TEXT NOT NULL,cwd TEXT NOT NULL,dbPath TEXT NOT NULL UNIQUE,createdAt INTEGER NOT NULL,model TEXT NOT NULL,provider TEXT NOT NULL);
       CREATE TABLE IF NOT EXISTS conversation_names(sessionId TEXT NOT NULL,conversationId INTEGER NOT NULL,name TEXT NOT NULL,PRIMARY KEY(sessionId,conversationId));
+      CREATE TABLE IF NOT EXISTS removed_agents(sessionId TEXT NOT NULL,conversationId INTEGER NOT NULL,removedAt INTEGER NOT NULL,PRIMARY KEY(sessionId,conversationId));
       CREATE TABLE IF NOT EXISTS meta(key TEXT PRIMARY KEY,value TEXT NOT NULL);
       CREATE TABLE IF NOT EXISTS requests(key TEXT PRIMARY KEY,route TEXT NOT NULL,status INTEGER NOT NULL,body TEXT NOT NULL,createdAt INTEGER NOT NULL);
       CREATE TABLE IF NOT EXISTS session_spawns(key TEXT PRIMARY KEY,sessionId TEXT NOT NULL);
@@ -564,6 +565,7 @@ export class Store {
       if ((e as NodeJS.ErrnoException).code !== "ENOENT") throw e;
     }
     this.catalog.prepare("DELETE FROM conversation_names WHERE sessionId=?").run(row.id);
+    this.catalog.prepare("DELETE FROM removed_agents WHERE sessionId=?").run(row.id);
     this.catalog.prepare("DELETE FROM sessions WHERE id=?").run(row.id);
     this.errors.delete(row.id);
     this.notify();
@@ -704,10 +706,47 @@ export class Store {
     };
   }
 
+  /** This fork: chats removed from a session (pi-durable keeps every conversation; these are hidden and stopped). */
+  private removed(sessionId: string) {
+    return new Set(
+      (this.catalog.prepare("SELECT conversationId FROM removed_agents WHERE sessionId=?").all(sessionId) as { conversationId: number }[]).map(
+        (r) => r.conversationId,
+      ),
+    );
+  }
+
+  /**
+   * Remove a chat from its session: stop its work (and that of the forks and subagents that hang off it) and hide them
+   * all. pi-durable storage is append-only, so the history stays in the session database until the session is archived.
+   */
+  async removeAgent(row: SessionRow, c: Conversation) {
+    if ((c.id as number) === 1) throw invalid("Main cannot be removed. Archive the session instead.");
+    const h = this.harness(row);
+    const gone = this.removed(row.id);
+    const agents = (await this.scanAll(h)).map((r) => this.agentRef(r, new Map())).filter((a) => !gone.has(a.id));
+    const ids = new Set([c.id as number]);
+    for (let grew = true; grew; ) {
+      grew = false;
+      for (const a of agents)
+        if (!ids.has(a.id) && ((a.parentId !== undefined && ids.has(a.parentId)) || (a.ownerAgentId !== undefined && ids.has(a.ownerAgentId)))) {
+          ids.add(a.id);
+          grew = true;
+        }
+    }
+    for (const id of ids) {
+      const conversation = await h.conversation(id as ConversationId, ctx);
+      await conversation?.abort(ctx, { background: true }).catch(() => {});
+      this.catalog.prepare("INSERT OR IGNORE INTO removed_agents VALUES(?,?,?)").run(row.id, id, Date.now());
+    }
+    this.notify();
+    return { removed: [...ids] };
+  }
+
   async agents(row: SessionRow, tasks?: TaskNode[]): Promise<AgentSummary[]> {
     const h = this.harness(row);
     const names = this.names(row.id);
-    const records = await this.scanAll(h);
+    const gone = this.removed(row.id);
+    const records = (await this.scanAll(h)).filter((r) => !gone.has(r.id as number));
     const live = tasks ?? (await this.liveTasks(h));
     const summaries: AgentSummary[] = [];
     for (const record of records) {
@@ -772,12 +811,15 @@ export class Store {
     else {
       const wanted = agentRef.toLowerCase();
       const names = this.names(row.id);
+      const gone = this.removed(row.id);
       const matches = (await this.scanAll(h))
+        .filter((r) => !gone.has(r.id as number))
         .map((r) => this.agentRef(r, names))
         .filter((a) => a.name.toLowerCase() === wanted);
       if (matches.length > 1) throw new ApiFault("ambiguous", `${matches.length} agents are named "${agentRef}"`);
       id = matches[0]?.id;
     }
+    if (id !== undefined && this.removed(row.id).has(id)) throw notFound(`Agent "${agentRef}" was removed from session ${row.name}`);
     const c = id === undefined ? undefined : await h.conversation(id as ConversationId, ctx);
     if (!c) throw notFound(`No agent "${agentRef}" in session ${row.name}`);
     return { row, h, c };
@@ -1117,7 +1159,8 @@ export class Store {
     const h = this.opened.get(row.id)?.harness;
     if (!h) return;
     let smallest = 0;
-    for (const record of await this.scanAll(h)) {
+    const gone = this.removed(row.id);
+    for (const record of (await this.scanAll(h)).filter((r) => !gone.has(r.id as number))) {
       const model = (await (await h.conversation(record.id, ctx))?.agent(ctx))?.model;
       const window = model ? this.windowOf(model.modelId) : 0;
       if (window && (!smallest || window < smallest)) smallest = window;
