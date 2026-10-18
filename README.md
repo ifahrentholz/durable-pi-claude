@@ -414,5 +414,19 @@ reads). A banner above the composer counts open requests.
 - API: `POST /v1/sessions/:s/agents/:a/demo/approvals/:callId {decision: allow|always|deny, message?}`,
   `GET|POST .../demo/approval-rules {add?, remove?}`.
 
+### Project context
+
+On `claude-code` devices every agent also gets the **Project context** extension (Extend tab, per agent; elsewhere
+`DPI_PROJECT_CONTEXT=on`). Before every request it adds two system prompt sections:
+
+- `project_instructions`: the files Claude Code would read for the agent's folder. `~/.claude/CLAUDE.md`, then for
+  every folder from the repository root down to the agent's folder `CLAUDE.md`, `.claude/CLAUDE.md`,
+  `CLAUDE.local.md` and `AGENTS.md`, with `@path` imports resolved (relative to the importing file, `~/` from home).
+- `developer_tools`: [`apps/dpi-backend/prompts/developer-tools.md`](apps/dpi-backend/prompts/developer-tools.md)
+  (fetch Jira tickets with the `jira` CLI before working; read merge requests and pipelines with `glab` / `gh`; never
+  change tickets, commit or push unless asked) plus `~/.dpi/instructions.md` for your own device-local additions.
+
+The Extend tab lists the files an agent reads. Edits apply from the next request.
+
 Debug log: `DPI_CLAUDE_DEBUG=1 just backend run`. Usage of Claude subscriptions through the Agent SDK is subject to
 Anthropic's terms; this provider does not alter Claude Code's prompt or identity.

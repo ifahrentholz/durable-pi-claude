@@ -63,6 +63,7 @@ import { createPlayground, Workspace, type SpawnSession } from "./extensions.js"
 import { createJobs, JobRuns, JOB_DEFS, jobDef, resolveJobInput, type Jobs } from "./jobs.js";
 import { ADDON_INFO, createAddons, PROMPTS, PromptChecklist, type Addons } from "./addons.js";
 import { ApprovalRules, Approvals, APPROVALS_INFO, createApprovals, decideApproval, editRules } from "./approvals.js";
+import { createProjectContext, PROJECT_CONTEXT_INFO, projectFiles } from "./project-context.js";
 import { APPROVALS_DOC, type ApprovalDecision } from "../../dpi-sdk/src/approvals.js";
 import { JOB_RUNS_DOC } from "../../dpi-sdk/src/jobs.js";
 
@@ -103,7 +104,7 @@ const CODE_DIR = resolve(import.meta.dirname, "../../..");
 const CLAUDE_CODE_DEFAULT = "claude-sonnet-5-5";
 const AGENT_DOCS = { [JOB_RUNS_DOC]: JobRuns, "demo.workspace": Workspace, [APPROVALS_DOC]: Approvals } as const;
 /** Extensions an agent can switch on and off in the Extend tab, in hook order. Approvals (this fork) is on by default. */
-const TOGGLES_INFO = [APPROVALS_INFO, ...ADDON_INFO];
+const TOGGLES_INFO = [APPROVALS_INFO, PROJECT_CONTEXT_INFO, ...ADDON_INFO];
 export const AGENT_DOC_KINDS = Object.keys(AGENT_DOCS);
 export const DEVICE_DOC_KINDS = ["app.shared-state"];
 
@@ -556,6 +557,9 @@ export class Store {
       let opened: Harness | undefined;
       const approvals = createApprovals({ commit: (fn) => opened!.commit(fn, ctx) });
       registry.install(approvals);
+      // Project context (this fork): CLAUDE.md / AGENTS.md of the agent's folder and the device's tool instructions.
+      const projectContext = createProjectContext(row.cwd);
+      registry.install(projectContext);
       const harness = await Harness.open(
         await openNodeSqliteStorage(row.dbPath),
         {
@@ -568,12 +572,15 @@ export class Store {
             await tx.doc(Approvals, c.id);
           },
           settings: {
-            // Approvals are selected by default on claude-code devices (or with DPI_APPROVALS=on); elsewhere an
-            // agent turns them on in the Extend tab, so upstream behaviour and its tests stay unchanged.
-            extensions:
-              this.options.provider === "claude-code" || process.env.DPI_APPROVALS === "on"
-                ? [CodingTools, playground, approvals]
-                : [CodingTools, playground],
+            // This fork's extensions are selected by default on claude-code devices (or with DPI_APPROVALS=on /
+            // DPI_PROJECT_CONTEXT=on); elsewhere an agent turns them on in the Extend tab, so upstream behaviour and
+            // its tests stay unchanged.
+            extensions: [
+              CodingTools,
+              playground,
+              ...(this.options.provider === "claude-code" || process.env.DPI_APPROVALS === "on" ? [approvals] : []),
+              ...(this.options.provider === "claude-code" || process.env.DPI_PROJECT_CONTEXT === "on" ? [projectContext] : []),
+            ],
             // Read at every use, so a PATCH .../compaction applies from the next request.
             get compaction() {
               return compaction();
@@ -606,7 +613,7 @@ export class Store {
       row.model = rootModel.modelId;
       this.catalog.prepare("UPDATE sessions SET provider=?,model=? WHERE id=?").run(row.provider, row.model, row.id);
       const unsubscribe = harness.subscribeCommits(() => this.notify());
-      this.opened.set(row.id, { harness, unlock, unsubscribe, jobs, addons, toggles: { ...addons.all, approvals } });
+      this.opened.set(row.id, { harness, unlock, unsubscribe, jobs, addons, toggles: { ...addons.all, approvals, "project-context": projectContext } });
       this.errors.delete(row.id);
       if (create) harness.resume();
       return harness;
@@ -999,7 +1006,9 @@ export class Store {
   // ------------------------------------------------------------ custom extensions (per agent)
 
   async extensionsOf(row: SessionRow, c: Conversation): Promise<AgentExtensions> {
-    const active = new Set((await c.agent(ctx)).extensions.map((e) => e.name));
+    const agent = await c.agent(ctx);
+    const active = new Set(agent.extensions.map((e) => e.name));
+    const agentCwd = agent.cwd ?? row.cwd;
     const checked = (await this.harness(row).snapshot(PromptChecklist, c.id, ctx))?.enabled ?? [PROMPTS[0].id];
     return {
       builtIn: [...active].filter((name) => !TOGGLES_INFO.some((a) => a.name === name)),
@@ -1008,6 +1017,15 @@ export class Store {
         enabled: active.has(info.name),
         ...(info.name === "system-prompts"
           ? { prompts: PROMPTS.map(({ id, title, description, text }) => ({ id, title, description, text, enabled: checked.includes(id) })) }
+          : {}),
+        ...(info.name === "project-context"
+          ? {
+              files: projectFiles(agentCwd).map((f) => ({
+                path: f.path,
+                bytes: Buffer.byteLength(f.text),
+                ...(f.importedBy ? { importedBy: f.importedBy } : {}),
+              })),
+            }
           : {}),
       })),
     };

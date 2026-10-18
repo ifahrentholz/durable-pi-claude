@@ -81,6 +81,17 @@ async function set(patch: { name: string; enabled: boolean } | { prompt: string;
         </button>
       </div>
       <p>{{ ext.description }}</p>
+      <div v-if="ext.files" class="ext-rules" :class="{ off: !ext.enabled }">
+        <strong>Read for this agent's folder</strong>
+        <ul class="rules-list">
+          <li v-for="f in ext.files" :key="f.path" :title="f.path">
+            <code>{{ f.path.replace(/^\/Users\/[^/]+|^\/home\/[^/]+/, "~") }}</code>
+            <span class="hint">{{ (f.bytes / 1024).toFixed(1) }} KB{{ f.importedBy ? " · imported" : "" }}</span>
+          </li>
+        </ul>
+        <p v-if="!ext.files.length" class="hint">No CLAUDE.md or AGENTS.md found for this folder.</p>
+        <p class="hint">Plus the device's jira, glab and gh instructions (prompts/developer-tools.md, ~/.dpi/instructions.md).</p>
+      </div>
       <div v-if="ext.name === 'approvals'" class="ext-rules" :class="{ off: !ext.enabled }">
         <strong>Allowed without asking (this session)</strong>
         <ul class="rules-list">

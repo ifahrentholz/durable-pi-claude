@@ -182,6 +182,8 @@ export interface HarnessExtensionInfo {
   enabled: boolean;
   /** For system-prompts: the built-in prompts and which ones this agent renders. */
   prompts?: { id: string; title: string; description: string; enabled: boolean; text: string }[];
+  /** For project-context (this fork): the instruction files it reads for the agent's folder. */
+  files?: { path: string; bytes: number; importedBy?: string }[];
 }
 
 export interface AgentExtensions {

@@ -183,8 +183,8 @@ test("custom extensions: jev-damage-control blocks rm -rf only while on; system-
       JSON.stringify((await store.entries(c, undefined, 500)).items.filter((e) => e.kind === "pi.system").slice(0, 1));
 
     let ext = await store.extensionsOf(row, c);
-    // This fork lists approvals first; it is off by default except on claude-code devices.
-    assert.deepEqual(ext.extensions.map((e) => [e.name, e.enabled]), [["approvals", false], ["system-prompts", false], ["jev-damage-control", false]]);
+    // This fork lists approvals and project-context first; they are off by default except on claude-code devices.
+    assert.deepEqual(ext.extensions.map((e) => [e.name, e.enabled]), [["approvals", false], ["project-context", false], ["system-prompts", false], ["jev-damage-control", false]]);
     assert.deepEqual(ext.builtIn.sort(), ["coding-tools", "playground"]);
     assert.deepEqual(ext.extensions.find((e) => e.name === "system-prompts")!.prompts?.map((p) => [p.id, p.enabled]), [["smart_ass_opus_fix.md", true], ["one_sentence.md", false]]);
 
@@ -211,13 +211,13 @@ test("custom extensions: jev-damage-control blocks rm -rf only while on; system-
     assert.doesNotMatch(await systemText(), /Clear, Concise, Actionable Communication/);
     // Extensions stack: turning one on keeps the other on.
     ext = await store.setExtension(row, c, { name: "jev-damage-control", enabled: true });
-    assert.deepEqual(ext.extensions.map((e) => [e.name, e.enabled]), [["approvals", false], ["system-prompts", true], ["jev-damage-control", true]]);
+    assert.deepEqual(ext.extensions.map((e) => [e.name, e.enabled]), [["approvals", false], ["project-context", false], ["system-prompts", true], ["jev-damage-control", true]]);
     assert.deepEqual(ext.builtIn, ["coding-tools", "playground"]);
     await mkdir(join(t.work, "doomed"));
     await turn("!rm -rf doomed");
     assert.ok(existsSync(join(t.work, "doomed")));
     ext = await store.setExtension(row, c, { name: "system-prompts", enabled: false });
-    assert.deepEqual(ext.extensions.map((e) => e.enabled), [false, false, true]);
+    assert.deepEqual(ext.extensions.map((e) => e.enabled), [false, false, false, true]);
     await assert.rejects(() => store.setExtension(row, c, { name: "nope", enabled: true }), /Unknown extension/);
   } finally {
     await store.close();
