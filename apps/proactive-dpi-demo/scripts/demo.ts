@@ -3,7 +3,8 @@
 // Process output goes to .data/demo.log, so the terminal can stay on camera. --verbose shows it.
 import { spawn, type ChildProcess } from "node:child_process";
 import { existsSync, mkdirSync, openSync, readFileSync } from "node:fs";
-import { networkInterfaces } from "node:os";
+import { homedir, networkInterfaces } from "node:os";
+import { parseEnv } from "node:util";
 import { join } from "node:path";
 import { dataDir, demoDir, repoDir } from "../shared/paths.ts";
 
@@ -22,6 +23,18 @@ for (let i = 0; i < args.length; i++) {
   else beArgs.push(args[i]);
 }
 if (!args.includes("--log-rows")) logArgs.push("--quiet");
+// This fork: a judge on this machine (Kev) answers about 1.6 rows a second on an Apple M3 Pro, so the stream slows to
+// 1.2 rows a second unless --rate says otherwise. Jev in the cloud keeps the upstream 2.
+if (!args.includes("--rate") && localJudge()) logArgs.push("--rate", "1.2");
+// A local judge has to run already: every row would fail otherwise.
+if (localJudge()) {
+  const url = (judgeUrl() || "http://127.0.0.1:8009").replace(/\/$/, "");
+  const up = await fetch(`${url}/v1/models`, { signal: AbortSignal.timeout(3000) }).then((r) => r.ok, () => false);
+  if (!up) {
+    console.error(`The local judge (Kev) does not answer at ${url}. Start it first: duracel -d (or just judge kev).`);
+    process.exit(1);
+  }
+}
 const verbose = args.includes("--verbose");
 const portIndex = beArgs.indexOf("--port");
 const port = portIndex < 0 ? 4790 : Number(beArgs[portIndex + 1]);
@@ -91,3 +104,17 @@ ${lan.map((url) => `    ${url}`).join("\n")}
 
   Ctrl+C stops everything.
 `);
+
+/** A setting from the environment, else from the device settings (~/.dpi/backend.env). */
+function deviceSetting(key: string) {
+  if (process.env[key] !== undefined) return process.env[key];
+  const deviceEnv = process.env.DPI_ENV_FILE ?? join(process.env.DPI_HOME ?? join(homedir(), ".dpi"), "backend.env");
+  return existsSync(deviceEnv) ? parseEnv(readFileSync(deviceEnv, "utf8"))[key] : undefined;
+}
+function judgeUrl() {
+  return deviceSetting("DPI_JUDGE_URL");
+}
+/** DPI_JUDGE=systemone on a loopback URL. */
+function localJudge() {
+  return deviceSetting("DPI_JUDGE") === "systemone" && /\/\/(127\.0\.0\.1|localhost)[:/]/.test(judgeUrl() || "http://127.0.0.1:8009");
+}

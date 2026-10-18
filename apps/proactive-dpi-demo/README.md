@@ -1,5 +1,9 @@
 # Proactive DPI demo
 
+> **This fork:** the incident agent runs on your Claude subscription (`claude-code` provider) and the watcher asks a
+> local Kev instead of Jev, as configured in `~/.dpi/backend.env`. Start Kev first (`duracel -d` or `just judge kev`).
+> Without an ElevenLabs key, macOS `say` speaks. See the root README, "The proactive demo on your subscription".
+
 A proactive durable agent. A watcher sends every production log row to Jev. When failures cluster, code opens an incident and starts a Durable Pi agent. The agent works the incident timeline on its own git branch, then asks you out loud to approve the deploy and waits durably for your decision.
 
 See the [repository README](../../README.md#the-hook-a-proactive-durable-agent) for why it matters. The root `/install` command sets it up. Vue 3 + Vite, TypeScript Node, `@earendil-works/pi-durable` **1.0.3** on SQLite. Node **24.14+**.

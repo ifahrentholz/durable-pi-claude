@@ -29,7 +29,7 @@ Open the repository in Claude Code (or Pi, or your favorite agentic coding tool)
 /install
 ```
 
-The command lives in [`.claude/commands/install.md`](.claude/commands/install.md). It checks Node 24, npm, just and zsh, confirms `OPENROUTER_API_KEY` in `.env` without printing it, runs `just install`, writes this machine's device config with `just net up local`, builds the web UI, offers to set up the proactive demo and finishes with `just check`. It never starts a server and never touches a device other than `local`. Run `/prime` afterwards to load the project context into your agent.
+The command lives in [`.claude/commands/install.md`](.claude/commands/install.md). In this fork it checks Node 24, npm, just, zsh and the Claude Code login (no OpenRouter key needed), runs `just install`, writes this machine's device config with `just net up local`, builds the web UI, offers to set up the proactive demo and finishes with `just check`. It never starts a server and never touches a device other than `local`. Run `/prime` afterwards to load the project context into your agent.
 
 ### Manual Install
 
@@ -458,6 +458,26 @@ just judge probe         # verdicts of the configured judge for a few commands
 ```
 
 With Approvals on, both layers apply: you approve a command first, then the judge can still block it.
+
+### The proactive demo on your subscription
+
+`apps/proactive-dpi-demo` runs on the same setup: the incident agent uses the `claude-code` provider (default
+`claude-sonnet-5-5`, marked **Abo** in its model picker) and the log watcher asks the local Kev instead of Jev, both
+read from `~/.dpi/backend.env`. Without an ElevenLabs key, macOS `say` speaks the ready-for-review line
+(`DPI_SAY_VOICE`, default Samantha).
+
+```bash
+duracel -d                 # Kev must run first (or: just judge kev)
+just proactive install     # once
+just proactive build       # once, and after UI changes
+just proactive take        # fresh take: prints http://localhost:4790
+```
+
+Kev on an Apple M3 Pro answers about 1.5 rows a second, so with a local judge the stream defaults to 1.2 rows a second
+(`--rate` overrides) and 2 parallel judge requests (`--jev-concurrency`). Measured on this setup: incident detected at
+T+11 s, fix ready for review at T+34 s (upstream with Jev and OpenRouter: about T+10 s and T+30 s). Killing the demo
+while the deploy waits keeps the request; approving after the restart deploys once. `--provider openrouter` and a Jev
+key restore the upstream behaviour.
 
 ### Compaction with mixed models
 

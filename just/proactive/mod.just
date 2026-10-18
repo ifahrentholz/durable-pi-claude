@@ -1,4 +1,4 @@
-# Proactive DPI demo: Jev log watcher and durable incident agents.
+# Proactive DPI demo: log watcher (Jev or a local Kev) and durable incident agents.
 # Every recipe runs in apps/proactive-dpi-demo.
 
 set shell := ["zsh", "-cu"]

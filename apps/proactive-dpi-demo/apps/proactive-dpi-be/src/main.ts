@@ -18,7 +18,7 @@ mkdirSync(dataDir, { recursive: true });
 
 const store = new WatchStore();
 const jev = new Jev();
-const voice = new Voice(config.tts, ttsDir, config.voiceId, config.voiceModel);
+const voice = new Voice(config.tts, ttsDir, config.voiceId, config.voiceModel, config.sayVoice);
 voice.prepare(config.readySpeech);
 const ops = await Ops.open(store, voice);
 const watcher = new Watcher(
@@ -203,7 +203,7 @@ if (config.dev) {
 }
 server.listen(config.port, config.host, () => {
   console.log(
-    `Proactive DPI: http://localhost:${config.port}\n  jev ${jev.provider}  model ${config.model}  tts ${config.tts}  incident after ${config.incidentThreshold} incident or ${config.suspiciousThreshold} suspicious verdicts in ${config.windowMs / 1000}s`,
+    `Proactive DPI: http://localhost:${config.port}\n  judge ${jev.provider}  model ${config.provider}/${config.model}  tts ${config.tts}  incident after ${config.incidentThreshold} incident or ${config.suspiciousThreshold} suspicious verdicts in ${config.windowMs / 1000}s`,
   );
   if (config.host !== "0.0.0.0") return;
   for (const addresses of Object.values(networkInterfaces()))

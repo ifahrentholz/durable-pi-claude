@@ -1,5 +1,6 @@
 // ElevenLabs text to speech (ELEVENLABS_VOICE_ID, ELEVENLABS_MODEL).
 // Plays on the backend host with afplay (macOS), in connected browsers, or both.
+// This fork: without an ElevenLabs key, macOS `say` synthesizes the line locally (DPI_SAY_VOICE).
 import { EventEmitter } from "node:events";
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
@@ -18,12 +19,17 @@ export class Voice extends EventEmitter {
     private readonly dir: string,
     private readonly voiceId: string,
     private readonly model: string,
+    private readonly sayVoice = "Samantha",
   ) {
     super();
   }
 
+  private get elevenLabs() {
+    return !!process.env.ELEVENLABS_API_KEY;
+  }
+
   private get enabled() {
-    return this.mode !== "off" && !!process.env.ELEVENLABS_API_KEY;
+    return this.mode !== "off" && (this.elevenLabs || process.platform === "darwin");
   }
 
   /** Synthesize ahead of time so `say` plays without waiting on the API. */
@@ -62,6 +68,7 @@ export class Voice extends EventEmitter {
   }
 
   private async synthesize(text: string) {
+    if (!this.elevenLabs) return this.synthesizeLocally(text);
     const hash = createHash("sha1").update(`${this.voiceId}|${this.model}|${text}`).digest("hex").slice(0, 16);
     const path = join(this.dir, `${hash}.mp3`);
     if (existsSync(path)) return path;
@@ -85,6 +92,20 @@ export class Voice extends EventEmitter {
     if (!res.ok) throw Error(`ElevenLabs ${res.status}: ${(await res.text()).slice(0, 200)}`);
     await mkdir(this.dir, { recursive: true });
     await writeFile(path, Buffer.from(await res.arrayBuffer()));
+    return path;
+  }
+
+  /** macOS `say` into an AAC file, which afplay and every browser play. Falls back to the default voice. */
+  private async synthesizeLocally(text: string) {
+    const hash = createHash("sha1").update(`say|${this.sayVoice}|${text}`).digest("hex").slice(0, 16);
+    const path = join(this.dir, `${hash}.m4a`);
+    if (existsSync(path)) return path;
+    await mkdir(this.dir, { recursive: true });
+    const run = (args: string[]) =>
+      new Promise<void>((resolve, reject) =>
+        execFile("say", [...args, "--file-format=m4af", "--data-format=aac", "-o", path, text], (e) => (e ? reject(e) : resolve())),
+      );
+    await run(["-v", this.sayVoice]).catch(() => run([]));
     return path;
   }
 }
