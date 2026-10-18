@@ -5,6 +5,9 @@
 > logged in with your own `claude auth login`, so usage counts against your Claude plan instead of an OpenRouter key.
 > pi-durable stays the durable loop: every tool call is still a checkpointed pi-durable task. See
 > [Claude Code provider](#claude-code-provider-this-fork). Upstream: [disler/durable-pi](https://github.com/disler/durable-pi).
+>
+> **Anleitung (Deutsch):** [docs/ANLEITUNG.md](docs/ANLEITUNG.md): starten, Freigaben, und Szenarien wie Bugfix nach
+> Jira-Ticket, Feature-Entwicklung, MR-Review und Incident-Analyse.
 
 > **Proactive agents start working before you sit down. They don't wait for you to work. They work for you, then wait.**
 > Durable pi agents on any machine you own, driven from a web UI, a terminal or one curl.
