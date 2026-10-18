@@ -3,7 +3,7 @@
 The web UI in a native window, plus what a browser tab cannot do:
 
 - **Starts the stack** (Kev, backend, web hub) through `scripts/dpi.sh` when it opens; **Quit** (menu bar or ⌘Q)
-  stops it all.
+  stops it all and shows a shutdown screen with each stopped service until it is done.
 - **Closing the window only hides it**: agents keep working. The menu bar icon and the Dock bring it back.
 - **Menu bar**: status (running, Kev), open pending approvals, start, open and stop the proactive incident demo
   (own window), restart backend and web UI, quit.
@@ -12,7 +12,7 @@ The web UI in a native window, plus what a browser tab cannot do:
 - **Dock badge** with the number of pending approvals.
 
 ```bash
-just desktop install   # build (Rust, a few minutes the first time) and copy to /Applications
+just desktop install   # build (Rust, a few minutes the first time) and copy to ~/Applications
 just desktop open      # start it
 just desktop dev       # debug build with dev tools
 ```

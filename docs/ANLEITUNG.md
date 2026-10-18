@@ -39,14 +39,15 @@ Nach einem Neustart des Rechners reicht `duracel -d`. Laufende Arbeit setzen die
 
 ### Als Mac-App
 
-Statt `duracel` und Browser-Tab geht es auch als App: **Durable Pi** in `/Applications` (bauen und installieren mit
+Statt `duracel` und Browser-Tab geht es auch als App: **Durable Pi** in `~/Applications` (bauen und installieren mit
 `just desktop install`).
 
 - **Öffnen** startet Kev, Backend und Oberfläche und zeigt sie in einem eigenen Fenster.
 - **Fenster schließen** versteckt es nur, die Agents arbeiten weiter. Zurück über das Dock oder das Symbol in der
   Menüleiste.
 - **Menüleiste** (Durable-Pi-Symbol oben rechts): Status, offene Freigaben öffnen, **Incident-Demo starten/öffnen**
-  (eigenes Fenster) und stoppen, neu starten, **Beenden**. Beenden (auch ⌘Q) **stoppt alles**.
+  (eigenes Fenster) und stoppen, neu starten, **Beenden**. Beenden (auch ⌘Q) **stoppt alles**. Solange das dauert
+  (einige Sekunden), zeigt das Fenster „Durable Pi wird beendet …“ mit den gestoppten Diensten.
 - **Mitteilungen**, wenn ein Agent auf eine Freigabe wartet („🔐 Freigabe nötig: bash“ mit dem Befehl) oder fertig
   ist, während du woanders arbeitest. **Klick darauf** öffnet genau diesen Agent. Beim ersten Mal fragt macOS, ob
   Durable Pi Mitteilungen senden darf: erlauben.

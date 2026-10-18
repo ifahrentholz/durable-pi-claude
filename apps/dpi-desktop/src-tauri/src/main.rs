@@ -10,6 +10,8 @@
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
+use std::io::{BufRead, BufReader};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
@@ -22,6 +24,33 @@ use tauri::{AppHandle, Manager, RunEvent, WebviewUrl, WebviewWindow, WebviewWind
 const HUB: &str = "http://127.0.0.1:4781";
 const DEMO: &str = "http://localhost:4790";
 const POLL: Duration = Duration::from_secs(3);
+
+/// Quit was requested: the stack is being stopped. `STOPPED`: it is down, the app may exit now.
+static SHUTTING_DOWN: AtomicBool = AtomicBool::new(false);
+static STOPPED: AtomicBool = AtomicBool::new(false);
+
+/// A full-window overlay while the stack stops: spinner, title, and one line per stopped service.
+const SHUTDOWN_OVERLAY: &str = r#"(() => {
+  if (document.getElementById('dpi-shutdown')) return;
+  const o = document.createElement('div');
+  o.id = 'dpi-shutdown';
+  o.innerHTML = `<style>
+    #dpi-shutdown { position: fixed; inset: 0; z-index: 2147483647; background: rgba(22,15,16,.96); color: #e9dcd0;
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px;
+      font: 15px -apple-system, BlinkMacSystemFont, sans-serif; }
+    #dpi-shutdown .spin { width: 42px; height: 42px; border-radius: 50%; border: 4px solid #3a2a2c; border-top-color: #ff8997;
+      animation: dpi-spin .9s linear infinite; }
+    @keyframes dpi-spin { to { transform: rotate(360deg) } }
+    #dpi-shutdown h1 { font-size: 20px; margin: 0; font-weight: 600; }
+    #dpi-shutdown p { margin: 0; color: #c9a87c; font-size: 13px; }
+    #dpi-shutdown ul { list-style: none; margin: 6px 0 0; padding: 0; min-height: 90px; font: 13px ui-monospace, Menlo, monospace; color: #b9d7c4; }
+  </style>
+  <div class="spin"></div><h1>Durable Pi wird beendet …</h1>
+  <p>Agents, Oberfläche, Backend und Kev werden sauber gestoppt. Laufende Arbeit setzt beim nächsten Start fort.</p>
+  <ul id="dpi-shutdown-steps"></ul>`;
+  document.body.appendChild(o);
+  window.__dpiStep = (text) => { const li = document.createElement('li'); li.textContent = text; document.getElementById('dpi-shutdown-steps').appendChild(li); };
+})()"#;
 
 /// The checkout this app belongs to: DURACEL_ROOT, else the repository this binary was built from.
 fn repo_root() -> PathBuf {
@@ -154,7 +183,10 @@ fn main_window(app: &AppHandle) -> WebviewWindow {
         // Closing only hides the window: the agents keep working.
         if let WindowEvent::CloseRequested { api, .. } = event {
             api.prevent_close();
-            let _ = hide.hide();
+            // While shutting down the window stays: it shows the progress.
+            if !SHUTTING_DOWN.load(Ordering::SeqCst) {
+                let _ = hide.hide();
+            }
         }
     });
     w
@@ -309,6 +341,75 @@ fn poll(app: AppHandle, state: Arc<Mutex<State>>, menus: Arc<Menus>, tray: TrayI
     }
 }
 
+/// Quit: show the shutdown overlay, stop the stack line by line, then exit for real.
+fn shutdown(app: &AppHandle, ctx: &Ctx) {
+    if SHUTTING_DOWN.swap(true, Ordering::SeqCst) {
+        return;
+    }
+    if let Some(demo) = app.get_webview_window("demo") {
+        let _ = demo.close();
+    }
+    show(app);
+    let _ = main_window(app).eval(SHUTDOWN_OVERLAY);
+    if let Some(tray) = app.tray_by_id("main") {
+        let _ = tray.set_title(Some("…"));
+        let _ = tray.set_tooltip(Some("Durable Pi wird beendet …"));
+    }
+    let (app, ctx) = (app.clone(), ctx.clone());
+    thread::spawn(move || {
+        let step = |text: String| {
+            let handle = app.clone();
+            let _ = app.run_on_main_thread(move || {
+                let js = format!("window.__dpiStep && window.__dpiStep({})", serde_json::to_string(&text).unwrap_or_default());
+                let _ = main_window(&handle).eval(&js);
+            });
+        };
+        let child = Command::new("/bin/bash")
+            .arg(ctx.root.join("scripts/dpi.sh"))
+            .arg("stop")
+            .current_dir(&ctx.root)
+            .env("PATH", &ctx.path)
+            .stdin(Stdio::null())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::null())
+            .spawn();
+        if let Ok(mut child) = child {
+            if let Some(out) = child.stdout.take() {
+                for line in BufReader::new(out).lines().map_while(Result::ok) {
+                    // "  ✓ web hub" → "✓ Web hub gestoppt"; skip the heading and color codes.
+                    let clean: String = strip_ansi(&line).trim().to_string();
+                    if let Some(name) = clean.strip_prefix("✓ ") {
+                        step(format!("✓ {} gestoppt", name.trim_end_matches(" stopped")));
+                    }
+                }
+            }
+            let _ = child.wait();
+        }
+        step("✓ Fertig".into());
+        thread::sleep(Duration::from_millis(400));
+        STOPPED.store(true, Ordering::SeqCst);
+        let handle = app.clone();
+        let _ = app.run_on_main_thread(move || handle.exit(0));
+    });
+}
+
+fn strip_ansi(text: &str) -> String {
+    let mut out = String::new();
+    let mut chars = text.chars().peekable();
+    while let Some(c) = chars.next() {
+        if c == '\u{1b}' {
+            for next in chars.by_ref() {
+                if next.is_ascii_alphabetic() {
+                    break;
+                }
+            }
+        } else {
+            out.push(c);
+        }
+    }
+    out
+}
+
 /// Start the stack, then swap the loading page for the web UI.
 fn start_stack(app: AppHandle, ctx: Ctx, restart: bool) {
     thread::spawn(move || {
@@ -419,7 +520,7 @@ fn main() {
                                 let _ = w.navigate("tauri://localhost/index.html".parse().unwrap());
                                 start_stack(app.clone(), ctx.clone(), true);
                             }
-                            "quit" => app.exit(0),
+                            "quit" => shutdown(app, &ctx),
                             _ => {}
                         }
                     })
@@ -443,8 +544,13 @@ fn main() {
                 None => show(app),
             }
         }
-        // Quit (menu, ⌘Q): stop what runs, so nothing is left behind.
-        RunEvent::Exit => {
+        // Quit (menu, ⌘Q): keep the app until the stack is down, with the shutdown overlay on screen.
+        RunEvent::ExitRequested { api, .. } if !STOPPED.load(Ordering::SeqCst) => {
+            api.prevent_exit();
+            shutdown(app, &ctx);
+        }
+        // Last resort (exit without the request, e.g. a crash path): stop what runs.
+        RunEvent::Exit if !STOPPED.load(Ordering::SeqCst) => {
             ctx.dpi(&["stop"]);
         }
         _ => {}

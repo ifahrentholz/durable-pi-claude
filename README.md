@@ -440,7 +440,7 @@ with the forks and subagents that started from them. On other providers it is of
 
 ### macOS app
 
-`just desktop install` builds a native app (Tauri, ~7 MB) into `/Applications/Durable Pi.app`: the web UI in its own
+`just desktop install` builds a native app (Tauri, ~7 MB) into `~/Applications/Durable Pi.app`: the web UI in its own
 window, the stack started on open and stopped on quit, a menu bar icon (status, approvals, incident demo),
 notifications when a tool call waits for approval or an agent finishes, and a Dock badge. See
 [`apps/dpi-desktop`](apps/dpi-desktop/README.md).
