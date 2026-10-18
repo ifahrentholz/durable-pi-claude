@@ -478,6 +478,8 @@ export function createJobs(deps: JobsDeps) {
       sleepUntil: (at) => runtime.sleep(at, ctx),
       agent: async (prompt) => {
         let childId = 0;
+        // This fork: the subagent asks before its bash calls when the job's agent does (it may run in a real repo).
+        const approvals = (await runtime.agent(ctx)).extensions.find((e) => e.name === "approvals");
         const stepId = `${spec.id}:${cp.iteration}:agent`;
         const at = runtime.now();
         await runtime.commit(async (tx) => {
@@ -486,7 +488,7 @@ export function createJobs(deps: JobsDeps) {
           else {
             const child = await tx.createConversation({ ownership: { kind: "task", taskId: task.id } });
             await configure(tx, child.id, {
-              extensions: [CodingTools],
+              extensions: approvals ? [CodingTools, approvals] : [CodingTools],
               tools: [createReadTool(), createBashTool()],
               instructions: CHILD_INSTRUCTIONS,
             });

@@ -43,6 +43,8 @@ const MCP_PREFIX = `mcp__${MCP_SERVER}__`;
 /** Bridges idle this long are closed; the next request rebuilds them from the transcript. */
 const IDLE_MS = 30 * 60_000;
 const DEBUG = !!process.env.DPI_CLAUDE_DEBUG;
+/** DPI_CLAUDE_DEBUG=2 also logs every stream event. */
+const DEBUG_STREAM = process.env.DPI_CLAUDE_DEBUG === "2";
 const debug = (...args: unknown[]) => DEBUG && console.error("[claude-code]", ...args);
 
 /** Subscription models offered in the picker; metadata (window, API-equivalent prices) from pi-ai's catalog. */
@@ -102,7 +104,7 @@ function respond(model: Model<string>, context: TranscriptContext, options?: Sim
       bridges.set(key, bridge);
       bridge.seed(conversation);
     } else {
-      bridge.deliver(tail);
+      await bridge.deliver(tail);
     }
     await bridge.pump(out, message, model, options?.signal);
   };
@@ -158,7 +160,8 @@ async function completeOnce(
 // The bridge: one Claude Code process per pi conversation
 // ---------------------------------------------------------------------------------------------------------------
 
-type PendingCall = { id: string; name: string; args: unknown; resolve?: (r: CallResult) => void; result?: CallResult };
+/** One tool_use Claude made: `result` arrives from pi, `resolve` once Claude Code's MCP call claims it; `done` when handed over. */
+type PendingCall = { id: string; name: string; args: unknown; resolve?: (r: CallResult) => void; result?: CallResult; done?: boolean };
 type CallResult = { content: ({ type: "text"; text: string } | { type: "image"; data: string; mimeType: string })[]; isError?: boolean };
 
 class Bridge {
@@ -170,6 +173,8 @@ class Bridge {
   private known: string[] = [];
   /** Tool calls announced in the current turn that pi has to answer. */
   private calls: PendingCall[] = [];
+  /** MCP calls that arrived before their tool_use block was read from the stream (parallel calls race). */
+  private early: { name: string; args: unknown; resolve: (r: CallResult) => void; timer: NodeJS.Timeout }[] = [];
   private modelId: string;
   private idleTimer?: NodeJS.Timeout;
   private closed = false;
@@ -230,25 +235,25 @@ class Bridge {
     return tail;
   }
 
-  /** Feed the tail: tool results resolve the waiting MCP calls, user messages go to Claude Code's input. */
-  deliver(tail: Message[]) {
+  /**
+   * Feed the tail: user messages go to Claude Code's input as real user messages, tool results resolve the waiting
+   * MCP calls. A steer arrives together with the results of the tool round it joins: queued before the results are
+   * released, Claude Code hands it to the model right after them, in the same turn. (Never embed it in a tool result:
+   * the model rightly treats instructions inside tool output as untrusted.)
+   */
+  async deliver(tail: Message[]) {
     this.touch();
     const results = tail.filter((m): m is ToolResultMessage => m.role === "toolResult");
     const user = tail.filter((m) => m.role === "user").map((m) => textOf(m.content));
-    // Steering: pi places a steer after the tool round. Claude Code is still inside that turn, waiting for the
-    // results, so the message joins the last result instead of queueing behind the whole turn.
-    if (results.length && user.length) {
-      const last = results.at(-1)!;
-      const steer = { type: "text" as const, text: `\n\n<user_message_while_you_worked>\n${user.join("\n\n")}\n</user_message_while_you_worked>` };
-      results[results.length - 1] = { ...last, content: [...last.content, steer] };
-    }
+    if (user.length) this.input.push(userMessage(user.join("\n\n")));
+    if (user.length && results.length) await new Promise((r) => setTimeout(r, 150)); // let the message reach Claude Code first
     for (const message of results) {
       const call = this.calls.find((c) => c.id === message.toolCallId);
       if (!call) continue;
       call.result = toCallResult(message);
-      call.resolve?.(call.result);
+      // Claude Code calls MCP tools one after another; calls it has not made yet keep their result until it does.
+      if (call.resolve) this.handOver(call);
     }
-    if (!results.length && user.length) this.input.push(userMessage(user.join("\n\n")));
   }
 
   /** First request of a bridge: replay the pi transcript as context, then the pending work. */
@@ -275,7 +280,7 @@ class Bridge {
   async pump(out: AssistantMessageEventStream, message: AssistantMessage, model: Model<string>, signal?: AbortSignal) {
     const onAbort = () => this.close("aborted");
     signal?.addEventListener("abort", onAbort, { once: true });
-    this.calls = this.calls.filter((c) => !c.result); // answered calls are done
+    this.calls = this.calls.filter((c) => !c.done); // handed-over calls are finished
     const blocks = new Map<number, { index: number; kind: "text" | "thinking" | "tool" | "internal"; json?: string }>();
     let piCalls: ToolCall[] = [];
     try {
@@ -284,8 +289,10 @@ class Bridge {
         if (next.done) throw new Error("Claude Code ended the session");
         const m = next.value;
         checkAuth(m);
+        if (DEBUG_STREAM && m.type !== "stream_event") debug(`msg ${m.type}${"subtype" in m ? `/${m.subtype}` : ""}`);
         if (m.type === "stream_event" && !m.parent_tool_use_id) {
           const e = m.event as StreamEvent;
+          if (DEBUG_STREAM && e.type !== "content_block_delta") debug(`ev ${e.type}${e.type === "content_block_start" ? ` ${e.content_block.type} ${e.content_block.name ?? ""}` : ""}${"index" in e ? ` #${e.index}` : ""}`);
           if (e.type === "message_start") {
             blocks.clear();
             addUsage(message.usage, e.message?.usage);
@@ -340,6 +347,7 @@ class Bridge {
           } else if (e.type === "message_stop") {
             // One API response ended. With pi tool calls, hand them to pi-durable; Claude Code waits in the MCP calls.
             if (piCalls.length) {
+              this.settleEarly();
               this.known.push(signature(message));
               return finish(out, message, model, "toolUse");
             }
@@ -362,18 +370,63 @@ class Bridge {
 
   /** A tool call announced in the stream; its MCP handler call waits for pi's result. */
   private announce(id: string, name: string, args: unknown) {
-    this.calls.push({ id, name, args });
+    const call: PendingCall = { id, name, args };
+    this.calls.push(call);
+    // Claude Code may already have called the tool (it starts tools as soon as their input is complete).
+    const i = this.early.findIndex((e) => e.name === name && sameArgs(args, e.args));
+    if (i >= 0) {
+      const [early] = this.early.splice(i, 1);
+      clearTimeout(early.timer);
+      call.resolve = early.resolve;
+      this.handOver(call);
+    }
+  }
+
+  private handOver(call: PendingCall) {
+    if (call.done || !call.resolve || !call.result) return;
+    call.done = true;
+    call.resolve(call.result);
   }
 
   private toolCalled(name: string, args: unknown): Promise<CallResult> {
-    // Match the MCP call to the announced tool_use block: same tool, same arguments, first unmatched.
-    const sameArgs = JSON.stringify(args);
-    const call =
-      this.calls.find((c) => !c.resolve && c.name === name && JSON.stringify(c.args) === sameArgs) ??
-      this.calls.find((c) => !c.resolve && c.name === name);
-    if (!call) return Promise.resolve({ content: [{ type: "text", text: "Tool call could not be matched." }], isError: true });
-    if (call.result) return Promise.resolve(call.result);
-    return new Promise((resolve) => (call.resolve = resolve));
+    // Match the MCP call to an announced tool_use block: same tool, same arguments, first unmatched.
+    const open = this.calls.filter((c) => !c.resolve && !c.done);
+    const i = this.matchIndex(open, name, args);
+    if (i < 0) {
+      // Not announced yet: wait for the stream to catch up.
+      debug(`early MCP call ${name} ${canonical(args).slice(0, 120)}`);
+      return new Promise((resolve) => {
+        const timer = setTimeout(() => {
+          this.early = this.early.filter((e) => e.timer !== timer);
+          resolve({ content: [{ type: "text", text: "Tool call could not be matched." }], isError: true });
+        }, 30_000);
+        this.early.push({ name, args, resolve, timer });
+      });
+    }
+    const call = open[i];
+    return new Promise((resolve) => {
+      call.resolve = resolve;
+      this.handOver(call); // the result may already be here
+    });
+  }
+
+  /** Same tool and same arguments; the MCP side may add schema defaults, so compare the model's keys only. */
+  private matchIndex<T extends { name: string; args: unknown }>(list: T[], name: string, args: unknown) {
+    return list.findIndex((c) => c.name === name && sameArgs(c.args, args));
+  }
+
+  /** At the end of an API response every tool_use is announced: pair leftover early calls when it is unambiguous. */
+  private settleEarly() {
+    for (const early of [...this.early]) {
+      if (this.early.length) debug(`unpaired MCP call ${early.name} ${canonical(early.args).slice(0, 120)}; open: ${this.calls.filter((c) => !c.resolve).map((c) => canonical(c.args).slice(0, 80)).join(" | ")}`);
+      const open = this.calls.filter((c) => !c.resolve && !c.done && c.name === early.name);
+      const waiting = this.early.filter((e) => e.name === early.name);
+      if (open.length !== 1 || waiting.length !== 1) continue;
+      clearTimeout(early.timer);
+      this.early.splice(this.early.indexOf(early), 1);
+      open[0].resolve = early.resolve;
+      this.handOver(open[0]);
+    }
   }
 
   private touch() {
@@ -387,7 +440,11 @@ class Bridge {
     this.closed = true;
     debug(`bridge ${this.key} closed (${reason})`);
     clearTimeout(this.idleTimer);
-    for (const call of this.calls) call.resolve?.({ content: [{ type: "text", text: "Interrupted." }], isError: true });
+    for (const call of this.calls) if (!call.done) call.resolve?.({ content: [{ type: "text", text: "Interrupted." }], isError: true });
+    for (const early of this.early.splice(0)) {
+      clearTimeout(early.timer);
+      early.resolve({ content: [{ type: "text", text: "Interrupted." }], isError: true });
+    }
     this.input.end();
     this.abortController.abort();
     try {
@@ -571,6 +628,20 @@ function textOf(content: unknown): string {
   return (content as (TextContent | ThinkingContent | { type: string })[])
     .map((c) => (c.type === "text" ? (c as TextContent).text : c.type === "image" ? "[image]" : ""))
     .join("");
+}
+
+/** `announced` (the model's arguments) equals `called` on every key the model set. */
+function sameArgs(announced: unknown, called: unknown): boolean {
+  if (!announced || typeof announced !== "object" || !called || typeof called !== "object") return canonical(announced) === canonical(called);
+  const keys = Object.keys(announced as object);
+  return canonical(announced) === canonical(Object.fromEntries(keys.map((k) => [k, (called as Record<string, unknown>)[k]])));
+}
+
+/** JSON with sorted keys and without undefined values, so differently ordered but equal arguments compare equal. */
+function canonical(value: unknown): string {
+  return JSON.stringify(value, (_key, v) =>
+    v && typeof v === "object" && !Array.isArray(v) ? Object.fromEntries(Object.entries(v).sort(([a], [b]) => a.localeCompare(b))) : v,
+  );
 }
 
 function parseJson(text: string): Record<string, never> {

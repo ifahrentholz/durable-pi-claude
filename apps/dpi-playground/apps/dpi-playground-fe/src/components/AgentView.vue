@@ -14,7 +14,7 @@ import {
   Pencil,
 } from "lucide-vue-next";
 import type { AgentSummary } from "@sdk/api";
-import { lineage } from "@sdk/models";
+import { agentLabel, lineage } from "@sdk/models";
 import TranscriptItem from "./TranscriptItem.vue";
 import DeviceIcon from "./DeviceIcon.vue";
 import Composer from "./Composer.vue";
@@ -317,6 +317,16 @@ watch(
         </p>
         <p v-for="(n, i) in agentState.notices" :key="i" class="message-error">{{ n }}</p>
       </template>
+    </div>
+    <div
+      v-for="other in sessionAgents.filter((a) => a.approvals && a.id !== selected?.agentId)"
+      :key="other.id"
+      class="approval-banner"
+      role="status"
+    >
+      🔐 {{ other.approvals === 1 ? "1 tool call" : `${other.approvals} tool calls` }} in {{ agentLabel(other) }}
+      {{ other.approvals === 1 ? "waits" : "wait" }} for your approval
+      <button class="secondary" @click="select({ ...selected!, agentId: other.id })">Open</button>
     </div>
     <div v-if="pendingApprovals.length" class="approval-banner" role="status">
       🔐 {{ pendingApprovals.length === 1 ? "1 tool call waits" : `${pendingApprovals.length} tool calls wait` }} for your approval

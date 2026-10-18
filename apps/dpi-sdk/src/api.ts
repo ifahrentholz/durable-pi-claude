@@ -101,6 +101,8 @@ export interface AgentRef {
 export interface AgentStatus {
   busy: boolean;
   background: number;
+  /** Tool calls of this agent waiting for a person's approval (this fork). */
+  approvals?: number;
 }
 
 export type AgentSummary = AgentRef & AgentStatus;

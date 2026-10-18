@@ -166,6 +166,9 @@ const title = computed(() => {
         >@ #{{ agent.forkedAt }}</span
       >
       <i v-if="busy" class="dot work" title="Working" />
+      <span v-if="agent.approvals" class="approval-count" :title="`${agent.approvals} tool call(s) wait for your approval`"
+        >🔐 {{ agent.approvals }}</span
+      >
       <span v-if="background" class="bg-count" :title="`${background} background task(s)`"
         ><i class="dot bg" />{{ background }}</span
       >

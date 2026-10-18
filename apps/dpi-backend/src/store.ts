@@ -240,6 +240,8 @@ export class Store {
       if (!(await store.shared.initialized()))
         await store.shared.initialize({ goal: "Explore durable agents", counter: 0, notes: [] });
       store.modelList = await store.loadModels();
+      // Model windows are known now: fit each session's thresholds before recovery issues any request.
+      for (const row of store.list()) await store.refitCompaction(row).catch(() => {});
       for (const { harness } of store.opened.values()) harness.resume();
       return store;
     } catch (e) {
@@ -670,14 +672,20 @@ export class Store {
     const names = this.names(row.id);
     const records = await this.scanAll(h);
     const live = tasks ?? (await this.liveTasks(h));
-    return records.map((record) => {
+    const summaries: AgentSummary[] = [];
+    for (const record of records) {
       const own = live.filter((t) => t.conversationId === (record.id as number));
-      return {
+      const approvals = Object.values((await h.snapshot(Approvals, record.id, ctx))?.items ?? {}).filter(
+        (i) => i.status === "pending",
+      ).length;
+      summaries.push({
         ...this.agentRef(record, names),
         busy: own.some((t) => !t.background),
         background: own.filter((t) => t.background).length,
-      };
-    });
+        ...(approvals ? { approvals } : {}),
+      });
+    }
+    return summaries;
   }
 
   async liveTasks(h: Harness): Promise<TaskNode[]> {
@@ -807,6 +815,7 @@ export class Store {
       ctx,
     );
     if (typeof body.name === "string" && body.name.trim()) this.setAgentName(row, other.id as number, body.name);
+    await this.refitCompaction(row);
     this.notify();
     return this.agentSummary(row, other);
   }
@@ -819,6 +828,7 @@ export class Store {
     const agent = await fork.agent(ctx);
     await fork.configure({ model: this.routedModel(agent.model) }, ctx);
     if (typeof body.name === "string" && body.name.trim()) this.setAgentName(row, fork.id as number, body.name);
+    await this.refitCompaction(row);
     this.notify();
     return this.agentSummary(row, fork);
   }
@@ -854,12 +864,8 @@ export class Store {
     );
     if (model && (c.id as number) === 1)
       this.catalog.prepare("UPDATE sessions SET model=?,provider=? WHERE id=?").run(model.modelId, model.provider, row.id);
-    // Thresholds are shared by the session's agents; refit them when this model's window is too small for them.
-    const window = model ? this.windowOf(model.modelId) : 0;
-    if (window && !compactionFits(window, this.compactionOf(row.id))) {
-      const fitted = defaultCompaction(window);
-      this.setCompaction(row, { reserveTokens: fitted.reserveTokens, backgroundTokens: fitted.backgroundTokens });
-    }
+    // Thresholds are shared by the session's agents; refit them when an agent's window is too small for them.
+    if (model) await this.refitCompaction(row);
     this.notify();
     return (await this.agentDetail(row, c)).config;
   }
@@ -1063,6 +1069,26 @@ export class Store {
 
   private windowOf(modelId: string) {
     return this.modelList.find((m) => m.id === modelId)?.contextWindow ?? 0;
+  }
+
+  /**
+   * Compaction thresholds are shared by every agent of a session, but agents can run models with different windows
+   * (a fork keeps the model it had at the fork point, a new agent can pick another). Fit the thresholds to the
+   * smallest window among them, or a smaller-window agent would compact before every request.
+   */
+  async refitCompaction(row: SessionRow) {
+    const h = this.opened.get(row.id)?.harness;
+    if (!h) return;
+    let smallest = 0;
+    for (const record of await this.scanAll(h)) {
+      const model = (await (await h.conversation(record.id, ctx))?.agent(ctx))?.model;
+      const window = model ? this.windowOf(model.modelId) : 0;
+      if (window && (!smallest || window < smallest)) smallest = window;
+    }
+    if (smallest && !compactionFits(smallest, this.compactionOf(row.id))) {
+      const fitted = defaultCompaction(smallest);
+      this.setCompaction(row, { reserveTokens: fitted.reserveTokens, backgroundTokens: fitted.backgroundTokens });
+    }
   }
 
   /** Saved thresholds, or the defaults for the session model's window (200k background, 250k wait when it fits). */

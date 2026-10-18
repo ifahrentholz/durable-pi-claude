@@ -36,6 +36,7 @@ test("approvals: bash waits for a decision; allow runs it, deny blocks it, alway
     assert.ok(!existsSync(join(t.work, "allowed.txt")), "nothing runs before the decision");
     const [item] = await pending();
     assert.equal(item.summary, "touch allowed.txt");
+    assert.equal((await store.agents(row)).find((a) => a.id === 1)?.approvals, 1, "the tree counts open requests");
     await store.decideTool(c, item.callId, { decision: "allow" });
     assert.equal((await store.settled(h, first.id as number, 20000)).status, "done");
     assert.ok(existsSync(join(t.work, "allowed.txt")));
@@ -69,6 +70,31 @@ test("approvals: bash waits for a decision; allow runs it, deny blocks it, alway
     assert.equal((await store.settled(h, fifth.id as number, 20000)).status, "done");
     assert.equal((await pending()).length, 0);
     await assert.rejects(() => store.decideTool(c, "nope", { decision: "allow" }), /No pending approval/);
+  } finally {
+    await store.close();
+    await t.cleanup();
+  }
+});
+
+test("approvals: a durable job's subagent asks too when its agent does", async () => {
+  const t = await tempStore();
+  const store: Store = await t.open();
+  try {
+    const session = await store.create({ name: "Job approvals", cwd: t.work, model: faux });
+    const { row, h, c } = await store.resolveAgent(session.id, "main");
+    await store.setExtension(row, c, { name: "approvals", enabled: true });
+    const { taskId } = await store.startJob(row, h, c, { job: "release-check" });
+    // The gather phase's subagent runs bash; it waits for a decision in the subagent's own conversation.
+    let child: { approvals?: number; id: number } | undefined;
+    await until(async () => !!(child = (await store.agents(row)).find((a) => a.kind === "subagent" && a.approvals)), 30000, "the subagent's request");
+    const sub = await store.resolveAgent(session.id, String(child!.id));
+    const items = Object.values(((await store.agentDoc(sub.h, sub.c, APPROVALS_DOC)) as ApprovalsDoc).items);
+    assert.equal(items.length, 1);
+    await store.decideTool(sub.c, items[0].callId, { decision: "allow" });
+    const runs = async () => ((await store.agentDoc(h, c, "demo.job-runs")) as { items: Record<string, { approval?: string; status: string }> }).items[String(taskId)];
+    await until(async () => (await runs())?.approval === "pending", 30000, "the job's own approval phase");
+    await store.approveJob(c, taskId, true);
+    await until(async () => (await runs())?.status === "completed", 30000, "the job to complete");
   } finally {
     await store.close();
     await t.cleanup();

@@ -390,7 +390,13 @@ How it works ([`apps/dpi-backend/src/claude-code.ts`](apps/dpi-backend/src/claud
   are appended. Its built-in tools, local MCP servers and claude.ai connectors are off.
 - The agent's pi tools (`bash`, `read`, `update_state`, `run_durable_job`, …) are offered through an in-process MCP
   server. When Claude calls one, the response ends with `toolUse`, pi-durable runs the tool as a durable task, and the
-  next request hands the result back to the waiting Claude Code call. Steers join the current tool round.
+  next request hands the result back to the waiting Claude Code call. Claude Code calls MCP tools one after another,
+  so results of parallel calls wait until it asks for them.
+- A steer reaches Claude Code as a real user message, queued just before the results of the tool round it joins, so
+  the model handles it in the same turn. (It is never embedded in a tool result: the model rightly treats
+  instructions inside tool output as untrusted.)
+- Model changes apply live (`setModel`); a fork or a new agent gets its own Claude Code process, seeded from its
+  transcript.
 - After a restart, abort, fork or compaction the Claude Code process is rebuilt from the pi transcript, which stays
   the source of truth. A tool cut off by a crash comes back as interrupted, exactly as with any other provider.
 - Compaction summaries are single Claude Code completions without tools.
@@ -409,10 +415,19 @@ reads). A banner above the composer counts open requests.
 - Rules use Claude Code's syntax and skip the question: `edit`, `write`, `Bash(git status:*)`. Defaults allow edits
   and read-only `jira`, `glab`, `gh` and `git` commands. A prefix rule never matches a command with `;`, `&&`, `|`,
   `$`, redirects or backticks. Edit the rules in the Extend tab.
+- The tree shows 🔐 with the count on every agent that waits, and the chat shows a banner for requests in other agents
+  of the session (a durable job's subagent inherits approvals from the job's agent).
 - The **Approvals** switch in the Extend tab turns it off per agent. On other providers it is off by default
   (`DPI_APPROVALS=on` selects it for every agent).
 - API: `POST /v1/sessions/:s/agents/:a/demo/approvals/:callId {decision: allow|always|deny, message?}`,
   `GET|POST .../demo/approval-rules {add?, remove?}`.
+
+### Compaction with mixed models
+
+Compaction thresholds are shared by a session's agents, while forks and new agents can run models with different
+windows. This fork fits the thresholds to the smallest window in the session (after forks, new agents, model changes
+and on start), so a smaller-window agent no longer compacts before every request. A large-window agent then compacts
+later than the 200k default; on `claude-code` Claude Code also manages its own context.
 
 ### Project context
 
