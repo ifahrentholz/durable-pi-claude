@@ -5,11 +5,14 @@ import { markdown } from "../client/markdown";
 import { json } from "../client/store";
 import { runByCall, runById } from "../client/jobs";
 import JobCard from "./JobCard.vue";
+import ApprovalCard from "./ApprovalCard.vue";
+import { approvalFor } from "../client/approvals";
 
 defineProps<{ item: TranscriptItem }>();
 const emit = defineEmits<{ fork: [entryId: number] }>();
+const waiting = (callId: string) => approvalFor(callId)?.status === "pending";
 const statusLabel = (call: ToolCallView) =>
-  call.status === "error" ? "Error" : call.status === "done" ? "Done" : call.status;
+  waiting(call.callId) ? "Waiting for you" : call.status === "error" ? "Error" : call.status === "done" ? "Done" : call.status;
 const entryClass = (item: TranscriptItem) =>
   item.kind === "user"
     ? "pi-user"
@@ -65,7 +68,7 @@ const entryClass = (item: TranscriptItem) =>
             <Activity v-else-if="b.call.status === 'running'" :size="18" />
             <Wrench v-else :size="18" /><strong>{{ b.call.name }}</strong
             ><code>{{ json(b.call.args)?.slice(0, 90) }}</code>
-            <span class="tool-status">{{ statusLabel(b.call) }}</span>
+            <span class="tool-status" :class="{ 'waiting-approval': waiting(b.call.callId) }">{{ statusLabel(b.call) }}</span>
           </summary>
           <div class="tool-section-label">Input</div>
           <pre>{{ json(b.call.args) }}</pre>
@@ -89,6 +92,7 @@ const entryClass = (item: TranscriptItem) =>
             <pre>{{ b.call.output }}</pre>
           </template>
         </details>
+        <ApprovalCard v-if="b.type === 'tool' && waiting(b.call.callId)" :item="approvalFor(b.call.callId)!" />
         <JobCard
           v-if="b.type === 'tool' && b.call.name === 'run_durable_job' && runByCall(b.call.callId)"
           :run="runByCall(b.call.callId)!"
@@ -121,6 +125,7 @@ const entryClass = (item: TranscriptItem) =>
         ><span>{{ item.call.status }}</span>
       </div>
       <pre v-if="item.call.output">{{ item.call.output }}</pre>
+      <ApprovalCard v-if="waiting(item.call.callId)" :item="approvalFor(item.call.callId)!" />
       <JobCard v-if="item.call.name === 'run_durable_job' && runByCall(item.call.callId)" :run="runByCall(item.call.callId)!" />
     </div>
     <JobCard

@@ -653,3 +653,61 @@
   font-size: 16px;
   color: var(--secondary);
 }
+
+/* Tool approvals (this fork) */
+.tool-approval { margin: 4px 0 12px; }
+.tool-approval-what {
+  margin: 8px 0 0;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: #1e1718;
+  border: 1px solid #453032;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 220px;
+  overflow: auto;
+  font-size: 14px;
+}
+.tool-approval code { margin-left: 4px; font-size: 13px; }
+.tool-approval-note {
+  width: 100%;
+  margin: 0 0 10px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: #1e1718;
+  color: inherit;
+  border: 1px solid #453032;
+  font: inherit;
+  font-size: 15px;
+}
+.approval-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 24px 8px;
+  padding: 8px 12px;
+  border: 1px solid #8a7330;
+  background: #2c2514;
+  border-radius: 8px;
+  color: #f2c94c;
+  font-size: 15px;
+}
+.approval-banner button { margin-left: auto; }
+.tool-status.waiting-approval { color: #f2c94c; }
+.rules-list { list-style: none; margin: 8px 0; padding: 0; }
+.rules-list li { display: flex; align-items: center; gap: 8px; padding: 4px 0; border-bottom: 1px solid #332829; }
+.rules-list li code { flex: 1; font-size: 13px; word-break: break-all; }
+.rules-add { display: flex; gap: 8px; margin-top: 8px; }
+.rules-add input {
+  flex: 1;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: #1e1718;
+  color: inherit;
+  border: 1px solid #453032;
+  font: inherit;
+  font-size: 14px;
+}
+.ext-rules { margin-top: 12px; }
+.ext-rules.off { opacity: 0.5; }
+.rules-list li button { padding: 2px 8px; min-height: 0; font-size: 13px; }

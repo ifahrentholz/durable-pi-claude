@@ -173,6 +173,10 @@ export function v1(store: Store) {
     `${a}/demo/jobs`,
     route(async (req, res) => res.status(201).json(await store.startJob(L(res).row, L(res).h, L(res).c, req.body ?? {}))),
   );
+  // Tool approvals (this fork)
+  r.post(`${a}/demo/approvals/:callId`, route(async (req, res) => res.json(await store.decideTool(L(res).c, param(req, "callId"), req.body ?? {}))));
+  r.get(`${a}/demo/approval-rules`, route(async (_req, res) => res.json(await store.approvalRules(L(res).h))));
+  r.post(`${a}/demo/approval-rules`, route(async (req, res) => res.json(await store.editApprovalRules(L(res).h, req.body ?? {}))));
   r.post(
     `${a}/demo/jobs/:taskId/approval`,
     route(async (req, res) => res.json(await store.approveJob(L(res).c, int(req.params.taskId, "taskId"), req.body?.approved))),

@@ -18,6 +18,7 @@ import { lineage } from "@sdk/models";
 import TranscriptItem from "./TranscriptItem.vue";
 import DeviceIcon from "./DeviceIcon.vue";
 import Composer from "./Composer.vue";
+import { pendingApprovals, revealApproval } from "../client/approvals";
 import {
   activeLineage,
   agent,
@@ -316,6 +317,10 @@ watch(
         </p>
         <p v-for="(n, i) in agentState.notices" :key="i" class="message-error">{{ n }}</p>
       </template>
+    </div>
+    <div v-if="pendingApprovals.length" class="approval-banner" role="status">
+      🔐 {{ pendingApprovals.length === 1 ? "1 tool call waits" : `${pendingApprovals.length} tool calls wait` }} for your approval
+      <button class="secondary" @click="revealApproval">Show</button>
     </div>
     <Composer />
   </section>

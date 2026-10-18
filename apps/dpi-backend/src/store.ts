@@ -56,11 +56,14 @@ import {
   type ToolRegistration,
 } from "@earendil-works/pi-durable";
 import { CodingTools } from "@earendil-works/pi-durable/tools";
+import type { Extension } from "@earendil-works/pi-durable";
 import { NodeExecutionEnv } from "@earendil-works/pi-durable/env/node";
 import { openNodeSqliteStorage } from "@earendil-works/pi-durable/storage/sqlite/node";
 import { createPlayground, Workspace, type SpawnSession } from "./extensions.js";
 import { createJobs, JobRuns, JOB_DEFS, jobDef, resolveJobInput, type Jobs } from "./jobs.js";
 import { ADDON_INFO, createAddons, PROMPTS, PromptChecklist, type Addons } from "./addons.js";
+import { ApprovalRules, Approvals, APPROVALS_INFO, createApprovals, decideApproval, editRules } from "./approvals.js";
+import { APPROVALS_DOC, type ApprovalDecision } from "../../dpi-sdk/src/approvals.js";
 import { JOB_RUNS_DOC } from "../../dpi-sdk/src/jobs.js";
 
 export const DURABLE_VERSION = "1.0.3";
@@ -98,7 +101,9 @@ export interface StoreOptions {
 /** apps/dpi-backend/src → the checkout root. */
 const CODE_DIR = resolve(import.meta.dirname, "../../..");
 const CLAUDE_CODE_DEFAULT = "claude-sonnet-5-5";
-const AGENT_DOCS = { [JOB_RUNS_DOC]: JobRuns, "demo.workspace": Workspace } as const;
+const AGENT_DOCS = { [JOB_RUNS_DOC]: JobRuns, "demo.workspace": Workspace, [APPROVALS_DOC]: Approvals } as const;
+/** Extensions an agent can switch on and off in the Extend tab, in hook order. Approvals (this fork) is on by default. */
+const TOGGLES_INFO = [APPROVALS_INFO, ...ADDON_INFO];
 export const AGENT_DOC_KINDS = Object.keys(AGENT_DOCS);
 export const DEVICE_DOC_KINDS = ["app.shared-state"];
 
@@ -128,7 +133,14 @@ export function lockFile(path: string) {
   };
 }
 
-type Opened = { harness: Harness; unlock: () => void; unsubscribe: () => void; jobs: Jobs; addons: Addons };
+type Opened = {
+  harness: Harness;
+  unlock: () => void;
+  unsubscribe: () => void;
+  jobs: Jobs;
+  addons: Addons;
+  toggles: Record<string, Extension>;
+};
 type Resolved = { row: SessionRow; h: Harness; c: Conversation };
 
 const encodeCursor = (cursor: unknown) =>
@@ -540,6 +552,10 @@ export class Store {
           (this.options.provider === "claude-code" && !process.env.OPENROUTER_API_KEY && !process.env.TYPESAFE_API_KEY),
       });
       for (const extension of addons.list) registry.install(extension);
+      // Approvals (this fork): selected by default, so every agent asks before bash and other changes.
+      let opened: Harness | undefined;
+      const approvals = createApprovals({ commit: (fn) => opened!.commit(fn, ctx) });
+      registry.install(approvals);
       const harness = await Harness.open(
         await openNodeSqliteStorage(row.dbPath),
         {
@@ -549,9 +565,15 @@ export class Store {
           conversationCreated: async (tx, c) => {
             await tx.doc(Workspace, c.id);
             await tx.doc(JobRuns, c.id);
+            await tx.doc(Approvals, c.id);
           },
           settings: {
-            extensions: [CodingTools, playground],
+            // Approvals are selected by default on claude-code devices (or with DPI_APPROVALS=on); elsewhere an
+            // agent turns them on in the Extend tab, so upstream behaviour and its tests stay unchanged.
+            extensions:
+              this.options.provider === "claude-code" || process.env.DPI_APPROVALS === "on"
+                ? [CodingTools, playground, approvals]
+                : [CodingTools, playground],
             // Read at every use, so a PATCH .../compaction applies from the next request.
             get compaction() {
               return compaction();
@@ -562,6 +584,8 @@ export class Store {
         },
         ctx,
       );
+      opened = harness;
+      await harness.commit(async (tx) => void (await tx.doc(ApprovalRules)), ctx);
       await harness.root(ctx, {
         agent: {
           cwd: row.cwd,
@@ -582,7 +606,7 @@ export class Store {
       row.model = rootModel.modelId;
       this.catalog.prepare("UPDATE sessions SET provider=?,model=? WHERE id=?").run(row.provider, row.model, row.id);
       const unsubscribe = harness.subscribeCommits(() => this.notify());
-      this.opened.set(row.id, { harness, unlock, unsubscribe, jobs, addons });
+      this.opened.set(row.id, { harness, unlock, unsubscribe, jobs, addons, toggles: { ...addons.all, approvals } });
       this.errors.delete(row.id);
       if (create) harness.resume();
       return harness;
@@ -978,8 +1002,8 @@ export class Store {
     const active = new Set((await c.agent(ctx)).extensions.map((e) => e.name));
     const checked = (await this.harness(row).snapshot(PromptChecklist, c.id, ctx))?.enabled ?? [PROMPTS[0].id];
     return {
-      builtIn: [...active].filter((name) => !ADDON_INFO.some((a) => a.name === name)),
-      extensions: ADDON_INFO.map((info) => ({
+      builtIn: [...active].filter((name) => !TOGGLES_INFO.some((a) => a.name === name)),
+      extensions: TOGGLES_INFO.map((info) => ({
         ...info,
         enabled: active.has(info.name),
         ...(info.name === "system-prompts"
@@ -994,11 +1018,11 @@ export class Store {
     if (typeof body.enabled !== "boolean") throw invalid("enabled must be a boolean");
     const enabled = body.enabled;
     if (typeof body.name === "string") {
-      const extension = this.opened.get(row.id)?.addons.all[body.name];
-      if (!extension) throw invalid(`Unknown extension ${body.name}. Known: ${ADDON_INFO.map((a) => a.name).join(", ")}`);
+      const extension = this.opened.get(row.id)?.toggles[body.name];
+      if (!extension) throw invalid(`Unknown extension ${body.name}. Known: ${TOGGLES_INFO.map((a) => a.name).join(", ")}`);
       // An array is the agent's whole selection. An { add | remove } object would edit the host default instead and
       // replace the previous edit, so turning one extension on would turn the other off.
-      const rank = (name: string) => ADDON_INFO.findIndex((a) => a.name === name);
+      const rank = (name: string) => TOGGLES_INFO.findIndex((a) => a.name === name);
       const others = (await c.agent(ctx)).extensions.filter((e) => e.name !== extension.name);
       const next = (enabled ? [...others, extension] : others).sort((a, b) => rank(a.name) - rank(b.name));
       await c.configure({ extensions: next }, ctx);
@@ -1168,6 +1192,29 @@ export class Store {
     }, ctx);
     h.resume();
     return { taskId: taskId as number };
+  }
+
+  // ------------------------------------------------------------ tool approvals (this fork)
+
+  async decideTool(c: Conversation, callId: string, body: Record<string, unknown>) {
+    const decision = body.decision as ApprovalDecision;
+    if (!["allow", "always", "deny"].includes(decision)) throw invalid("decision must be allow, always or deny");
+    const message = typeof body.message === "string" ? body.message : undefined;
+    const item = await c.commit((tx) => decideApproval(tx, c.id, callId, decision, message), ctx);
+    if (!item) throw new ApiFault("conflict", "No pending approval for that tool call");
+    this.notify();
+    return item;
+  }
+
+  async approvalRules(h: Harness) {
+    return { allow: [...((await h.snapshot(ApprovalRules, ctx))?.allow ?? [])] };
+  }
+
+  async editApprovalRules(h: Harness, body: Record<string, unknown>) {
+    const list = (v: unknown) => (Array.isArray(v) ? v.map(String) : typeof v === "string" ? [v] : []);
+    const allow = await h.commit((tx) => editRules(tx, { add: list(body.add), remove: list(body.remove) }), ctx);
+    this.notify();
+    return { allow };
   }
 
   async approveJob(c: Conversation, taskId: number, approved: unknown) {

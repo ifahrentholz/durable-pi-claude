@@ -397,5 +397,22 @@ How it works ([`apps/dpi-backend/src/claude-code.ts`](apps/dpi-backend/src/claud
 - Requests fail if Claude Code reports any credential other than the subscription login (`ANTHROPIC_API_KEY` is never
   passed on). Costs shown in the UI are API-equivalent estimates; your plan's usage limits apply.
 
+### Tool approvals
+
+On `claude-code` devices every agent asks before it changes things. `bash`, `write`, `edit`, `start_session`,
+`run_durable_job` and `ping_on_call_engineer` wait in a `beforeTool` hook until you decide at the tool call in the
+chat: **Allow once**, **Always allow** (stores a rule for the session) or **Deny** (with an optional note the agent
+reads). A banner above the composer counts open requests.
+
+- Requests are durable records in the agent's `demo.approvals` document: close the browser or restart the device and
+  the request is still waiting; a decision made before a crash still applies, and the call runs once.
+- Rules use Claude Code's syntax and skip the question: `edit`, `write`, `Bash(git status:*)`. Defaults allow edits
+  and read-only `jira`, `glab`, `gh` and `git` commands. A prefix rule never matches a command with `;`, `&&`, `|`,
+  `$`, redirects or backticks. Edit the rules in the Extend tab.
+- The **Approvals** switch in the Extend tab turns it off per agent. On other providers it is off by default
+  (`DPI_APPROVALS=on` selects it for every agent).
+- API: `POST /v1/sessions/:s/agents/:a/demo/approvals/:callId {decision: allow|always|deny, message?}`,
+  `GET|POST .../demo/approval-rules {add?, remove?}`.
+
 Debug log: `DPI_CLAUDE_DEBUG=1 just backend run`. Usage of Claude subscriptions through the Agent SDK is subject to
 Anthropic's terms; this provider does not alter Claude Code's prompt or identity.

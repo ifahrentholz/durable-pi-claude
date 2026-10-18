@@ -5,6 +5,20 @@ import { ref, shallowRef, watch } from "vue";
 import { Puzzle } from "lucide-vue-next";
 import type { AgentExtensions } from "@sdk/api";
 import { agentHandle, agentState, attempt, online, refreshDetail } from "../client/store";
+import { editRules, loadRules } from "../client/approvals";
+
+// Approval rules (this fork): commands that run without asking, for the whole session.
+const rules = ref<string[]>();
+const newRule = ref("");
+watch([agentHandle, online], async () => (rules.value = agentHandle.value && online.value ? await loadRules() : undefined), { immediate: true });
+async function addRule() {
+  if (!newRule.value.trim()) return;
+  rules.value = (await editRules({ add: newRule.value.trim() })) ?? rules.value;
+  newRule.value = "";
+}
+async function removeRule(rule: string) {
+  rules.value = (await editRules({ remove: rule })) ?? rules.value;
+}
 
 const data = shallowRef<AgentExtensions>();
 const busy = ref(false);
@@ -67,6 +81,18 @@ async function set(patch: { name: string; enabled: boolean } | { prompt: string;
         </button>
       </div>
       <p>{{ ext.description }}</p>
+      <div v-if="ext.name === 'approvals'" class="ext-rules" :class="{ off: !ext.enabled }">
+        <strong>Allowed without asking (this session)</strong>
+        <ul class="rules-list">
+          <li v-for="r in rules ?? []" :key="r">
+            <code>{{ r }}</code><button class="secondary danger" :aria-label="`Remove ${r}`" @click="removeRule(r)">✕</button>
+          </li>
+        </ul>
+        <form class="rules-add" @submit.prevent="addRule">
+          <input v-model="newRule" placeholder="Bash(mvn test:*)  or  edit" aria-label="New rule" />
+          <button class="secondary" type="submit">Add</button>
+        </form>
+      </div>
       <ul v-if="ext.prompts" class="ext-prompts" :class="{ off: !ext.enabled }">
         <li v-for="p in ext.prompts" :key="p.id">
           <label>

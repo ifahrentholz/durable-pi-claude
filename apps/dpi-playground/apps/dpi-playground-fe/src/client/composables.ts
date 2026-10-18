@@ -15,7 +15,7 @@ export interface AgentTarget extends SessionTarget {
 }
 export type FeedStatus = "idle" | "connecting" | "live" | "reconnecting" | "fault";
 
-export const AGENT_DOCS = ["demo.job-runs", "demo.workspace"];
+export const AGENT_DOCS = ["demo.job-runs", "demo.workspace", "demo.approvals"];
 export const agentSub = (t: AgentTarget) =>
   `${t.deviceId}/agent/${t.sessionId}/${t.agentId}?docs=${AGENT_DOCS.join(",")}`;
 export const sessionSub = (t: SessionTarget) => `${t.deviceId}/session/${t.sessionId}`;
