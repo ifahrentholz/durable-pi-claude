@@ -70,6 +70,24 @@ import { JOB_RUNS_DOC } from "../../dpi-sdk/src/jobs.js";
 
 export const DURABLE_VERSION = "1.0.3";
 
+/**
+ * A short session name from a first message: its first line, ticket and review links shortened to their keys
+ * (Jira /browse/VAU-3197 → VAU-3197, GitLab merge request → !123, GitHub pull request → #123), at most 60 characters.
+ */
+export function sessionTitle(content: string): string {
+  const line = content.split("\n").map((l) => l.trim()).find(Boolean) ?? "";
+  const short = line
+    .replace(/https?:\/\/\S+?\/browse\/([A-Z][A-Z0-9]+-\d+)\S*/g, "$1")
+    .replace(/https?:\/\/\S+?\/-\/merge_requests\/(\d+)\S*/g, "!$1")
+    .replace(/https?:\/\/github\.com\/\S+?\/pull\/(\d+)\S*/g, "#$1")
+    .replace(/https?:\/\/(\S+)/g, (_m, rest: string) => rest.split(/[?#]/)[0].split("/").filter(Boolean).at(-1) ?? rest)
+    .replace(/\s+/g, " ")
+    .trim();
+  if (short.length <= 60) return short;
+  const cut = short.slice(0, 59);
+  return `${cut.slice(0, cut.lastIndexOf(" ") > 30 ? cut.lastIndexOf(" ") : 59)}…`;
+}
+
 /** Tools that create, update or delete: shell, files, App State, job runs, sessions, pages and subagents. */
 export const WRITE_TOOLS = new Set([
   "bash",
@@ -492,6 +510,28 @@ export class Store {
     const submission = await this.send(c, { content: input.prompt, requestId: `${input.key}:prompt` });
     return { session, submissionId: submission.id as number };
   };
+
+  /**
+   * This fork: a session still called "New session" (or "Untitled session") takes its name from the first message, so
+   * the tree says what each session is about. A name the user chose is never touched.
+   */
+  async autoName(row: SessionRow, content: unknown) {
+    if (!/^(new session|untitled session)$/i.test(row.name.trim())) return;
+    // The session's first message, if it already had one (named before this feature existed), else this one.
+    let first = typeof content === "string" ? content : "";
+    const root = await this.harness(row).root(ctx);
+    let cursor: unknown;
+    do {
+      const page = await root.entries({}, 500, cursor as never, ctx);
+      for (const entry of page.items) {
+        const text = entry.kind === "pi.user" ? messageText((entry.model?.[0] ?? {}) as never).trim() : "";
+        if (text) first = text;
+      }
+      cursor = page.next;
+    } while (cursor);
+    const title = sessionTitle(first);
+    if (title && /^(new session|untitled session)$/i.test(this.row(row.id).name.trim())) await this.rename(this.row(row.id), title);
+  }
 
   rename(row: SessionRow, name: unknown) {
     if (typeof name !== "string" || !name.trim()) throw invalid("A name is required");

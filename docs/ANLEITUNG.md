@@ -82,12 +82,16 @@ Extend-Tab siehst du, welche Dateien er gelesen hat.
 
 ### Sessions aufräumen
 
-Fahr mit der Maus über eine Session im Baum links. Rechts erscheinen drei Knöpfe:
+Neue Sessions ohne eigenen Namen heißen nach ihrer **ersten Nachricht**, z. B. „fix VAU-3197“. Jira-Links werden zum
+Ticket-Key gekürzt, GitLab-MRs zu `!3305`, GitHub-PRs zu `#12`. Einen Namen, den du selbst vergeben hast, ändert das
+nie.
+
+Neben der **aktuellen Session** stehen immer drei Knöpfe, bei den anderen erscheinen sie, wenn die Maus darüber steht:
 
 | Knopf | Funktion |
 |---|---|
 | **+** | neuer Agent in dieser Session |
-| Stift | Session umbenennen, z. B. „VAU-3197 Burger-Menü“ statt „New session“ |
+| Stift | Session umbenennen |
 | **Archiv-Kasten** | Session **archivieren**: stoppt ihre Arbeit und nimmt sie aus dem Baum |
 
 Archivieren löscht nichts. Die Dateien wandern nach `~/.dpi/backend/archive/`. Endgültig löschen:

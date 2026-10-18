@@ -44,6 +44,11 @@ const deviceOf = (node: TreeNode) =>
     (d) => d.id === (node.type === "device" ? node.device.id : node.deviceId),
   );
 const isOnline = (node: TreeNode) => deviceOf(node)?.status === "online";
+/** This fork: the selected agent's session and the agent itself show their buttons without hovering. */
+const isCurrent = (node: TreeNode) =>
+  node.type === "session"
+    ? selected.value?.deviceId === node.deviceId && selected.value?.sessionId === node.session.id
+    : node.type === "agent" && isSelected(node);
 const isSelected = (node: TreeNode) =>
   node.type === "agent" &&
   selected.value?.deviceId === node.deviceId &&
@@ -180,6 +185,7 @@ function keydown(e: KeyboardEvent) {
           :depth="row.depth"
           :open="expanded.has(row.node.key)"
           :selected="isSelected(row.node)"
+          :current="isCurrent(row.node)"
           :focused="focusKey === row.node.key"
           :online="isOnline(row.node)"
           @toggle="toggle(row.node.key)"

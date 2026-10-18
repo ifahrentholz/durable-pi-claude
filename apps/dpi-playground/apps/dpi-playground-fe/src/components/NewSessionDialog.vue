@@ -86,7 +86,7 @@ async function create() {
           >Session name<input
             v-model="draft.name"
             autofocus
-            placeholder="My durable agent"
+            placeholder="Empty: named after your first message"
             maxlength="100"
         /></label>
         <div class="field">

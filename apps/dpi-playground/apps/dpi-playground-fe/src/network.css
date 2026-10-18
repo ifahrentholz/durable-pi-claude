@@ -254,7 +254,8 @@
   border-radius: 6px;
 }
 .tree-row:hover .acts,
-.tree-row.focus .acts {
+.tree-row.focus .acts,
+.tree-row.current .acts {
   display: inline-flex;
 }
 .tree-row:hover .acts ~ *,

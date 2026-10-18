@@ -137,8 +137,9 @@ export function v1(store: Store) {
   r.post(
     `${a}/messages`,
     route(async (req, res) => {
-      const { h, c } = L(res);
+      const { h, c, row } = L(res);
       const submission = await store.send(c, req.body ?? {});
+      await store.autoName(row, req.body?.content).catch(() => {}); // naming never fails a send
       const waitMs = Number(req.body?.waitMs ?? 0) || 0;
       if (!waitMs) return res.status(202).json({ submissionId: submission.id, status: "queued" });
       const closed = new AbortController();

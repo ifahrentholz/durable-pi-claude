@@ -21,6 +21,8 @@ const props = defineProps<{
   depth: number;
   open: boolean;
   selected: boolean;
+  /** The selected agent or its session: buttons stay visible (this fork). */
+  current?: boolean;
   focused: boolean;
   online: boolean;
 }>();
@@ -76,7 +78,7 @@ const title = computed(() => {
 <template>
   <div
     class="tree-row"
-    :class="[node.type, { sel: selected, focus: focused, stale: node.stale }]"
+    :class="[node.type, { sel: selected, current, focus: focused, stale: node.stale }]"
     :style="{ '--depth': depth }"
     role="treeitem"
     :aria-level="depth + 1"
@@ -123,7 +125,7 @@ const title = computed(() => {
     </template>
     <template v-else-if="session">
       <FolderOpen class="ico" :size="16" />
-      <b class="name">{{ label }}</b>
+      <b class="name" :title="label">{{ label }}</b>
       <span class="path">…/{{ session.cwd.split("/").filter(Boolean).at(-1) }}</span>
       <i v-if="busy" class="dot work" title="Working" />
       <span v-if="background" class="bg-count" :title="`${background} background task(s)`"
@@ -161,7 +163,7 @@ const title = computed(() => {
       <GitFork v-if="agent.kind === 'fork'" class="ico" :size="16" />
       <CornerDownRight v-else-if="agent.kind === 'subagent'" class="ico" :size="16" />
       <MessageSquare v-else class="ico root" :size="16" />
-      <span class="name">{{ label }}</span>
+      <span class="name" :title="label">{{ label }}</span>
       <span v-if="agent.kind === 'fork' && agent.forkedAt !== undefined" class="meta"
         >@ #{{ agent.forkedAt }}</span
       >
