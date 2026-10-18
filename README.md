@@ -420,6 +420,11 @@ reads). A banner above the composer counts open requests.
   `$`, redirects or backticks. Edit the rules in the Extend tab.
 - The tree shows 🔐 with the count on every agent that waits, and the chat shows a banner for requests in other agents
   of the session (a durable job's subagent inherits approvals from the job's agent).
+- **Permission modes** per session (Session tab, `/mode`, `POST .../demo/approval-rules {mode}`): **ask** (default),
+  **auto** (the local judge lets local, reversible shell commands run and asks about destructive ones and anything
+  with an effect outside this machine: push, deploy, publish, POST, tickets; without a judge it asks) and **yolo**
+  (nothing asks). Auto decisions are durable records with the judge's verdict.
+- "Always allow" turns dangerous commands (rm, git push/reset, kill …) into an exact rule, never a prefix.
 - The **Approvals** switch in the Extend tab turns it off per agent. On other providers it is off by default
   (`DPI_APPROVALS=on` selects it for every agent).
 - API: `POST /v1/sessions/:s/agents/:a/demo/approvals/:callId {decision: allow|always|deny, message?}`,

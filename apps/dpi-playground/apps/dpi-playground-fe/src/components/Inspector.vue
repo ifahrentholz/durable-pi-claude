@@ -19,6 +19,8 @@ import StateEditor from "./StateEditor.vue";
 import TasksPanel from "./TasksPanel.vue";
 import ExtensionsPanel from "./ExtensionsPanel.vue";
 import ContextBar from "./ContextBar.vue";
+import { PERMISSION_MODES } from "@sdk/approvals";
+import { judgeLabel, loadJudge, MODE_TEXT, permissionMode, setPermissionMode } from "../client/approvals";
 import { message } from "../client/hub";
 import { toolSignature } from "../client/signature";
 import {
@@ -61,6 +63,7 @@ const tabs = [
 ];
 /** This fork: claude-code models run on the user's Claude plan; their costs are API equivalents. */
 const subscription = computed(() => currentModel.value?.provider === "claude-code");
+watch(agentHandle, () => void loadJudge(), { immediate: true });
 const usageRows = computed(() => [
   { label: "Input", tokens: usage.value.input, cost: usage.value.inputCost },
   { label: "Output", tokens: usage.value.output, cost: usage.value.outputCost },
@@ -274,6 +277,27 @@ const offeredTools = computed(() => detail.value?.tools.filter((t) => t.offered)
                 <option v-for="level in THINKING_LEVELS" :key="level">{{ level }}</option>
               </select>
             </div>
+            <div class="permission-row" role="radiogroup" aria-label="Permissions">
+              <span>Permissions</span>
+              <div class="segmented">
+                <button
+                  v-for="m in PERMISSION_MODES"
+                  :key="m"
+                  role="radio"
+                  :aria-checked="permissionMode === m"
+                  :class="['seg', m, { on: permissionMode === m }]"
+                  @click="permissionMode !== m && setPermissionMode(m)"
+                >
+                  {{ m === "yolo" ? "YOLO" : m === "auto" ? "Auto" : "Ask" }}
+                </button>
+              </div>
+            </div>
+            <p class="hint permission-hint" :class="permissionMode">
+              {{ MODE_TEXT[permissionMode] }}
+              <template v-if="permissionMode === 'auto' && judgeLabel === null">
+                <strong>No judge is configured, so auto acts like ask</strong> (DPI_JUDGE, see README).</template
+              >
+            </p>
             <ContextBar />
             <section class="stats-section" aria-labelledby="stats-title">
               <div class="section-label"><span id="stats-title">STATS</span></div>

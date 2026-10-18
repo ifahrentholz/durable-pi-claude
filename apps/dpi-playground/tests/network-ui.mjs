@@ -373,7 +373,7 @@ try {
   await composer().fill("/");
   await expect(
     page.getByRole("listbox", { name: "Slash commands" }).getByRole("option"),
-  ).toHaveCount(9);
+  ).toHaveCount(10); // this fork adds /mode
   // A click proves the menu is on screen: a clipped option cannot receive the pointer.
   await composer().fill("/ta");
   await page.getByRole("option", { name: /\/tasks/ }).click();

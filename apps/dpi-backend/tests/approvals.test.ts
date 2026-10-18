@@ -3,6 +3,8 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { join } from "node:path";
 import { existsSync } from "node:fs";
+import { createServer } from "node:http";
+import { once } from "node:events";
 import { APPROVALS_DOC, ruleAllows, suggestRule, type ApprovalsDoc } from "../../dpi-sdk/src/approvals.js";
 import type { Store } from "../src/store.js";
 import { faux, tempStore, until } from "./helpers.js";
@@ -18,6 +20,10 @@ test("rules: prefix rules match simple commands only, exact rules match exactly"
   assert.equal(suggestRule("bash", { command: "mvn test -q" }), "Bash(mvn test:*)");
   assert.equal(suggestRule("bash", { command: "ls | wc -l" }), "Bash(ls | wc -l)");
   assert.equal(suggestRule("write", { path: "x" }), "write");
+  // Dangerous commands: always the exact line, never a prefix that would allow every rm -rf.
+  assert.equal(suggestRule("bash", { command: "rm -rf ~/dpi-work/scratch" }), "Bash(rm -rf ~/dpi-work/scratch)");
+  assert.equal(suggestRule("bash", { command: "git push --force origin main" }), "Bash(git push --force origin main)");
+  assert.equal(suggestRule("bash", { command: "git status --short" }), "Bash(git status:*)");
 });
 
 test("approvals: bash waits for a decision; allow runs it, deny blocks it, always adds a rule; restart keeps the request", async () => {
@@ -96,6 +102,85 @@ test("approvals: a durable job's subagent asks too when its agent does", async (
     await store.approveJob(c, taskId, true);
     await until(async () => (await runs())?.status === "completed", 30000, "the job to complete");
   } finally {
+    await store.close();
+    await t.cleanup();
+  }
+});
+
+test("permission modes: yolo never asks; auto lets the judge decide shell commands; auto without a judge asks", async () => {
+  // A fake Kev: rm is destructive, everything else local and reversible.
+  const kev = createServer(async (req, res) => {
+    let raw = "";
+    for await (const chunk of req) raw += chunk;
+    const command = String(JSON.parse(raw).state.command);
+    const bad = command.startsWith("rm ");
+    res.setHeader("content-type", "application/json");
+    res.end(
+      JSON.stringify({
+        answers: {
+          effect: {
+            type: "choice",
+            choice: bad ? "irreversible" : "reversible",
+            confidence: 0.9,
+            probabilities: bad ? { read_only: 0.02, reversible: 0.08, irreversible: 0.9 } : { read_only: 0.1, reversible: 0.88, irreversible: 0.02 },
+          },
+          destructive_intent: { type: "noul", noul: bad ? 0.95 : 0.03 },
+          external: { type: "noul", noul: 0.02 },
+        },
+      }),
+    );
+  });
+  kev.listen(0, "127.0.0.1");
+  await once(kev, "listening");
+  const saved = { judge: process.env.DPI_JUDGE, url: process.env.DPI_JUDGE_URL };
+  const t = await tempStore();
+  const store: Store = await t.open();
+  try {
+    const session = await store.create({ name: "Modes", cwd: t.work, model: faux });
+    const { row, h, c } = await store.resolveAgent(session.id, "main");
+    await store.setExtension(row, c, { name: "approvals", enabled: true });
+    const items = async () => Object.values(((await store.agentDoc(h, c, APPROVALS_DOC)) as ApprovalsDoc).items ?? {});
+    const run = async (content: string, id: string) => store.settled(h, (await store.send(c, { content, requestId: id })).id as number, 20000);
+
+    // yolo: runs at once
+    assert.equal((await store.editApprovalRules(h, { mode: "yolo" })).mode, "yolo");
+    assert.equal((await store.sessionSummary(row)).permissionMode, "yolo");
+    assert.equal((await run("!touch yolo.txt", "m1")).status, "done");
+    assert.ok(existsSync(join(t.work, "yolo.txt")));
+    assert.equal((await items()).length, 0);
+
+    // auto with a judge: a reversible command runs and is recorded as auto; a destructive one waits with the reason
+    process.env.DPI_JUDGE = "systemone";
+    process.env.DPI_JUDGE_URL = `http://127.0.0.1:${(kev.address() as { port: number }).port}`;
+    await store.editApprovalRules(h, { mode: "auto" });
+    assert.equal((await run("!touch auto.txt", "m2")).status, "done");
+    assert.ok(existsSync(join(t.work, "auto.txt")));
+    const auto = (await items()).find((i) => i.summary === "touch auto.txt");
+    assert.equal(auto?.status, "auto");
+    assert.match(auto?.reason ?? "", /irreversible 0\.02/);
+    const destructive = await store.send(c, { content: "!rm -rf auto.txt", requestId: "m3" });
+    await until(async () => (await items()).some((i) => i.status === "pending"), 15000, "auto mode to ask about rm");
+    const asked = (await items()).find((i) => i.status === "pending")!;
+    assert.match(asked.reason ?? "", /destructive 0\.95/);
+    await store.decideTool(c, asked.callId, { decision: "deny" });
+    await store.settled(h, destructive.id as number, 20000);
+    assert.ok(existsSync(join(t.work, "auto.txt")), "the destructive command never ran");
+
+    // auto without a judge: asks, and says why
+    delete process.env.DPI_JUDGE;
+    const nojudge = await store.send(c, { content: "!touch nojudge.txt", requestId: "m4" });
+    await until(async () => (await items()).some((i) => i.status === "pending"), 15000, "auto without judge to ask");
+    const fallback = (await items()).find((i) => i.status === "pending")!;
+    assert.match(fallback.reason ?? "", /No judge/);
+    await store.decideTool(c, fallback.callId, { decision: "allow" });
+    assert.equal((await store.settled(h, nojudge.id as number, 20000)).status, "done");
+    await assert.rejects(() => store.editApprovalRules(h, { mode: "reckless" }), /mode must be one of/);
+  } finally {
+    if (saved.judge === undefined) delete process.env.DPI_JUDGE;
+    else process.env.DPI_JUDGE = saved.judge;
+    if (saved.url === undefined) delete process.env.DPI_JUDGE_URL;
+    else process.env.DPI_JUDGE_URL = saved.url;
+    kev.close();
     await store.close();
     await t.cleanup();
   }

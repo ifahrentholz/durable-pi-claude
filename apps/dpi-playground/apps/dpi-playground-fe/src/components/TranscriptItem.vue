@@ -11,8 +11,13 @@ import { approvalFor } from "../client/approvals";
 defineProps<{ item: TranscriptItem }>();
 const emit = defineEmits<{ fork: [entryId: number] }>();
 const waiting = (callId: string) => approvalFor(callId)?.status === "pending";
+const auto = (callId: string) => approvalFor(callId)?.status === "auto";
 const statusLabel = (call: ToolCallView) =>
-  waiting(call.callId) ? "Waiting for you" : call.status === "error" ? "Error" : call.status === "done" ? "Done" : call.status;
+  waiting(call.callId)
+    ? "Waiting for you"
+    : call.status === "error"
+      ? "Error"
+      : (call.status === "done" ? "Done" : call.status) + (auto(call.callId) ? " · auto-approved" : "");
 const entryClass = (item: TranscriptItem) =>
   item.kind === "user"
     ? "pi-user"
@@ -68,7 +73,12 @@ const entryClass = (item: TranscriptItem) =>
             <Activity v-else-if="b.call.status === 'running'" :size="18" />
             <Wrench v-else :size="18" /><strong>{{ b.call.name }}</strong
             ><code>{{ json(b.call.args)?.slice(0, 90) }}</code>
-            <span class="tool-status" :class="{ 'waiting-approval': waiting(b.call.callId) }">{{ statusLabel(b.call) }}</span>
+            <span
+              class="tool-status"
+              :class="{ 'waiting-approval': waiting(b.call.callId), 'auto-approved': auto(b.call.callId) }"
+              :title="approvalFor(b.call.callId)?.reason"
+              >{{ statusLabel(b.call) }}</span
+            >
           </summary>
           <div class="tool-section-label">Input</div>
           <pre>{{ json(b.call.args) }}</pre>

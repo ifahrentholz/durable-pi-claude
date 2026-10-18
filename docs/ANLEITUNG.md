@@ -127,11 +127,28 @@ archivieren. So bleibt der Baum übersichtlich.
 
 ## 5. Freigaben: was der Agent ohne dich darf
 
-Die Erweiterung **Approvals** ist an. Alles, was etwas verändert, wartet auf dich, und zwar **direkt am Tool-Aufruf
-im Chat**:
+### Drei Modi: Ask, Auto, YOLO
+
+Im **Session-Tab** unter **Permissions** (oder mit `/mode ask|auto|yolo` im Eingabefeld) stellst du ein, wie die
+Agents einer Session fragen. Die Einstellung gilt für alle Agents der Session und übersteht Neustarts. Im Baum steht
+**AUTO** oder **YOLO** neben Sessions, die nicht auf Ask stehen.
+
+| Modus | Verhalten | Wann sinnvoll |
+|---|---|---|
+| **Ask** (Standard) | Alles, was etwas verändert, wartet auf dich, außer eine Regel erlaubt es. | Neues Projekt, heikle Aufgaben |
+| **Auto** | **Kev** bewertet jeden Shell-Befehl. Lokale, umkehrbare Befehle laufen sofort (`mvn test`, `npm install`, `git commit`, `ls \| wc -l` …). **Destruktives** (`rm -rf`, `reset --hard` …) und alles mit **Wirkung nach außen** (`git push`, `glab mr create`, `jira issue move`, `npm publish`, `curl -X POST` …) wartet weiter auf dich, mit Kevs Begründung auf der Karte. | **Alltag**: der Agent arbeitet flüssig, du entscheidest nur noch über Riskantes |
+| **YOLO** | Nichts fragt. | Wegwerf-Ordner, Experimente; am besten mit **Damage control** (Kev blockt dann nur noch Destruktives) |
+
+Im Auto-Modus zeigt der Tool-Aufruf „Done · auto-approved“. Fährst du mit der Maus darüber, siehst du Kevs Urteil.
+Läuft Kev nicht, verhält sich Auto wie Ask (`duracel status` zeigt, ob Kev läuft).
+
+### Freigaben im Chat
+
+Im Modus Ask, und in Auto bei riskanten Befehlen, wartet der Aufruf **direkt am Tool-Aufruf im Chat**:
 
 - **Allow once**: nur dieses eine Mal.
-- **Always allow**: speichert eine Regel für die ganze Session.
+- **Always allow**: speichert eine Regel für die ganze Session. Bei gefährlichen Befehlen (`rm`, `git push`,
+  `reset` …) gilt die Regel nur für genau diese Befehlszeile, nie für alle `rm -rf`.
 - **Deny**: optional mit Notiz an den Agent („nimm lieber `npm run test:unit`“).
 
 Ein gelbes Banner über dem Eingabefeld zeigt offene Freigaben, auch die von anderen Agents der Session. Im Baum steht

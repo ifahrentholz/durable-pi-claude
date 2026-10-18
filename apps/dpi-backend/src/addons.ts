@@ -80,6 +80,51 @@ async function judgeOffline(command: string): Promise<Verdict> {
     : { block: false, reason: "allowed (offline rules)" };
 }
 
+// ------------------------------------------------------------------ auto mode (this fork)
+
+/** The bash gate's questions plus one about effects outside this machine. */
+const AUTO_QUESTIONS: Record<string, JevQuestion> = {
+  ...BASH_QUESTIONS,
+  external: {
+    type: "noul",
+    instructions: "Does `command` change something outside this machine, or publish or send something to other people or systems?",
+    criteria: {
+      true: "git push, deploying, publishing packages, creating or commenting on merge requests, pull requests or tickets, sending messages or email, HTTP POST/PUT/DELETE to remote APIs, changing cloud resources",
+      false: "Only reads remote data, or works on this machine: builds, tests, local git commits, file edits, installs into the project",
+    },
+  },
+};
+
+export type Assessment = { auto: boolean; reason: string };
+
+/**
+ * Auto mode: may this shell command run without asking? Yes when the judge finds it local and recoverable:
+ * P(irreversible) < 0.25, destructive intent < 0.3, effect outside this machine < 0.3. Undefined without a judge
+ * or when it fails, so the caller asks a person.
+ */
+export async function assessCommand(command: string): Promise<Assessment | undefined> {
+  if (!configuredJudge()) return undefined;
+  try {
+    const a = await askJev({ command }, AUTO_QUESTIONS);
+    const effect = a.effect as Extract<JevAnswer, { type: "choice" }>;
+    const destructive = (a.destructive_intent as Extract<JevAnswer, { type: "noul" }>).noul;
+    const external = (a.external as Extract<JevAnswer, { type: "noul" }>).noul;
+    const irreversible = effect.probabilities?.irreversible ?? (effect.choice === "irreversible" ? effect.confidence : 0);
+    const auto = irreversible < 0.25 && destructive < 0.3 && external < 0.3;
+    const why = [
+      `${effect.choice} ${effect.confidence.toFixed(2)}`,
+      ...(effect.choice === "irreversible" ? [] : [`irreversible ${irreversible.toFixed(2)}`]),
+      `destructive ${destructive.toFixed(2)}`,
+      `outside this machine ${external.toFixed(2)}`,
+    ].join(", ");
+    const j = configuredJudge()!;
+    const name = j.kind === "systemone" && /\/\/(127\.0\.0\.1|localhost)[:/]/.test(j.endpoint) ? "Kev" : j.label;
+    return { auto, reason: `${name}: ${why}` };
+  } catch {
+    return undefined;
+  }
+}
+
 // ------------------------------------------------------------------ the extensions
 
 export const ADDON_INFO: Omit<HarnessExtensionInfo, "enabled" | "prompts">[] = [

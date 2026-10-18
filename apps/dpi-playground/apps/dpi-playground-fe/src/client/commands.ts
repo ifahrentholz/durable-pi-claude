@@ -1,4 +1,6 @@
 // Composer slash commands: the same names as dpi-tui. Unknown commands are sent to the agent as text.
+import { PERMISSION_MODES, type PermissionMode } from "@sdk/approvals";
+import { setPermissionMode } from "./approvals";
 import { THINKING_LEVELS, type ThinkingLevel } from "@sdk/api";
 import {
   agentHandle,
@@ -102,6 +104,16 @@ export const commands: SlashCommand[] = [
       await need(agentHandle.value, "agent").configure({ thinkingLevel: arg as ThinkingLevel });
       await refreshDetail();
       notify(`Thinking ${arg}. Used on the next turn.`);
+    },
+  },
+  {
+    name: "mode",
+    args: "<ask|auto|yolo>",
+    description: "Permissions for every agent of this session: ask, auto (Kev decides) or yolo",
+    run: async (arg) => {
+      const mode = arg.trim().toLowerCase();
+      if (!PERMISSION_MODES.includes(mode as PermissionMode)) throw Error("Modes: ask, auto, yolo");
+      await setPermissionMode(mode as PermissionMode);
     },
   },
   {

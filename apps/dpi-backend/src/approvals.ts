@@ -20,7 +20,10 @@ import {
   type ApprovalItem,
   type ApprovalRulesDoc,
   type ApprovalsDoc,
+  type PermissionMode,
+  PERMISSION_MODES,
 } from "../../dpi-sdk/src/approvals.js";
+import type { Assessment } from "./addons.js";
 
 export const Approvals = defineDoc<ApprovalsDoc>({
   kind: APPROVALS_DOC,
@@ -47,8 +50,14 @@ export const APPROVALS_INFO = {
 
 const POLL_MS = 400;
 
-/** `commit` runs a Session commit; the hook uses it to write the request, since hooks only read. */
-export function createApprovals(deps: { commit: <T>(fn: (tx: Tx) => Promise<T>) => Promise<T> }) {
+/**
+ * `commit` runs a Session commit; the hook uses it to write the request, since hooks only read.
+ * `assess` asks the judge whether a shell command may run unasked (auto mode).
+ */
+export function createApprovals(deps: {
+  commit: <T>(fn: (tx: Tx) => Promise<T>) => Promise<T>;
+  assess?: (command: string) => Promise<Assessment | undefined>;
+}) {
   return defineExtension({
     name: "approvals",
     hooks: [
@@ -58,12 +67,17 @@ export function createApprovals(deps: { commit: <T>(fn: (tx: Tx) => Promise<T>) 
           const args = (call.arguments ?? {}) as Record<string, unknown>;
           const conversationId = api.conversationId;
 
-          const rules = (await api.snapshot(ApprovalRules, ctx))?.allow ?? DEFAULT_RULES;
+          const settings = await api.snapshot(ApprovalRules, ctx);
+          const mode: PermissionMode = settings?.mode ?? "ask";
+          if (mode === "yolo") return;
+          const rules = settings?.allow ?? DEFAULT_RULES;
           if (rules.some((rule) => ruleAllows(rule, call.name, args))) return;
 
           // A decision made before a restart still counts; an open request keeps waiting.
           let item = (await api.snapshot(Approvals, conversationId, ctx))?.items[call.id];
           if (!item) {
+            // Auto mode: the judge decides shell commands; it runs once per call, its verdict is stored before the call.
+            const verdict = mode === "auto" && call.name === "bash" && deps.assess ? await deps.assess(String(args.command ?? "")) : undefined;
             item = await deps.commit(async (tx) => {
               const doc = await tx.doc(Approvals, conversationId);
               doc.items[call.id] ??= {
@@ -72,8 +86,10 @@ export function createApprovals(deps: { commit: <T>(fn: (tx: Tx) => Promise<T>) 
                 tool: call.name,
                 summary: describeCall(call.name, args),
                 rules: [suggestRule(call.name, args)],
-                status: "pending",
+                status: verdict?.auto ? "auto" : "pending",
                 at: Date.now(),
+                ...(verdict ? { reason: verdict.reason } : mode === "auto" && call.name === "bash" ? { reason: "No judge reachable: asking instead" } : {}),
+                ...(verdict?.auto ? { decidedAt: Date.now() } : {}),
               };
               return JSON.parse(JSON.stringify(doc.items[call.id])) as ApprovalItem;
             });
@@ -113,8 +129,12 @@ export async function decideApproval(
   return JSON.parse(JSON.stringify(item)) as ApprovalItem;
 }
 
-export async function editRules(tx: Tx, change: { add?: string[]; remove?: string[] }): Promise<string[]> {
+export async function editRules(tx: Tx, change: { add?: string[]; remove?: string[]; mode?: string }): Promise<ApprovalRulesDoc> {
   const rules = await tx.doc(ApprovalRules);
+  if (change.mode !== undefined) {
+    if (!PERMISSION_MODES.includes(change.mode as PermissionMode)) throw Error(`mode must be one of ${PERMISSION_MODES.join(", ")}`);
+    rules.mode = change.mode as PermissionMode;
+  }
   for (const rule of change.add ?? []) {
     const r = rule.trim();
     if (r && /^[\w-]+(\(.*\))?$/s.test(r) && !rules.allow.includes(r)) rules.allow.push(r);
@@ -123,7 +143,7 @@ export async function editRules(tx: Tx, change: { add?: string[]; remove?: strin
     const i = rules.allow.indexOf(rule);
     if (i >= 0) rules.allow.splice(i, 1);
   }
-  return [...rules.allow];
+  return { allow: [...rules.allow], mode: rules.mode ?? "ask" };
 }
 
 function sleep(ms: number, ctx: Context) {

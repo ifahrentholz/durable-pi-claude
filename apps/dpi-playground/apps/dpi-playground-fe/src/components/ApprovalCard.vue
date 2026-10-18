@@ -18,6 +18,7 @@ function deny() {
   <div class="job-approval tool-approval" role="group" aria-label="Tool approval" :data-approval="item.callId">
     <div><ShieldCheck :size="20" /><strong>Approve {{ item.tool }}?</strong></div>
     <pre class="tool-approval-what">{{ item.summary }}</pre>
+    <p v-if="item.reason" class="tool-approval-reason">Auto mode asks you: {{ item.reason }}</p>
     <p>
       The agent waits on a saved checkpoint: close the browser or restart the device and this request will still be
       here. Nothing runs until you decide.

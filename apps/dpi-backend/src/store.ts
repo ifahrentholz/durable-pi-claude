@@ -62,7 +62,7 @@ import { openNodeSqliteStorage } from "@earendil-works/pi-durable/storage/sqlite
 import { createPlayground, Workspace, type SpawnSession } from "./extensions.js";
 import { createJobs, JobRuns, JOB_DEFS, jobDef, resolveJobInput, type Jobs } from "./jobs.js";
 import { judge } from "./jev.js";
-import { ADDON_INFO, createAddons, PROMPTS, PromptChecklist, type Addons } from "./addons.js";
+import { ADDON_INFO, assessCommand, createAddons, PROMPTS, PromptChecklist, type Addons } from "./addons.js";
 import { ApprovalRules, Approvals, APPROVALS_INFO, createApprovals, decideApproval, editRules } from "./approvals.js";
 import { createProjectContext, PROJECT_CONTEXT_INFO, projectFiles } from "./project-context.js";
 import { APPROVALS_DOC, type ApprovalDecision } from "../../dpi-sdk/src/approvals.js";
@@ -596,7 +596,7 @@ export class Store {
       for (const extension of addons.list) registry.install(extension);
       // Approvals (this fork): selected by default, so every agent asks before bash and other changes.
       let opened: Harness | undefined;
-      const approvals = createApprovals({ commit: (fn) => opened!.commit(fn, ctx) });
+      const approvals = createApprovals({ commit: (fn) => opened!.commit(fn, ctx), assess: assessCommand });
       registry.install(approvals);
       // Project context (this fork): CLAUDE.md / AGENTS.md of the agent's folder and the device's tool instructions.
       const projectContext = createProjectContext(row.cwd);
@@ -1261,7 +1261,8 @@ export class Store {
     if (!this.opened.has(row.id))
       return { ...this.sessionSummaryBase(row), busy: false, agents: [], error: this.errors.get(row.id) ?? "Session unavailable" };
     const agents = await this.agents(row);
-    return { ...this.sessionSummaryBase(row), busy: agents.some((a) => a.busy), agents };
+    const permissionMode = (await this.harness(row).snapshot(ApprovalRules, ctx))?.mode ?? "ask";
+    return { ...this.sessionSummaryBase(row), busy: agents.some((a) => a.busy), agents, permissionMode };
   }
 
   async tree(): Promise<DeviceTree> {
@@ -1330,15 +1331,25 @@ export class Store {
     return item;
   }
 
+  /** Rules, the permission mode (ask, auto, yolo) and which judge auto mode would ask. */
   async approvalRules(h: Harness) {
-    return { allow: [...((await h.snapshot(ApprovalRules, ctx))?.allow ?? [])] };
+    const doc = await h.snapshot(ApprovalRules, ctx);
+    return { allow: [...(doc?.allow ?? [])], mode: doc?.mode ?? "ask", judge: judge()?.label ?? null };
   }
 
   async editApprovalRules(h: Harness, body: Record<string, unknown>) {
     const list = (v: unknown) => (Array.isArray(v) ? v.map(String) : typeof v === "string" ? [v] : []);
-    const allow = await h.commit((tx) => editRules(tx, { add: list(body.add), remove: list(body.remove) }), ctx);
+    let result;
+    try {
+      result = await h.commit(
+        (tx) => editRules(tx, { add: list(body.add), remove: list(body.remove), ...(body.mode !== undefined ? { mode: String(body.mode) } : {}) }),
+        ctx,
+      );
+    } catch (e) {
+      throw invalid((e as Error).message);
+    }
     this.notify();
-    return { allow };
+    return { ...result, judge: judge()?.label ?? null };
   }
 
   async approveJob(c: Conversation, taskId: number, approved: unknown) {

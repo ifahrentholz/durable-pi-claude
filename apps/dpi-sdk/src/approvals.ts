@@ -7,7 +7,18 @@
 export const APPROVALS_DOC = "demo.approvals";
 export const APPROVAL_RULES_DOC = "demo.approval-rules";
 
-export type ApprovalStatus = "pending" | "allowed" | "always" | "denied";
+/** pending: waits for a person; auto: the judge let it run in auto mode. */
+export type ApprovalStatus = "pending" | "allowed" | "always" | "denied" | "auto";
+
+/**
+ * How a session's agents ask (this fork):
+ *   ask   every call that changes things waits for a person unless a rule allows it
+ *   auto  the local judge (Kev) lets local, reversible shell commands run; anything destructive or with an effect
+ *         outside this machine (push, deploy, publish, POST, tickets) still waits for a person. Without a judge: ask.
+ *   yolo  nothing asks
+ */
+export type PermissionMode = "ask" | "auto" | "yolo";
+export const PERMISSION_MODES: PermissionMode[] = ["ask", "auto", "yolo"];
 export type ApprovalDecision = "allow" | "always" | "deny";
 
 export type ApprovalItem = {
@@ -21,12 +32,14 @@ export type ApprovalItem = {
   status: ApprovalStatus;
   /** The person's note on a denial; the agent reads it. */
   message?: string;
+  /** Why it was decided automatically, or why auto mode still asks: the judge's verdict. */
+  reason?: string;
   at: number;
   decidedAt?: number;
 };
 
 export type ApprovalsDoc = { items: Record<string, ApprovalItem> };
-export type ApprovalRulesDoc = { allow: string[] };
+export type ApprovalRulesDoc = { allow: string[]; mode?: PermissionMode };
 
 /** Tools that ask before they run unless a rule allows them. Everything else (reads, App State) runs at once. */
 export const APPROVAL_TOOLS = ["bash", "write", "edit", "start_session", "run_durable_job", "ping_on_call_engineer"];
@@ -75,11 +88,15 @@ export function ruleAllows(rule: string, tool: string, args: Record<string, unkn
   return command === content.trim();
 }
 
-/** The rule "always allow" would add for this call. */
+/** Commands where "always allow" must never become a prefix rule: deleting, force-pushing, resetting, killing. */
+const DANGEROUS =
+  /^(sudo\b|rm\b|rmdir\b|shred\b|dd\b|mkfs|truncate\b|kill\b|pkill\b|killall\b|chmod\s+-R|chown\s+-R|find\b.*\s-delete\b|git\s+(push|reset|clean|checkout\s+--|branch\s+-D|rebase|filter-branch)\b|docker\s+(rm|rmi|system\s+prune|volume\s+rm)\b|kubectl\s+delete\b|npm\s+publish\b)/;
+
+/** The rule "always allow" would add for this call: a prefix for ordinary commands, the exact line for dangerous ones. */
 export function suggestRule(tool: string, args: Record<string, unknown>): string {
   if (tool !== "bash") return tool;
   const command = String(args.command ?? "").trim();
-  if (SHELL_META.test(command)) return `Bash(${command})`;
+  if (SHELL_META.test(command) || DANGEROUS.test(command)) return `Bash(${command})`;
   const words = command.split(/\s+/);
   const prefix = words.slice(0, words.length > 2 ? 2 : words.length > 1 ? 2 : 1).join(" ");
   return `Bash(${prefix}:*)`;

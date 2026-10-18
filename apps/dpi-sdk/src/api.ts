@@ -119,6 +119,8 @@ export interface SessionSummary {
   agents: AgentSummary[];
   /** Automatic compaction thresholds, shared by every agent of the session. */
   compaction?: CompactionSettings;
+  /** How the session's agents ask before they change things (this fork): ask, auto or yolo. */
+  permissionMode?: "ask" | "auto" | "yolo";
 }
 
 /**

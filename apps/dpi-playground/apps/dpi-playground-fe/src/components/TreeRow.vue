@@ -126,6 +126,13 @@ const title = computed(() => {
       <FolderOpen class="ico" :size="16" />
       <b class="name" :title="label">{{ label }}</b>
       <span class="path">…/{{ session.cwd.split("/").filter(Boolean).at(-1) }}</span>
+      <span
+        v-if="session.permissionMode && session.permissionMode !== 'ask'"
+        class="mode-badge"
+        :class="session.permissionMode"
+        :title="session.permissionMode === 'yolo' ? 'YOLO: nothing asks' : 'Auto: Kev decides shell commands'"
+        >{{ session.permissionMode === "yolo" ? "YOLO" : "AUTO" }}</span
+      >
       <i v-if="busy" class="dot work" title="Working" />
       <span v-if="background" class="bg-count" :title="`${background} background task(s)`"
         ><i class="dot bg" />{{ background }} bg</span
