@@ -80,6 +80,22 @@ Gerät (local)
 Der Agent kennt sofort die `CLAUDE.md` und `AGENTS.md` deines Projekts (Erweiterung **Project context**). Im
 Extend-Tab siehst du, welche Dateien er gelesen hat.
 
+### Sessions aufräumen
+
+Fahr mit der Maus über eine Session im Baum links. Rechts erscheinen drei Knöpfe:
+
+| Knopf | Funktion |
+|---|---|
+| **+** | neuer Agent in dieser Session |
+| Stift | Session umbenennen, z. B. „VAU-3197 Burger-Menü“ statt „New session“ |
+| **Archiv-Kasten** | Session **archivieren**: stoppt ihre Arbeit und nimmt sie aus dem Baum |
+
+Archivieren löscht nichts. Die Dateien wandern nach `~/.dpi/backend/archive/`. Endgültig löschen:
+`rm -rf ~/.dpi/backend/archive/*`.
+
+Einzelne Agents (Forks, Subagents) lassen sich nur umbenennen (Stift beim Agent), nicht entfernen. Tipp: eine Session
+pro Aufgabe oder Ticket, und nach Abschluss archivieren. So bleibt der Baum übersichtlich.
+
 ---
 
 ## 5. Freigaben: was der Agent ohne dich darf
