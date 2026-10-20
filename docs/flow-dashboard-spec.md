@@ -2,7 +2,8 @@
 
 Stand: Branch `pilot/flow-dashboard`. Hält alle Entscheidungen aus den Mockup-Runden fest und listet, was vor der
 Umsetzung noch entschieden werden muss. Das klickbare Mockup ist `docs/flow-dashboard-mockup.html`; wo dieses Dokument
-und das Mockup sich widersprechen, gilt dieses Dokument.
+und das Mockup sich widersprechen, gilt dieses Dokument. Wie es gebaut wird: `docs/flow-dashboard-design.md`, in welcher
+Reihenfolge: `docs/flow-dashboard-plan.md`.
 
 `docs/jira-flow-architecture.md` ist die erste Skizze des Jira Flows und in mehreren Punkten überholt (ein
 Jira-Kommentar je Stage, Status-Übergänge, Freigabe vor dem Mergen als Standard). Der Jira Flow auf `main`
@@ -482,8 +483,8 @@ Defaults bestätigt: WIP-Limit 3 offene MRs je Projekt (`review.wipLimit`), 2 Sl
 Report-Details (Status → Band, Zeitraum, Caching, Jira-Rate-Limits) · Verhalten, wenn GitLab oder Jira nicht
 erreichbar sind.
 
-**Nächster Schritt:** technisches Design für Phase 0 – Datenmodell, Client-API und Worker-Protokoll (Lease, Epoche,
-Replikation) – und der Umsetzungsplan mit Phasen und Abnahmekriterien.
+**Technisches Design und Plan:** `docs/flow-dashboard-design.md` (Datenmodell, Client-API, Worker-Protokoll,
+Replikation, Tests, Spikes) und `docs/flow-dashboard-plan.md` (Phasen mit Abnahmekriterien).
 
 **Später:** Funktionsumfang auf dem Handy und PWA · SSO · Server-Worker im Betrieb · Anbindung der
 Shop-/Incident-Demo · Auto-Merge im Dashboard (Freigabe-Karte), solange es aus ist, nicht sichtbar.
