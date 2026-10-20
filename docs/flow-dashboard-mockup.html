@@ -349,6 +349,24 @@ const GRILL = [
   { q: "Was passiert, wenn der Warenkorbwert unter den Mindestbestellwert fällt?", rec: "Der Gutschein bleibt sichtbar, aber ausgegraut, mit Hinweis „Mindestbestellwert 50 € nicht erreicht“.", alt: "Gutschein wird entfernt" },
   { q: "Wie gehen wir mit Retouren um, wenn ein Gutschein eingelöst wurde?", rec: "Der Gutscheinwert wird anteilig auf die Artikel verteilt und bei Retoure anteilig nicht erstattet.", alt: "Gutschein verfällt bei jeder Retoure" },
 ];
+// "Ticket schärfen": the assistant (no code access) asks until Kev rates a vague ticket ready.
+const REFINE_Q = {
+  "SHOP-157": [
+    { q: "Welche Zielmarke soll gelten?", rec: "LCP unter 2,5 s auf Mobilgeräten (4G), gemessen mit Lighthouse.", alt: "Einfach „spürbar schneller“" },
+    { q: "Welche Seiten gehören dazu?", rec: "Nur die Startseite. Kategorieseiten in einem eigenen Ticket.", alt: "Alle Seiten" },
+    { q: "Was darf sich dafür ändern?", rec: "Bilder, Skripte und Caching – kein Redesign, keine Inhalte entfernen.", alt: "Auch Inhalte und Layout" },
+  ],
+  "SHOP-156": [
+    { q: "Wie wird die Wunschliste geteilt?", rec: "Per Link. Wer den Link hat, sieht die Liste ohne Login.", alt: "Nur an eingeloggte Kunden per E-Mail" },
+    { q: "Darf der Empfänger etwas ändern?", rec: "Nein – nur ansehen und Artikel in den eigenen Warenkorb legen.", alt: "Ja, Artikel hinzufügen und entfernen" },
+    { q: "Kann man das Teilen widerrufen?", rec: "Ja, ein neuer Link macht den alten ungültig.", alt: "Nein" },
+  ],
+  generic: [
+    { q: "Wer nutzt das bzw. wer ist betroffen?", rec: "Alle eingeloggten Kunden; Gäste sind nicht betroffen.", alt: "Alle Besucher" },
+    { q: "Was ist der kleinste sinnvolle Umfang?", rec: "Genau die im Titel genannte Funktion, ohne Erweiterungen.", alt: "Inklusive Admin-Ansicht" },
+    { q: "Woran erkennt man, dass es fertig ist?", rec: "Das Verhalten ist auf der Dev-Stage nachvollziehbar und durch einen Test abgedeckt.", alt: "Wenn der Kunde zufrieden ist" },
+  ],
+};
 const DRAFT_Q = [
   { q: "Für wen soll das gelten – nur eingeloggte Kunden oder auch Gäste?", rec: "Nur eingeloggte Kunden: Gäste haben kein Konto, in dem Adressen liegen könnten.", alt: "Auch Gäste" },
   { q: "Wie viele Adressen darf ein Kunde speichern?", rec: "Bis zu 5, eine davon als Standard markiert.", alt: "Unbegrenzt" },
@@ -358,7 +376,7 @@ const DRAFT_Q = [
 // ======================================================================= state
 const S = {
   role: "pm", device: "desktop", project: "SHOP", sel: null, mid: "feed", ctab: "ticket", mpanel: "mid",
-  open: { SHOP: true }, focus: true, treeMode: "projects", poll: { left: 9, span: 10 }, arrivals: 0, grill: {}, draft: null, finding: null,
+  open: { SHOP: true }, focus: true, treeMode: "projects", poll: { left: 9, span: 10 }, arrivals: 0, grill: {}, refine: {}, draft: null, finding: null,
   perm: { SHOP: "auto" }, compact: 200, live: 0, typing: false, transcripts: {},
 };
 const isDev = () => S.role === "dev";
@@ -393,7 +411,7 @@ const DOT_TIP = { bad: "blockiert oder pausiert", live: "ein Agent arbeitet", wa
 const projDot = (pk) => { const ds = ofProject(pk).map(dotOf); return ["bad", "warn", "live", "ok", "idle"].find((d) => ds.includes(d)) || "idle"; };
 const steps = (t) => {
   if (t.lane === "question") return ["Eingeordnet", "Beantwortet"];
-  return ["Eingeordnet", ...(t.lane === "feature" ? ["Klärung"] : []), "Entwicklung", "Review", "MR", "Testen", "Erledigt"];
+  return ["Eingeordnet", ...(t.lane === "feature" && !t.scoped ? ["Klärung"] : []), "Entwicklung", "Review", "MR", "Testen", "Erledigt"];
 };
 const stepIndex = (t) => {
   const map = { backlog: 0, ready: 0, grill: 1, implement: t.lane === "feature" ? 2 : 1, rework: t.lane === "feature" ? 2 : 1, review: t.lane === "feature" ? 3 : 2, mr: t.lane === "feature" ? 4 : 3, blocked: t.lane === "feature" ? 3 : 2, test: t.lane === "feature" ? 5 : 4, done: 99 };
@@ -503,7 +521,7 @@ function netTree() {
   return WORKERS.map((w) => {
     const ts = TICKETS.filter((t) => t.worker === w.id && t.flow !== "done" && (!S.focus || !S.project || t.key.startsWith(S.project + "-")));
     const used = ts.filter(active).length;
-    return `<div class="trow ${w.online ? "" : "off"}" title="${w.online ? "online" : w.later ? "noch nicht verbunden" : `offline seit ${w.since}`}"><span class="chev open">▶</span><span class="dot ${w.online ? "live" : w.later ? "idle" : "bad"}"></span><span class="name">${w.name}</span><span class="wk">${w.later ? "später" : w.online ? `${used}/${w.slots}` : "offline"}</span></div>` +
+    return `<div class="trow ${w.online ? "" : "off"}" title="${w.connecting ? "verbindet" : w.online ? "online" : w.later ? "noch nicht verbunden" : `offline seit ${w.since}`}"><span class="chev open">▶</span><span class="${w.connecting ? "spin" : `dot ${w.online ? "live" : w.later ? "idle" : "bad"}`}"></span><span class="name">${w.name}</span><span class="wk">${w.connecting ? "verbinde…" : w.later ? "später" : w.online ? `${used}/${w.slots}` : "offline"}</span></div>` +
       (ts.length ? ts.map((t) => ticketRow(t)).join("") : `<div class="trow l1" style="color:#6f5a5c">keine Sessions</div>`);
   }).join("");
 }
@@ -513,7 +531,7 @@ function tree() {
   const body = net ? netTree() : S.project && S.focus ? focusTree() : allTree();
   return `<div class="col tree ${S.mpanel === "tree" ? "mshow" : ""}"><div class="col-body">
     ${isDev() ? `<div class="treemode"><div class="seg"><button class="${!net ? "on" : ""}" data-act="treeMode" data-v="projects">Projekte</button><button class="${net ? "on" : ""}" data-act="treeMode" data-v="net">Netzwerk</button></div></div>` : ""}
-    <div class="section"><span class="eyebrow">${title}</span><button class="ghost" data-act="newProject" title="Neues Projekt">＋</button></div>${body}</div></div>`;
+    <div class="section"><span class="eyebrow">${title}</span>${net ? `<button class="ghost" data-act="newWorker" title="Worker verbinden">＋</button>` : `<button class="ghost" data-act="newProject" title="Neues Projekt">＋</button>`}</div>${body}</div></div>`;
 }
 
 // ======================================================================= middle
@@ -668,7 +686,7 @@ function side() {
 function card(t) {
   const st = steps(t), idx = stepIndex(t), [s, sc] = statusOf(t);
   const tone = { live: "", warn: "warn", bad: "bad", ok: "ok", idle: "" }[dotOf(t)];
-  const sum = { grill: "Der Agent klärt den Scope mit dir, bevor er entwickelt.", implement: "Der Agent entwickelt gerade.", review: `Unabhängiges Review läuft (Runde ${t.round || 1}).`, mr: t.risks ? `Review bestanden mit ${t.risks.length} offenem Risiko – MR ${t.mr} ist ein Draft und wartet auf eine Entscheidung.` : `MR ${t.mr} wartet auf Code-Review durch einen Entwickler.`, test: `Gemerged und auf der Dev-Stage. Bitte testen.`, rework: "Der Agent arbeitet dein Finding ab. Danach folgt ein neuer MR.", done: "Erledigt.", blocked: t.why, ready: "Freigegeben – startet, sobald ein Worker frei ist.", backlog: t.kev === "vague" ? "Kev: zu vage für einen direkten Start – beginnt mit einer Klärung." : "Kev: startklar. Zum Starten freigeben." }[t.flow];
+  const sum = { grill: "Der Agent klärt den Scope mit dir, bevor er entwickelt.", implement: "Der Agent entwickelt gerade.", review: `Unabhängiges Review läuft (Runde ${t.round || 1}).`, mr: t.risks ? `Review bestanden mit ${t.risks.length} offenem Risiko – MR ${t.mr} ist ein Draft und wartet auf eine Entscheidung.` : `MR ${t.mr} wartet auf Code-Review durch einen Entwickler.`, test: `Gemerged und auf der Dev-Stage. Bitte testen.`, rework: "Der Agent arbeitet dein Finding ab. Danach folgt ein neuer MR.", done: "Erledigt.", blocked: t.why, ready: "Freigegeben – startet, sobald ein Worker frei ist.", backlog: t.kev === "vague" ? "Kev: zu vage für einen direkten Start. Schärfe das Ticket unten – oder gib es frei, dann klärt der Agent mit dir." : t.scoped ? "Geschärft und in Jira aktualisiert – Kev: startklar. Zum Starten freigeben." : "Kev: startklar. Zum Starten freigeben." }[t.flow];
   return `<div class="icard ${tone}"><div class="itop"><span style="color:${tone === "ok" ? "var(--ready)" : "var(--bad)"}">⎇</span><strong>${t.key}</strong><span class="lchip">${LANE[t.lane]}</span><span class="ititle">${esc(t.title)}</span>${t.started || t.flow === "ready" ? `<span class="status ${sc}"><i></i>${s}</span>` : ""}</div>
     ${t.started ? `<ol class="steps">${st.map((n, i) => `<li class="${i < idx ? "done" : i === idx ? "cur" : ""}"><i></i>${n}</li>`).join("")}</ol>` : ""}
     <p class="isum">${esc(paused(t) ? `Pausiert – der Rechner von ${worker(t).owner} ist seit ${worker(t).since} offline. Der Agent macht weiter, sobald er wieder online ist.` : sum)}</p>
@@ -678,6 +696,7 @@ function card(t) {
 function ticketBody(t) {
   // what a PM/PO does here, without touching the agent
   if (t.flow === "grill" && !isDev()) return grill(t);
+  if (!t.started && t.kev === "vague") return refine(t);
   let action = "";
   if (t.flow === "test") action = S.finding === t.key ? findingForm(t) : `<div class="card" style="margin-bottom:12px"><h2>Bereit zum Testen</h2><p style="font-size:13.5px;color:#d9cdcd;margin:6px 0 10px">Auf der Dev-Stage: <a href="#" data-act="noop">dev.shop.example.com</a> · MR ${t.mr} gemerged</p>
       <div style="display:flex;gap:8px"><button class="secondary ok" data-act="testOk" data-key="${t.key}">✓ Funktioniert</button><button class="secondary warn" data-act="finding" data-key="${t.key}">Finding melden</button></div></div>`;
@@ -690,6 +709,21 @@ function ticketBody(t) {
       ${t.started ? "" : `<span class="rel" style="font-size:13px" data-act="release" data-key="${t.key}"><span class="sw ${t.ready ? "on" : ""}"></span>Für Agent freigeben</span>`}
       ${isDev() && !t.started ? `<button class="secondary" data-act="start" data-key="${t.key}">▶ Agent starten</button><select id="startWorker" title="Worker">${WORKERS.map((w) => `<option value="${w.id}" ${w.online ? "" : "disabled"}>auf ${w.name}${w.online ? "" : w.later ? " (später)" : " (offline)"}</option>`).join("")}</select>` : ""}
       <button class="ghost" data-act="noop">In Jira öffnen ↗</button></div></div>`;
+}
+
+// Before a start: sharpen a vague ticket with the assistant until Kev rates it ready, then update Jira.
+function refine(t) {
+  const qs = REFINE_Q[t.key] || REFINE_Q.generic; const r = S.refine[t.key] || (S.refine[t.key] = { answers: [] });
+  const n = r.answers.length, done = n === qs.length, score = [32, 55, 74, 91][n], q = qs[n];
+  return `<div class="icard ${done ? "ok" : "warn"}" style="margin-top:8px"><div class="itop"><span class="eyebrow" style="font-size:11px">Ticket schärfen</span><span class="ititle"></span><span class="status ${done ? "ok" : "warn"}"><i></i>Kev ${score}% · ${done ? "startklar" : "zu vage"}</span></div>
+      <div style="font-size:13px;color:#d9cdcd;margin-bottom:4px">Akzeptanzkriterien für Jira</div>
+      <ol style="margin:0 0 8px;padding-left:18px;font-size:13px;color:#e9dede">${r.answers.map((a) => `<li>${esc(a)}</li>`).join("") || `<li style="color:#9d8889">entstehen im Gespräch</li>`}</ol>
+      ${done ? `<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button class="primary" data-act="refineSave" data-key="${t.key}">In Jira aktualisieren</button><span class="phint" style="margin:0">Beschreibung + Akzeptanzkriterien, mit deinem Jira-Token. Kein Kommentar.</span></div>` : ""}</div>
+    <div class="chat"><div class="entry"><div class="mlabel">ASSISTENT <span>ohne Code-Zugriff</span></div><div class="md">Kev hält <b>${t.key}</b> für zu vage, um einen Agenten direkt zu starten. Ich frage nach, was fehlt – danach ist es startklar${t.lane === "feature" ? ", und der Agent braucht keine zweite Klärung" : ""}.</div></div>
+      ${qs.map((g, i) => i > n ? "" : `<div class="entry"><div class="mlabel">ASSISTENT <span>${i + 1}/${qs.length}</span></div><div class="md">${g.q}</div>${i === n ? `<div class="rec"><b>Empfehlung:</b> ${g.rec}</div>` : ""}</div>${r.answers[i] ? `<div class="entry pi-user"><div class="mlabel">DU</div><div class="umsg">${esc(r.answers[i])}</div></div>` : ""}`).join("")}
+      ${done ? `<div class="entry"><div class="mlabel">ASSISTENT</div><div class="md">Das reicht. Kev stuft es jetzt als <b>startklar</b> ein. Aktualisiere das Ticket, danach kannst du es freigeben.</div></div>` : ""}</div>
+    ${done ? "" : `<div class="composer-region"><div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px"><button class="secondary ok" data-act="refineAns" data-key="${t.key}" data-v="${esc(q.rec)}">Empfehlung übernehmen</button><button class="secondary" data-act="refineAns" data-key="${t.key}" data-v="${esc(q.alt)}">${q.alt}</button></div>
+      <div class="composer"><textarea id="refineOwn" placeholder="Oder eigene Antwort…"></textarea><div class="ctool"><span style="font-size:12px;color:#9d8889">Ticket schärfen · ${n}/${qs.length}</span><button class="send" data-act="refineOwn" data-key="${t.key}">↑</button></div></div></div>`}`;
 }
 
 function grill(t) {
@@ -766,6 +800,21 @@ $ flow ready SHOP-153
     <div class="arch"><div class="box"><h4>Clients</h4>Tauri · Browser · Handy · Terminal<br><span style="color:#9d8889">Login → Rolle PM/PO oder Dev, Rechte serverseitig</span></div>
       <div class="box c"><h4>📦 flow-server (Container)</h4>Projekte, Benutzer, Rollen · Poller + Kev je Projekt · Lanes, Review-Policy · Jira mit persönlichem Token · Reports aus Changelog</div>
       <div class="box"><h4>💻 Worker (Entwickler-Rechner)</h4>dpi-backend mit den Ticket-Agenten, Worktrees, git/glab, eigenes Claude-Abo · holt Aufträge vom Server<br><span style="color:#9d8889">später auch Server-Worker</span></div></div></div></div>`;
+}
+// Connect a worker: the same device kinds as the Durable Pi network (dpi-network.yaml): local, ssh, exe-dev, url.
+function newWorkerModal() {
+  const kind = S.wkind || "ssh";
+  const KINDS = [["local", "Dieser Rechner", "dpi-backend hier starten"], ["ssh", "Team-Rechner (SSH)", "installiert und startet den Worker per SSH"], ["exe-dev", "Server / VM", "VM anlegen oder nutzen, HTTPS-Proxy"], ["url", "Laufendes dpi-backend", "nur URL und Token eintragen"]];
+  const cmd = { local: "just worker up local", ssh: "just worker up mac-sara   # ssh sara@mac-sara.local", "exe-dev": "just worker up server-1  # exe.dev VM", url: "flow worker add https://agents.team.local:4780 --token …" }[kind];
+  return `<div class="shade" data-act="close"><div class="modal" data-stop><header><div><span class="eyebrow">Netzwerk</span><h2>Worker verbinden</h2></div><button class="icon-btn" data-act="close">✕</button></header>
+    <p class="phint" style="margin:0 0 10px">Ein Worker führt Ticket-Agenten aus: ein dpi-backend mit Worktrees, git/glab und dem Claude-Zugang seines Besitzers.</p>
+    <div class="mlist" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px">${KINDS.map(([id, n, d]) => `<button class="${kind === id ? "on" : ""}" data-act="wkind" data-v="${id}" style="border:1px solid #403536"><div><b>${n}</b><small>${d}</small></div></button>`).join("")}</div>
+    <div class="grid2"><label class="field"><span>Name</span><input id="wkName" value="${kind === "exe-dev" ? "server-1" : kind === "local" ? "MacBook Max" : "MacBook Sara"}"></label><label class="field"><span>Parallele Agents (Slots)</span><input value="${kind === "exe-dev" ? 6 : 2}"></label></div>
+    ${kind !== "local" ? `<label class="field"><span>${kind === "url" ? "URL" : "Host"}</span><input value="${kind === "url" ? "https://agents.team.local:4780" : kind === "ssh" ? "sara@mac-sara.local" : "server-1.exe.xyz"}"></label>` : ""}
+    <label class="field"><span>Projekte</span><select><option>Alle Projekte</option><option>Nur Webshop Relaunch</option></select></label>
+    <div class="slabel" style="margin-top:4px">Ausführen</div><pre class="card" style="margin:0 0 8px;font-size:12px;padding:8px 10px">${cmd}</pre>
+    <p class="phint" style="margin:0 0 10px">Claude: Auf dem Worker meldet sich sein Besitzer mit dem eigenen Abo an (<code>claude /login</code> oder <code>claude setup-token</code>). Der Flow-Server speichert keine Claude-Zugangsdaten.</p>
+    <button class="primary" data-act="wkCreate">Worker verbinden</button></div></div>`;
 }
 function newProjectModal() {
   return `<div class="shade" data-act="close"><div class="modal" data-stop><header><div><span class="eyebrow">Projekt</span><h2>Neues Projekt</h2></div><button class="icon-btn" data-act="close">✕</button></header>
@@ -851,12 +900,20 @@ document.addEventListener("click", (e) => {
     clients: () => overlay(clientsModal()),
     close: () => closeOverlay(),
     newProject: () => overlay(newProjectModal()),
+    newWorker: () => { S.wkind = "ssh"; overlay(newWorkerModal()); },
+    wkind: () => { S.wkind = v; closeOverlay(); overlay(newWorkerModal()); },
+    wkCreate: () => { const name = document.getElementById("wkName").value || "Neuer Worker"; const id = "w" + WORKERS.length; WORKERS.splice(WORKERS.length - 1, 0, { id, name, short: name.split(" ").map((x) => x[0]).join("").slice(0, 2).toUpperCase(), online: false, connecting: true, slots: 2, owner: name.split(" ").pop() });
+      closeOverlay(); S.treeMode = "net"; render(); toast(`${name}: verbinde …`);
+      setTimeout(() => { const w = WORKERS.find((x) => x.id === id); w.online = true; w.connecting = false; render(); toast(`${name} ist online – bereit für Agents`); }, 2500); },
+    refineAns: () => { S.refine[key].answers.push(v); render(); },
+    refineOwn: () => { const inp = document.getElementById("refineOwn"); const val = inp.value.trim(); if (val) { inp.value = ""; S.refine[key].answers.push(val); render(); } },
+    refineSave: () => { t.kev = "ready"; t.scoped = true; t.fresh = false; t.chipNew = true; render(); toast(`${key} in Jira aktualisiert – Kev: startklar`); },
     npCreate: () => { const kk = (document.getElementById("npKey").value || "CRM").toUpperCase(); if (PROJECTS.some((p) => p.key === kk)) { document.getElementById("npCheck").innerHTML = `<span style="color:var(--warn)">${kk} gibt es schon – <a href="#" data-act="project" data-v="${kk}">öffnen</a></span>`; return; }
       S.focus = true; PROJECTS.push({ key: kk, name: document.getElementById("npName").value || "CRM Integration", repo: "gitlab.example.com/crm/core", branch: "develop", schema: "feature/{key}", test: "", health: "ok", members: "Lena Weber · PO" });
       TICKETS.push(T(kk + "-1", "Erstes Ticket aus Jira", "Task", "Medium", "backlog", { lane: "ticket", tier: "SIMPLE", kev: "ready", rank: 0, found: "jetzt" })); closeOverlay(); S.project = kk; S.open[kk] = true; S.sel = null; render(); toast(`Projekt ${kk} angelegt – Poller läuft`); },
     release: () => { e.stopPropagation(); t.fresh = false; t.ready = !t.ready; t.flow = t.ready ? "ready" : "backlog"; render(); toast(t.ready ? `${key} für Agent freigegeben (Jira-Label gesetzt)` : `${key} zurück ins Backlog`); },
     prio: () => { e.stopPropagation(); t.prio = PRIOS[(PRIOS.indexOf(t.prio) + 1) % PRIOS.length]; render(); toast(`${key}: Priorität ${t.prio} (in Jira gespeichert)`); },
-    start: () => { t.worker = document.getElementById("startWorker")?.value || "max"; t.started = true; t.fresh = false; t.flow = t.lane === "feature" || t.kev === "vague" ? "grill" : "implement"; t.model = t.tier === "COMPLEX" ? "Opus 5.5" : "Sonnet 5.5"; t.tokens = 1200; t.cost = 0.01; S.ctab = "main"; render(); toast(`Agent für ${key} gestartet (${t.model})`); },
+    start: () => { t.worker = document.getElementById("startWorker")?.value || "max"; t.started = true; t.fresh = false; t.flow = (t.lane === "feature" && !t.scoped) || t.kev === "vague" ? "grill" : "implement"; t.model = t.tier === "COMPLEX" ? "Opus 5.5" : "Sonnet 5.5"; t.tokens = 1200; t.cost = 0.01; S.ctab = "main"; render(); toast(`Agent für ${key} gestartet (${t.model})`); },
     perm: () => { S.perm[S.sel] = v; render(); toast(`Permissions: ${v === "yolo" ? "YOLO" : v}`); },
     toggleSw: () => el.classList.toggle("on"),
     saved: () => toast("Gespeichert"),
