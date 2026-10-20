@@ -507,7 +507,6 @@ function topBar() {
       <span class="pill hide-m">Kev <b>kev (local)</b></span>
       ${isDev() ? `<span class="pill hide-m" title="MacBook Sara ist offline"><span class="dot live"></span>Worker <b>1 of 2</b></span>` : ""}
       <div class="seg hide-m" title="Demo: Rolle"><button class="${!isDev() ? "on" : ""}" data-act="role" data-v="pm">PM/PO</button><button class="${isDev() ? "on" : ""}" data-act="role" data-v="dev">Entwickler</button></div>
-      <div class="seg" title="Demo: Gerät"><button class="${S.device === "desktop" ? "on" : ""}" data-act="device" data-v="desktop">🖥</button><button class="${S.device === "mobile" ? "on" : ""}" data-act="device" data-v="mobile">📱</button></div>
       <button class="icon-btn hide-m" title="Zugriffswege & Architektur" data-act="clients">?</button>
       <button class="primary hide-m" data-act="newTicket">+ Ticket</button>
       <span class="avatar" title="${u.name} · ${u.title}">${u.short}</span>
@@ -860,20 +859,14 @@ function assistant() {
 // ======================================================================= modals
 function clientsModal() {
   const mini = `<div style="padding:8px"><b>Webshop Relaunch</b><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-top:6px;font-family:var(--mono)"><div class="card" style="padding:5px">2<br><small style="color:#a99596">dich</small></div><div class="card" style="padding:5px">5<br><small style="color:#a99596">Arbeit</small></div><div class="card" style="padding:5px">3<br><small style="color:#a99596">done</small></div></div></div>`;
-  return `<div class="shade" data-act="close"><div class="modal wide" data-stop><header><div><span class="eyebrow">Eine API · viele Clients</span><h2>Zugriffswege & Architektur</h2></div><button class="icon-btn" data-act="close">✕</button></header>
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px">
+  return `<div class="shade" data-act="close"><div class="modal wide" data-stop><header><div><span class="eyebrow">Eine API · Web und Tauri</span><h2>Zugriffswege & Architektur</h2></div><button class="icon-btn" data-act="close">✕</button></header>
+    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px">
       <div class="win"><div class="chrome"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i>Tauri-App</div>${mini}<p class="phint" style="padding:0 8px 8px">Mitteilungen, Dock-Badge, Menüleiste, startet optional den lokalen Worker.</p></div>
       <div class="win"><div class="chrome">🔒 flow.team.local</div>${mini}<p class="phint" style="padding:0 8px 8px">Web-UI im Browser, ohne Installation.</p></div>
-      <div class="win"><div class="chrome">📱 Handy</div>${mini}<p class="phint" style="padding:0 8px 8px">Dieselbe Web-UI, responsiv; später als PWA. (📱 oben probieren)</p></div>
-      <div class="win"><div class="chrome">⌨ flow-tui</div><div class="tui">$ flow status SHOP
- 63% ██████░░░░
- SHOP-151 Klärung 2/4
- SHOP-141 testen
- SHOP-149 implement ▸
-$ flow ready SHOP-153
- ✓ freigegeben</div></div></div>
+</div>
+    <p class="phint" style="margin-top:8px">Handy-App und Terminal-Client sind nicht im Pilot; die API ist offen für sie.</p>
     <h2 style="margin:16px 0 4px">Lokal wie auf einem Server (Pilot)</h2><p class="phint" style="margin-bottom:10px">Der Flow-Server läuft als Container (Podman/Docker Compose) auf deinem Mac und verhält sich wie später auf einer VM. Agenten laufen auf Entwickler-Rechnern mit dem eigenen Claude-Abo.</p>
-    <div class="arch"><div class="box"><h4>Clients</h4>Tauri · Browser · Handy · Terminal<br><span style="color:#9d8889">Login → Rolle PM/PO oder Dev, Rechte serverseitig</span></div>
+    <div class="arch"><div class="box"><h4>Clients</h4>Browser · Tauri-App<br><span style="color:#9d8889">Login → Rolle PM/PO oder Dev, Rechte serverseitig</span></div>
       <div class="box c"><h4>📦 flow-server (Container)</h4>Projekte, Benutzer, Rollen · Poller + Kev je Projekt · Lanes, Review-Policy · Jira mit persönlichem Token · Reports aus Changelog</div>
       <div class="box"><h4>💻 Worker (Entwickler-Rechner)</h4>dpi-backend mit den Ticket-Agenten, Worktrees, git/glab, eigenes Claude-Abo · holt Aufträge vom Server<br><span style="color:#9d8889">später auch Server-Worker</span></div></div></div></div>`;
 }

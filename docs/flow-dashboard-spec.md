@@ -14,10 +14,11 @@ Jira-Kommentar je Stage, Status-Übergänge, Freigabe vor dem Mergen als Standar
 ## 1. Ziel
 
 Eine Anwendung für Projektarbeit mit Agenten: Product Owner und Projektmanager steuern (priorisieren, freigeben,
-klären, testen, Fortschritt sehen), Entwickler steuern zusätzlich die Agenten. Mehrere Projekte. Erreichbar als
-Tauri-App, im Browser, auf dem Handy und im Terminal – eine API, viele Clients, wie bei Durable Pi.
+klären, testen, Fortschritt sehen), Entwickler steuern zusätzlich die Agenten. Mehrere Projekte. Erreichbar im
+Browser und als Tauri-App – eine API, offen für weitere Clients, wie bei Durable Pi.
 
-Nicht im Pilot: die Shop-/Incident-Demo (bleibt, wie sie ist), SSO, Server-Worker im Betrieb, Auto-Merge.
+Nicht im Pilot: Handy-App und Terminal-Client, die Shop-/Incident-Demo (bleibt, wie sie ist), SSO, Server-Worker im
+Betrieb, Auto-Merge.
 
 ## 2. Grundsätze
 
@@ -39,7 +40,7 @@ Nicht im Pilot: die Shop-/Incident-Demo (bleibt, wie sie ist), SSO, Server-Worke
 ## 3. Architektur
 
 ```
-Clients (Tauri · Browser · Handy · flow-tui) ── Login, Rolle, Realtime-Stream ──▶ Flow-Server (Team-Instanz, Container)
+Clients (Browser · Tauri) ── Login, Rolle, Realtime-Stream ──────────────────────▶ Flow-Server (Team-Instanz, Container)
                                                                                    ├─ DB: Projekte, Benutzer, Tickets/Flow-Zustand,
                                                                                    │      Läufe, Reviews, Freigaben, Leases
                                                                                    ├─ je Projekt: Jira-Poller, Kev, Dispatch,
@@ -54,8 +55,8 @@ Jira Cloud · GitLab · Kev (auf dem Host, siehe 9.6)
 
 - **Pilot lokal:** Flow-Server als Container (Podman oder Docker Compose) auf dem Mac, verhält sich wie auf einer VM.
   Worker und Kev laufen auf dem Host. Später zieht der Container unverändert auf einen Server.
-- **Clients:** Web-UI (responsiv, später PWA), Tauri-App (Mitteilungen, Dock-Badge, Menüleiste, optional lokalen
-  Worker starten – wie `apps/dpi-desktop`), Terminal-Client analog `dpi-tui`.
+- **Clients:** Web-UI und Tauri-App (Mitteilungen, Dock-Badge, Menüleiste, optional lokalen Worker starten – wie
+  `apps/dpi-desktop`). Handy und Terminal sind später möglich, weil alles über dieselbe API läuft.
 - **Login:** Einladungs-Accounts im Pilot, SSO (GitLab-OAuth) später.
 - **Sprache:** Deutsch und Englisch, je Benutzer umschaltbar; alle Texte aus einem Katalog. Das Mockup ist deutsch.
 
@@ -97,7 +98,7 @@ Agenten: Session · State · Tasks · Tools · Extend. Ohne Fokus: Projektübers
 je nach Lage: Klärung, Ticket schärfen, Testen, Verlauf und Aktionen; für Entwickler die Tabs Ticket · Main ·
 Review #n. Ohne Auswahl: Flow Desk. „+ Ticket“ öffnet hier den Ticket-Assistenten.
 
-**Handy:** eine Spalte, Tab-Leiste unten (Projekte · Feed · Ticket).
+**Handy:** nicht im Pilot.
 
 ## 6. Regeln
 
@@ -412,7 +413,7 @@ Der Container läuft unverändert auf einer VM, sobald diese Bedingungen erfüll
 | Daten | SQLite (WAL) auf einem Volume reicht für das Pilot-Team; laufendes Backup (z. B. Litestream oder nächtlicher Snapshot); Postgres erst bei mehreren Server-Instanzen |
 | Speicher | Die replizierten Transkripte wachsen mit (Tool-Ausgaben); Aufbewahrung je Projekt einstellbar, Default 90 Tage nach Erledigt |
 | Geheimnisse | Jira- und GitLab-Tokens verschlüsselt mit einem Server-Schlüssel aus der Umgebung; nie in Logs |
-| Anmeldung | Web: Session-Cookie; Tauri und Terminal: persönliche API-Tokens, im OS-Schlüsselbund; Worker: einmaliger Join-Token → widerrufbarer Worker-Schlüssel |
+| Anmeldung | Web: Session-Cookie; Tauri: persönlicher API-Token im OS-Schlüsselbund; Worker: einmaliger Join-Token → widerrufbarer Worker-Schlüssel |
 | Updates | versioniertes Container-Image, DB-Migrationen beim Start, Worker melden ihre Version, der Server lehnt inkompatible ab |
 | Betrieb | Health-Endpunkt, strukturierte Logs, Metriken (Poll-Dauer, Warteschlange, Fehler je Integration) |
 | **Datenschutz** | **Transkripte enthalten Kundencode und Ticket-Inhalte.** Der Server muss dort stehen, wo Kundencode liegen darf (Verträge/NDA, DSGVO) – in der Regel diva-e-Infrastruktur in der EU. Vor dem ersten externen Hosting klären. |
@@ -486,5 +487,5 @@ erreichbar sind.
 **Technisches Design und Plan:** `docs/flow-dashboard-design.md` (Datenmodell, Client-API, Worker-Protokoll,
 Replikation, Tests, Spikes) und `docs/flow-dashboard-plan.md` (Phasen mit Abnahmekriterien).
 
-**Später:** Funktionsumfang auf dem Handy und PWA · SSO · Server-Worker im Betrieb · Anbindung der
+**Später:** Handy-App bzw. PWA, Terminal-Client · SSO · Server-Worker im Betrieb · Anbindung der
 Shop-/Incident-Demo · Auto-Merge im Dashboard (Freigabe-Karte), solange es aus ist, nicht sichtbar.

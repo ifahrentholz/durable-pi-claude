@@ -3,19 +3,39 @@
 Grundlage: `docs/flow-dashboard-spec.md` (was), `docs/flow-dashboard-design.md` (wie). Gearbeitet wird auf
 `pilot/flow-dashboard`; nichts geht nach `main`.
 
+**Clients im Pilot:** Web-UI und Tauri-App. Handy und Terminal-Client sind nicht im Pilot.
+
 **Arbeitsweise:** Jede Phase endet mit einer Abnahme gegen die Kriterien unten, vorgeführt am echten System
 (lokaler Container, ein Worker auf deinem Mac, ein echtes Jira-Testprojekt). Innerhalb einer Phase kleine Commits
-mit Tests; jede Phase hat einen Stand, der läuft. Größen sind grobe Schätzungen in Arbeitstagen für eine Person mit
-Agent-Unterstützung und dienen der Reihenfolge, nicht als Zusage.
+mit Tests; jede Phase hat einen Stand, der läuft. **Größen** sind Arbeitstage, in denen der Agent baut und testet –
+ohne die Zeit für deine Abnahme. Sie setzen auf das, was es schon gibt (nächster Abschnitt).
+
+## Was es schon gibt
+
+Rund 24.000 Zeilen tragen das Dashboard bereits; neu ist vor allem der Mehrbenutzer-Server mit dem Worker-Protokoll.
+
+| Baustein | vorhanden in | Anteil fertig |
+|---|---|---|
+| Durable Ausführung, Tasks, Dokumente, Kompaktierung | pi-durable | vollständig |
+| Sessions, v1-API, Streams, Freigaben Ask/Auto/YOLO, Kev-Urteil, Claude-Code- und Faux-Provider | `dpi-backend` (5.3k Zeilen) | vollständig – wird zum Worker |
+| Entwickler-Werkzeuge: Inspector (Session/State/Tasks/Tools/Extend), Freigabe-Karte, Context-Leiste mit Kompaktierung, Modell-Wähler, Composer, Transkript, Netzwerk-Baum | `dpi-playground-fe` (8.9k), `dpi-sdk` (2.9k) | weitgehend – Komponenten übernehmen, an die Server-API hängen |
+| Poller, Kev-Einordnung, Lanes, Klärung, Review mit Risiko-Policy, Nacharbeit, MR, Worktrees, Shell-Guard | `jira-flow-be` (3.0k) | weitgehend – wird auf Server und Worker aufgeteilt |
+| Feed, Ticket-Karte mit Stepper, Agent-Chat im Flow-Design | `jira-flow-fe` (2.8k) | Grundlage für Feed und rechte Spalte |
+| Tauri-App: Fenster, Menüleiste, Mitteilungen, Dock-Badge, Stack starten | `dpi-desktop` (0.8k) | Grundlage für den Client |
+| Layout, Abläufe, Farb- und Zählerlogik | das Mockup | als Vorlage für `flow-web` |
+
+**Wirklich neu:** Mehrbenutzer-Server (Login, Rollen, mehrere Projekte, DB), das Pull-Protokoll mit Lease, Epoche und
+Replikation, Jira-Schreibzugriffe per REST (Rang, Transitions, ADF, Zuweisung), MR-/Pipeline-Watcher, Reports, die
+PM-Abläufe in der neuen Oberfläche (Schärfen, Testen, Erledigt), Flow Desk.
 
 ---
 
-## Phase 0 – Fundament (≈ 8–12 Tage)
+## Phase 0 – Fundament (≈ 3–4 Tage)
 
 Ziel: Ein Ticket geht ohne Oberfläche, nur über die API, von „freigegeben“ bis zum MR – mit Server im Container,
 Agent auf dem Worker, Replikation und den Garantien aus Spec 9.3.
 
-1. **Spikes S1–S6** (Design 10). Ergebnis als kurze Notiz je Spike; scheitert einer, wird das Design angepasst, bevor
+1. **Spikes S1–S6** (Design 10), zusammen etwa ein Tag. Ergebnis als kurze Notiz je Spike; scheitert einer, wird das Design angepasst, bevor
    gebaut wird. S1 (Replikation) zuerst – davon hängt am meisten ab.
 2. **Repo-Gerüst:** `flow-core`, `flow-server`, `flow-worker`, `deploy/flow` (Containerfile, compose mit Volume),
    `just flow …`.
@@ -41,7 +61,7 @@ Agent auf dem Worker, Replikation und den Garantien aus Spec 9.3.
   (`409 fenced`).
 - Server-Neustart verliert nichts (Läufe, Outbox, Replik).
 
-## Phase 1 – Oberfläche für Entwickler und Grundgerüst (≈ 10–14 Tage)
+## Phase 1 – Oberfläche für Entwickler und Grundgerüst (≈ 3–4 Tage)
 
 Ziel: Das Dashboard aus dem Mockup läuft gegen den echten Server; ein Entwickler steuert damit Tickets und Agenten.
 
@@ -62,7 +82,7 @@ Ziel: Das Dashboard aus dem Mockup läuft gegen den echten Server; ein Entwickle
   sichtbar, aber nicht entscheidbar; Permission-Modus ist für PMs gesperrt (auch per API: 403).
 - Umschalten auf Englisch übersetzt die gesamte Oberfläche.
 
-## Phase 2 – Abläufe für PM/PO (≈ 10–14 Tage)
+## Phase 2 – Abläufe für PM/PO (≈ 3–4 Tage)
 
 Ziel: Der vollständige Ticket-Lebenszyklus aus Spec 7, bedienbar für PMs (in Phase 1 durch Entwickler in PO-Rolle).
 
@@ -83,7 +103,7 @@ Ziel: Der vollständige Ticket-Lebenszyklus aus Spec 7, bedienbar für PMs (in P
 - Flow Desk beantwortet die Beispielfragen aus Spec 7.6 korrekt und führt Vorschläge nur nach Klick aus.
 - Reports stimmen mit einer Stichprobe aus Jira überein.
 
-## Phase 3 – Automatik und Robustheit (≈ 6–9 Tage)
+## Phase 3 – Automatik und Robustheit (≈ 2 Tage)
 
 - Automatischer Dispatch je Projekt und Worker, Reihenfolge Priorität/Rang/Alter, Slots, **WIP-Limit**.
 - Abo-Limits erkennen, „limitiert bis“, Dispatch überspringt.
@@ -97,18 +117,15 @@ Ziel: Der vollständige Ticket-Lebenszyklus aus Spec 7, bedienbar für PMs (in P
 - Label entfernen, Ticket schließen, Beschreibung ändern, Zuweisung ändern: jeweils die Reaktion aus Spec 9.5.
 - Wiederherstellen aus dem Backup auf einem frischen Container.
 
-## Phase 4 – Clients (≈ 6–10 Tage)
+## Phase 4 – Tauri-App (≈ 1–2 Tage)
 
-- **Tauri-App** als dünner Client: Server-Adresse und Anmeldung, Token im Schlüsselbund, native Mitteilungen
-  (Klick öffnet das Ticket), Dock-Badge, Menüleiste, Deep-Links, optional lokaler Worker (Entwickler).
-- Handy: responsive Feinschliff, PWA-Manifest.
-- `flow-tui`: Status, „Braucht dich“, freigeben, testen, erledigen.
+- Dünner Client auf Basis von `dpi-desktop`: Server-Adresse und Anmeldung, Token im Schlüsselbund, native
+  Mitteilungen (Klick öffnet das Ticket), Dock-Badge mit „Braucht dich“, Menüleiste, Deep-Links, optional lokaler
+  Worker (Entwickler).
 
 **Abnahme**
 - Die App verbindet sich mit dem Container-Server, zeigt Mitteilungen und den Badge, öffnet Tickets per Deep-Link,
   startet und stoppt den lokalen Worker.
-- Die wichtigsten PM-Abläufe gehen auf dem Handy.
-- Das Terminal zeigt Status und erledigt ein Ticket.
 
 ## Phase 5 – Team-Start (nach den vertagten Entscheidungen)
 
@@ -124,6 +141,9 @@ und Notarisierung, Entscheidung zu den Claude-Zugängen echter POs (Spec 9.1), o
 S1–S6 ─▶ Phase 0 ─▶ Phase 1 ─▶ Phase 2 ─▶ Phase 3 ─▶ Phase 4
                                   └─ Phase 4 (Tauri) kann ab Phase 1 parallel beginnen
 Phase 5 wartet auf die Entscheidungen aus Spec 15
+
+Summe Phase 0–4: etwa 12–16 Arbeitstage. Dazu kommen deine Abnahmen nach jeder Phase und die Korrekturrunden, die
+sich daraus ergeben – erfahrungsgemäß der größere Teil der Kalenderzeit.
 ```
 
 ## Risiken für den Plan

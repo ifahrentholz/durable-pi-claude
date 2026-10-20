@@ -15,10 +15,9 @@ Vue 3 + Vite, pi-durable, Tauri 2.
 |---|---|---|
 | `apps/flow-core` | Gemeinsame Typen und reine Logik: Konfig-Schema (zod, versioniert), Lanes und Pläne, Review-Policy, Shell-Guard, „Braucht dich“-Regeln, Farb-/Statuslogik, Protokoll-Typen Server↔Worker und Server↔Client | `jira-flow-be`: `lanes.ts`, `review-policy.ts`, `shell-guard.ts`, `types.ts` |
 | `apps/flow-server` | Team-Instanz: DB, Auth, Projekte, Jira-Poller, Kev-Client, Dispatch, MR-/Pipeline-Watcher, Outbox für Jira/GitLab, Worker-API, Client-API, Realtime, Replikat-Speicher, Reports, liefert `flow-web` aus | neu; Jira-/Klassifikations-Teile aus `jira-flow-be` (`poller`, `classify`, `judge`, `mapping`) |
-| `apps/flow-web` | Die Oberfläche (eine für Browser, Handy, Tauri) | aus dem Mockup, Komponenten nach Vorbild `jira-flow-fe` und `dpi-playground-fe` |
+| `apps/flow-web` | Die Oberfläche (eine für Browser und Tauri) | aus dem Mockup; Entwickler-Komponenten aus `dpi-playground-fe` übernommen (Inspector, ApprovalCard, ContextBar, ModelPicker, Composer, TranscriptItem), Feed und Ticket-Karte nach `jira-flow-fe` |
 | `apps/flow-worker` | Läuft **im** `dpi-backend` (geladen, wenn `FLOW_SERVER_URL` gesetzt ist): Verbindung zum Server, Aufträge, Leases, Ticket-Agent- und Reviewer-Extensions, Assistenten-Extensions, replizierender Speicher, Worktrees | `jira-flow-be`: `extensions.ts`, `repo.ts`, `ops.ts` (Ablauf), `cli.ts` |
 | `apps/flow-desktop` | Tauri-Client (Phase 4) | nach Vorbild `apps/dpi-desktop` |
-| `apps/flow-tui` | Terminal-Client (Phase 4) | nach Vorbild `apps/dpi-tui` |
 | `deploy/flow/` | `Containerfile`, `compose.yaml`, später `Caddyfile` | neu |
 | `just/flow/` | `just flow up | down | logs | worker | migrate | test` | neu |
 
@@ -39,7 +38,7 @@ ms, IDs als ULID (sortierbar) außer Jira-Keys.
 |---|---|
 | `users` | id, email, name, role (`pm`/`dev`), language, notifications (JSON), jira_account_id |
 | `auth_sessions` | id, user_id, expires_at (Web-Cookie) |
-| `api_tokens` | id, user_id, name, hash, last_used_at (Tauri, Terminal) |
+| `api_tokens` | id, user_id, name, hash, last_used_at (Tauri-App) |
 | `invites` | token_hash, email, role, expires_at |
 | `projects` | key (PK), name, config (JSON, `schemaVersion`), created_by, archived_at |
 | `project_members` | project_key, user_id, role |
@@ -68,7 +67,7 @@ ms, IDs als ULID (sortierbar) außer Jira-Keys.
 ## 3. Client-API (`/api/v1`)
 
 REST mit JSON, Fehlerform wie dpi-backend (`{error:{code,message}}`), Idempotenz-Header für alle anlegenden und
-startenden Aufrufe. Auth: Cookie (Web) oder `Authorization: Bearer <api-token>`.
+startenden Aufrufe. Auth: Cookie (Web) oder `Authorization: Bearer <api-token>` (Tauri).
 
 **Realtime:** `GET /api/v1/stream?topics=…` (SSE), Muster `hello → snapshot → deltas` wie dpi-backend. Topics:
 `projects`, `project:<key>` (Tickets, Läufe, Zähler), `run:<id>` (Transkript-Einträge, Live-Generierung, Tasks,
