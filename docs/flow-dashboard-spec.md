@@ -21,29 +21,33 @@ Nicht im Pilot: die Shop-/Incident-Demo (bleibt, wie sie ist), SSO, Server-Worke
 ## 2. Grundsätze
 
 1. **Jira ist die Quelle der Wahrheit** für Tickets, Priorität, Rangfolge, Labels, Status und Historie. Was ein
-   Mensch im Dashboard am Ticket ändert, geht direkt nach Jira. Der Flow speichert nur Agent- und Flow-Zustand.
-2. **Jira bekommt genau einen Kommentar pro Ticket:** beim Öffnen des MR, ein Satz zum Fix plus Link. Risiken stehen
-   im MR. Ticket-Beschreibung und Akzeptanzkriterien ändert nur ein Mensch ausdrücklich („Ticket schärfen“).
-3. **Rechte prüft der Server**, nicht die UI. Ein PM kann auch über API oder Terminal keine Agenten steuern.
-4. **Ein Ticket bleibt auf seinem Worker**: dort liegen Session und Worktree.
+   Mensch im Dashboard am Ticket ändert, geht direkt nach Jira. Der Flow-Server hält den Flow-Zustand (Stage,
+   Zuweisung, Reviews, Freigaben), die Worker halten den Ausführungszustand ihrer Agenten.
+2. **Jira-Kommentare nur an zwei Stellen:** beim Öffnen eines MR (ein Satz zum Fix plus Link) und beim manuellen
+   Erledigen (wer es erledigt hat). Risiken stehen im MR. Beschreibung und Akzeptanzkriterien ändert nur ein Mensch
+   ausdrücklich („Ticket schärfen“). Status-Übergänge sind keine Kommentare (siehe 9.4).
+3. **Rechte prüft der Server**, nicht die UI.
+4. **Ein Ticket hat höchstens einen aktiven Agenten-Lauf**, und er bleibt auf seinem Worker (siehe 9.3).
 5. **Claude-Zugangsdaten verlassen den Worker nicht.** Jeder Worker läuft mit dem Abo seines Besitzers; der
-   Flow-Server speichert keine Claude-Credentials (Nutzungsbedingungen: gewöhnliche, individuelle Nutzung, keine
-   Weiterleitung fremder Anfragen über Pro/Max).
-6. **Eine Farbsprache**, überall gleich (siehe 6.2).
+   Flow-Server speichert keine Claude-Credentials.
+6. **Jira- und GitLab-Zugriffe sind getrennt:** Jira spricht nur der Flow-Server (Token je Projekt), git und GitLab
+   nur der Worker (mit `git`/`glab` seines Besitzers).
+7. **Eine Farbsprache**, überall gleich (siehe 6.2).
 
 ## 3. Architektur
 
 ```
-Clients (Tauri · Browser · Handy · flow-tui) ── Login, Rolle ──▶ Flow-Server (Team-Instanz)
-                                                                  ├─ Projekte, Benutzer, Rollen, Jira-Tokens
-                                                                  ├─ je Projekt: Poller, Kev-Einordnung, Lanes, Dispatch
-                                                                  ├─ Review-Policy, Reports (aus Jira-Changelog)
-                                                                  └─ Realtime-Stream an die Clients
-                                                                        │ v1-API (wie der Hub)
-                                                                        ▼
-                                                    Worker = dpi-backend auf Entwickler-Rechnern (später Server)
-                                                      Ticket-Agenten, Reviewer, Worktrees, git/glab, Claude-Abo
-Jira Cloud (diva-e.atlassian.net) · GitLab · Kev (Host, siehe 8.B5)
+Clients (Tauri · Browser · Handy · flow-tui) ── Login, Rolle, Realtime-Stream ──▶ Flow-Server (Team-Instanz, Container)
+                                                                                   ├─ DB: Projekte, Benutzer, Tickets/Flow-Zustand,
+                                                                                   │      Läufe, Reviews, Freigaben, Leases
+                                                                                   ├─ je Projekt: Jira-Poller, Kev, Dispatch,
+                                                                                   │      MR-/Pipeline-Watcher, Reports
+                                                                                   └─ Worker-API (nur ausgehend vom Worker)
+                                                                                         ▲ holt Aufträge, meldet Status
+                                                                   Worker = dpi-backend + Flow-Agent (Entwickler-Rechner, später Server)
+                                                                   Ticket-Agenten, Reviewer, Worktrees, git/glab, Claude-Abo, lokale
+                                                                   pi-durable-DB (Transkripte, durable Tasks)
+Jira Cloud · GitLab · Kev (auf dem Host, siehe 9.6)
 ```
 
 - **Pilot lokal:** Flow-Server als Container (Podman oder Docker Compose) auf dem Mac, verhält sich wie auf einer VM.
@@ -51,22 +55,23 @@ Jira Cloud (diva-e.atlassian.net) · GitLab · Kev (Host, siehe 8.B5)
 - **Clients:** Web-UI (responsiv, später PWA), Tauri-App (Mitteilungen, Dock-Badge, Menüleiste, optional lokalen
   Worker starten – wie `apps/dpi-desktop`), Terminal-Client analog `dpi-tui`.
 - **Login:** Einladungs-Accounts im Pilot, SSO (GitLab-OAuth) später.
-- **Jira:** persönlicher API-Token je Benutzer für alles, was ein Mensch auslöst.
+- **Sprache:** Deutsch und Englisch, je Benutzer umschaltbar; alle Texte aus einem Katalog. Das Mockup ist deutsch.
 
 ## 4. Rollen
 
+Phase 1: **jeder darf alles in Projekten** (anlegen, Mitglieder, Einstellungen, Lane ändern, freigeben, erledigen).
+Die Unterscheidung PM/PO ↔ Entwickler bleibt für die Agenten:
+
 | | PM / PO | Entwickler |
 |---|---|---|
-| Projekte sehen, anlegen (ein Jira-Projekt nur einmal) | ✓ | ✓ |
-| Priorität, Rangfolge, Freigabe, Tickets anlegen und schärfen | ✓ | ✓ |
-| Klärung (Grill) beantworten, Scope bestätigen | ✓ | (sieht sie) |
-| Testen, Findings melden | ✓ | ✓ |
-| Reports | ✓ | ✓ |
-| Agenten: Chat, Start, Modell, Permissions, Session/State/Tasks/Tools/Extend | – | ✓ |
-| Repo, Tests, Agent-Einstellungen eines Projekts ändern | – | ✓ |
+| Projekte, Einstellungen, Mitglieder, Priorität, Rangfolge, Freigabe, Lane, Tickets anlegen und schärfen | ✓ | ✓ |
+| Klärung beantworten, Testen, Findings, als erledigt markieren, Reports, Kosten | ✓ | ✓ |
+| Agent-Chat, Start, Modell, Session/State/Tasks/Tools/Extend, Tool-Freigaben | – | ✓ |
+| **Permission-Modus ändern** (Ask/Auto/YOLO) | – | ✓ |
 | Worker verbinden | – | ✓ |
 
-Worker sieht ein PM nur als Hinweis „pausiert – Rechner offline“.
+Die Rolle ist im Pilot eine Eigenschaft des Benutzers (nicht je Projekt). In Phase 1 übernehmen Entwickler die
+PO-Rolle zum Testen.
 
 ## 5. Aufbau der Oberfläche
 
@@ -98,10 +103,13 @@ Review #n. Ohne Auswahl: Flow Desk. „+ Ticket“ öffnet hier den Ticket-Assis
 
 | Rolle | zählt |
 |---|---|
-| PM/PO | neue, noch nicht angesehene oder freigegebene Tickets · Klärungen · Bereit zum Testen |
-| Entwickler | neue Tickets · Bereit zum Testen · MR wartet auf Code-Review · Hilfe nötig (blockiert) · pausiert |
+| PM/PO | neue Tickets (siehe unten) · Klärungen · Bereit zum Testen |
+| Entwickler | neue Tickets · Bereit zum Testen · MR wartet auf Code-Review · Tool-Freigabe · Hilfe nötig · Pipeline rot · pausiert |
 
 „▸n“ daneben: aktiv arbeitende Agenten. Keine Projekt-Tags.
+
+**Neu:** ein Ticket, das der Poller gefunden hat und das *du* noch nicht geöffnet oder freigegeben hast (NEU-Marke im
+Feed). Der Gelesen-Zustand gilt je Benutzer, wie bei E-Mail.
 
 ### 6.2 Farben (Punkte, Status, Karten)
 
@@ -118,12 +126,13 @@ Ein Projektpunkt zeigt den dringendsten Zustand seiner Tickets: Rot > Gelb > Ros
 ### 6.3 Lanes (wie Jira Flow auf `main`)
 
 question → beantwortet · quick → implement → review → MR · ticket → implement → review → MR · feature → Klärung →
-implement → review → MR. Nach dem MR im Dashboard zusätzlich: Testen → Erledigt (siehe 8.B4).
+implement → review → MR. Nach dem MR: Gemerged · Pipeline → Testen → Erledigt (siehe 7.6).
 
 ## 7. Funktionen
 
 ### 7.1 Projekte
-- Anlegen: Jira-Projekt-Key (Duplikatprüfung), Name, GitLab-Repo, Ziel-Branch, Branch-Schema, Mitglieder.
+- Anlegen: Jira-Projekt-Key (Duplikatprüfung), Name, Jira-Token, GitLab-Repo, Ziel-Branch, Branch-Schema,
+  Start der Agenten (manuell | automatisch), Mitglieder.
 - Einstellungen: Name, Label für „freigegeben“, Mitglieder und Rollen; nur Entwickler: Repo, Branch, Schema,
   Test-Befehl, Standard-Permissions, Reviewer-Modell und Review-Versuche.
 - Projektübersicht: Offen, In Arbeit, Braucht dich, Erledigt, Fortschritt, Projektpunkt.
@@ -133,12 +142,17 @@ implement → review → MR. Nach dem MR im Dashboard zusätzlich: Testen → Er
 - Angeheftet: alle gestarteten, nicht erledigten Tickets mit Status.
 - Tabelle: gefunden um · Priorität (Klick ändert sie in Jira) · Ticket (NEU-Marke) · Kev/Status · Freigabe-Schalter
   (setzt das Jira-Label). Ziehen ändert die Rangfolge in Jira.
+- **Filter** (Feed und Board): Suche nach Key oder Titel · Gruppe (Offen, Braucht dich, Neu, In Arbeit, Testen,
+  Erledigt, Alle, jeweils mit Anzahl) · Lane · Priorität; „x / y“ zeigt, wie viele der Filter übrig lässt.
 - Polling: neue Tickets gleiten ein, der Kev-Chip pulsiert, bis Kev entschieden hat.
+- Lane ist vor dem Start in der Ticket-Karte änderbar (jeder).
 
 ### 7.3 Ticket schärfen (vor dem Start)
 Für Tickets, die Kev als zu vage einstuft. Ein Assistent **ohne Code-Zugriff** fragt nach (eine Frage, Empfehlung,
 Alternative, freie Antwort), Kev bewertet live neu. „In Jira aktualisieren“ schreibt Beschreibung und
-Akzeptanzkriterien (Bearbeiten, kein Kommentar). Ein so geschärftes Feature startet ohne zweite Klärung.
+Akzeptanzkriterien (Bearbeiten, kein Kommentar). Bleibt Kev bei „zu vage“, wird weiter geschärft. Ein so
+geschärftes Feature startet ohne zweite Klärung. Der aufklappbare Jira-Inhalt zeigt die neuen Kriterien als
+„+ neu“, bevor sie gespeichert werden.
 
 ### 7.4 Klärung (Grill im Agenten)
 Für Features und vage Tickets, die ungeschärft gestartet wurden. Der Agent fragt den PO in der Session, eine Frage
@@ -148,91 +162,211 @@ nach der anderen mit Empfehlung; „Scope bestätigen“ beendet die Klärung (`
 Beschreibung in eigenen Worten → Rückfragen → Entwurf mit Akzeptanzkriterien und Kev-Bewertung → „In Jira anlegen“,
 optional gleich freigeben.
 
-### 7.6 Testen und Findings
-Ticket gemerged und auf der Dev-Stage: „Funktioniert“ setzt es in Jira auf Done. „Finding melden“ (Schritte,
-erwartet, tatsächlich, Screenshot) gibt es an den bisherigen Agenten (sonst einen neuen); er arbeitet nach und
-öffnet einen neuen MR.
+### 7.6 Nach dem MR: Pipeline, Testen, Erledigt
+- **Watcher:** Der Flow-Server beobachtet den MR (Polling; Webhook, sobald der Server für GitLab erreichbar ist).
+  Ist er gemerged, wartet der Ticket-Status auf die Pipeline des Merge-Commits auf dem Ziel-Branch
+  („Gemerged · Pipeline läuft“). Ist sie grün, geht das Ticket auf **Testen**; ist sie rot, auf **Pipeline rot**
+  (Entwickler braucht es). Welche Pipeline bzw. welcher Job zählt (z. B. `deploy:dev`), ist je Repo einstellbar.
+- **Erledigt nur manuell:** In „Testen“ prüft ein Mensch das Feature und markiert es als erledigt. Das setzt das
+  Jira-Ticket auf Done und schreibt einen Kommentar „Als erledigt markiert von <Name> (Flow Dashboard)“.
+- **Finding melden** (Schritte, erwartet, tatsächlich, Screenshot): an den bisherigen Agenten, sonst einen neuen; er
+  arbeitet auf einem neuen Branch vom Ziel-Branch (`<Branch-Schema>-fix-<n>`, z. B. `feature/SHOP-138-fix-1`), der
+  Screenshot geht als Bild an den Agenten, der neue MR verweist auf das Finding. Das Ticket bleibt bis zum nächsten
+  Testen in „Nacharbeit“.
 
-### 7.7 Reports (Kanban)
+### 7.7 Kosten
+Überall als **API-Äquivalent** (was es über die API kosten würde; das Abo selbst kostet nichts zusätzlich), für alle
+sichtbar: je Ticket auf der Karte (Main, Review, Tokens), auf den angehefteten Tickets im Feed, je Projekt in der
+Projektübersicht und in den Reports (Summe, Ø pro erledigtem Ticket, diese Woche, Anteil Reviews, Ø je Lane,
+Modell-Anteile). Quelle: die Usage-Daten der Agenten, gemeldet von den Workern.
+
+### 7.8 Reports (Kanban)
 Fortschritt, Durchsatz je Woche, Durchlaufzeit (Median), Anteil der Agenten, Cumulative Flow, Burnup – berechnet aus
 der Jira-Historie über die offizielle REST-API (die Chart-Endpunkte `greenhopper/rapid/charts` sind intern und nicht
 unterstützt).
 
-### 7.8 Agent-Werkzeuge (Entwickler)
+### 7.9 Agent-Werkzeuge (Entwickler)
 - Chat mit Main (Follow-up/Steer, Interrupt), Review #n nur lesend; Ticket-Brief, Thinking, Tool-Karten live.
 - Modell-Wähler am Chat-Chip und im Session-Tab: Kev-Empfehlung, kein Modell unter Sonnet für Code-Agenten,
   Reviewer fest auf Opus; gilt ab dem nächsten Schritt.
 - Session: Modell, Thinking, Permissions Ask/Auto/YOLO, Auto-Compaction-Schwelle, Stats.
 - State (App State des Tickets), Tasks (durable Tasks, abbrechen), Tools (an/aus, Read-only), Extend (Extensions).
 - Start mit Worker-Wahl (offline Worker gesperrt).
+- **Tool-Freigaben:** Im Modus Ask oder Auto hält ein Tool-Aufruf an, bis ein Entwickler entscheidet: Karte im
+  Agent-Chat mit Befehl und Begründung (bei Auto die von Kev), „Erlauben“, „Immer erlauben“ (Regel für diese Session)
+  und „Ablehnen“ (der Agent bekommt die Ablehnung und macht anders weiter). Das Ticket zählt bei Entwicklern unter
+  „Braucht dich“, PMs sehen „Wartet auf Entwickler“. YOLO hebt weder den Flow-Guard noch den Read-only-Schutz des
+  Reviewers auf.
+- **Flow-Tools sind fest:** `update_ticket`, `confirm_scope`, `answer_question`, `submit_fix`, `request_review`,
+  `open_mr` sind im Tools-Tab gesperrt (immer an, nicht abschaltbar), sonst bricht der Ablauf. Abschaltbar sind die
+  Coding-Tools und Extensions.
 
-### 7.9 Worker
+### 7.10 Worker
 Verbinden wie im Durable-Pi-Netz: dieser Rechner · Team-Rechner (SSH) · Server/VM · laufendes dpi-backend (URL);
-Slots, Projekte, Befehl. Offline-Worker pausiert seine Tickets. Kein Umzug laufender Tickets im Pilot.
+Slots, Projekte, automatischer Dispatch ja/nein, Befehl. Offline-Worker pausiert seine Tickets. Kein Umzug
+laufender Tickets im Pilot.
 
 ---
 
-## 8. Offene Punkte
+## 8. Konfiguration
 
-### Muss vor dem Bau entschieden werden
+Gespeichert in der Server-DB, versioniert (`schemaVersion`), als YAML/JSON export- und importierbar. Unbekannte
+Felder bleiben erhalten, neue Felder haben Defaults – so wächst das Schema, ohne alte Projekte zu brechen. Die heutige
+`jira-flow.config.json` wird beim ersten Start in ein Projekt übernommen.
 
-**B1 · Mit wessen Claude-Zugang laufen die PM-Funktionen?** Ticket-Assistent, Ticket schärfen, Flow Desk und die
-Klärung mit dem PO sind Modell-Aufrufe für einen PM. Über das Abo eines Entwicklers wäre das nicht seine eigene,
-individuelle Nutzung; der Flow-Server darf keine Abo-Zugangsdaten halten.
-*Optionen:* Firmenzugang (API-Key/Bedrock, kommerzielle Bedingungen) nur für diese Funktionen · Team-Plan-Plätze für
-POs, Funktionen laufen auf einem Worker des PO · im Pilot nur du als Nutzer, Entscheidung vor dem Teamstart.
+```yaml
+# Projekt
+schemaVersion: 1
+key: SHOP                              # Jira-Projekt-Key, eindeutig
+name: Webshop Relaunch
+jira:
+  site: diva-e.atlassian.net
+  project: SHOP
+  credential: { kind: personal, user: max@… }   # später: { kind: service-account, ref: … }
+  readyLabel: ready-for-agent
+  jql: null                            # optionaler Zusatzfilter, z. B. component = Checkout
+  board: 123                           # Kanban-Board: Spalten, Rangfolge
+  statusMap:                           # Flow-Stage → Jira-Status; "auto" = über statusCategory erkannt
+    started: auto                      # In Progress
+    mrOpen: auto                       # In Review, falls vorhanden
+    testing: auto                      # QA/Test, falls vorhanden
+    done: auto                         # Done
+repos:
+  - id: storefront
+    gitlab: { host: gitlab.example.com, path: shop/storefront }
+    defaultBranch: develop
+    branchTemplate: feature/{key}
+    testCommand: npm run test
+    pipeline: { waitFor: merge-commit, jobs: [] }   # leer = ganze Pipeline; sonst z. B. [deploy:dev]
+routing: { repoLabelPrefix: "repo:" }  # Ticket-Label repo:<id> wählt ein anderes Repo
+dispatch:
+  mode: manual                         # manual | auto
+  order: [priority, rank, created]     # Priorität, bei Gleichstand Jira-Rangfolge, dann Alter
+agents:
+  models: { simple: sonnet-5-5, moderate: sonnet-5-5, complex: opus-5-5, floor: sonnet-5-5 }
+  thinking: high
+  permissionMode: auto                 # Default neuer Agenten; ändern nur Entwickler
+  compaction: { autoAt: 200000, reserve: 50000 }
+  extensions: [coding-tools, ticket-agent]
+review: { model: opus-5-5, maxAttempts: 2, quickLane: true }
+merge: { auto: false, approvalMode: both }
+lifecycle: { doneBy: human, doneComment: true }
+members: [ { user: lena@…, role: pm }, { user: max@…, role: dev } ]
+```
 
-**B2 · Wie steuert der Flow-Server Agenten auf Workern?** Heute läuft der Jira Flow mit eigener Harness in
-`jira-flow-be`. Zielbild: Agenten in `dpi-backend` auf Workern. Offen sind: Registrierung und Erreichbarkeit
-(Server ruft Worker per v1-API wie der Hub, oder Worker holen Aufträge ab – wichtig, wenn Worker hinter NAT sind),
-wo die Ticket-Tools laufen (`update_ticket`, `submit_fix`, `open_mr` brauchen Jira/GitLab: auf dem Worker mit dessen
-glab, Rückmeldung an den Server), wie der Server Ticket-Zustand und Agent-Zustand zusammenführt, und was bei einem
-Worker-Ausfall mitten im Review passiert.
+```yaml
+# Worker
+id: mac-max
+name: MacBook Max
+kind: local                            # local | ssh | exe-dev | url
+owner: max@…
+slots: 3
+projects: all                          # oder [SHOP, APP]
+dispatch: { acceptAuto: true }         # nimmt automatisch verteilte Tickets an
+```
 
-**B3 · Startet „Freigeben“ den Agenten automatisch?** Das Mockup sagt teils „startet, sobald ein Worker frei ist“,
-teils startet ein Entwickler manuell. Zu klären: Dispatch automatisch oder manuell; Reihenfolge (Rangfolge oder
-Priorität – eine Regel); Slots je Worker und/oder Obergrenze je Projekt; ob ein Worker-Besitzer automatischem
-Dispatch zustimmen muss (läuft auf seinem Rechner und Abo).
+```yaml
+# Benutzer
+email: lena@…
+role: pm                               # pm | dev (Pilot: global)
+language: de                           # de | en
+notifications: { clarify: true, test: true, approvals: false }
+jiraToken: <verschlüsselt>
+```
 
-**B4 · Was passiert nach dem MR?** Der Jira Flow endet heute bei „MR offen“. Für Testen und Erledigt braucht es:
-Erkennen, dass der MR gemerged ist (GitLab), Erkennen, dass er auf der Dev-Stage deployt ist (GitLab
-Environments/Deployments oder Jira-Status), eine Zuordnung Flow-Stage ↔ Jira-Status und -Übergänge je Projekt, und
-was „Erledigt“ heißt (gemerged, getestet, Jira Done).
+## 9. Entscheidungen und Regeln
 
-**B5 · Wo läuft Kev, und mit wessen Jira-Zugang pollt der Server?** Kev nutzt auf dem Mac MLX (Apple Silicon) und
-läuft nicht schnell in einem Linux-Container. Vorschlag: Kev auf dem Host, der Container erreicht ihn über
-`host.containers.internal`/`host.docker.internal`; auf einem späteren Server braucht Kev eine GPU oder läuft auf
-einem Mac im Netz. Der Poller liest Jira ohne Benutzer im Raum: Service-Account oder Token des Projektanlegers?
+### 9.1 PM-Funktionen und Claude
+Ticket-Assistent, Ticket schärfen, Flow Desk und die Klärung mit dem PO laufen in Phase 1 **mit dem Abo des
+Entwicklers, der sie benutzt**, auf seinem Worker (Entwickler übernehmen die PO-Rolle). Folge: Wer diese Funktionen
+nutzt, braucht einen eigenen Worker online. Vor dem Start mit echten POs wird neu entschieden (Firmenzugang über
+API/Bedrock oder eigene Plätze im Team-Plan).
 
-**B6 · Freigaben im Ask- und Auto-Modus.** Das Mockup bietet Permissions an, zeigt aber keine wartenden Tool-Aufrufe.
-Zu spezifizieren: Freigabe-Karte im Agent-Chat und Zähler (wie `ApprovalCard` im Hub), nur Entwickler entscheiden,
-Mitteilung an wen. Und: YOLO darf den Read-only-Schutz des Reviewers und den Flow-Guard nicht aufheben.
+### 9.2 Server und Worker
+- **Worker holen sich Aufträge** (Pull, nur ausgehende Verbindungen, funktioniert hinter NAT): Long-Poll oder
+  WebSocket zum Server, Auftrag per Lease übernehmen, Ereignisse (Stage, Tool-Ergebnisse, Freigaben, Usage) melden.
+- **Zwei Datenbanken mit klarer Rolle:** Die Server-DB ist die Wahrheit für den Flow (Ticket, Stage, Lauf, Worker,
+  Reviews, Freigaben). Transkripte und durable Tasks liegen in der pi-durable-DB des Workers, weil Durable Pi sie
+  lokal ausführt; der Server bekommt Zusammenfassungen und Ereignisse, und der Client liest Transkripte über den
+  Server vom Worker.
+- **Ticket-Tools auf dem Worker:** `submit_fix`, `open_mr` nutzen git/glab des Workers; `update_ticket` usw. melden
+  den Stage-Wechsel an den Server; Jira-Kommentare und Status-Übergänge schreibt der Server.
+- **Ausfall:** Fällt ein Worker mitten in einem Schritt aus, bleibt der Flow-Zustand auf dem Server, der
+  Ausführungszustand auf der Platte des Workers. Kommt er zurück, setzt Durable Pi exakt dort fort und gleicht mit
+  dem Server ab. Das Ticket zeigt so lange „pausiert“.
 
-**B7 · Rollenmodell.** Rolle global oder je Projekt (Mitgliedschaft mit Rolle)? Wer ändert Mitglieder und
-Einstellungen, wer löscht oder archiviert ein Projekt? Darf ein PM die Agent-Transkripte lesen?
+### 9.3 Nie zwei Agenten an einem Ticket
+- Start ist eine **atomare Übernahme in der Server-DB**: ein Lauf je Ticket (eindeutige Bedingung), angelegt in
+  einer Transaktion; ein zweiter Start, ein Doppelklick oder ein zweiter Client bekommt den bestehenden Lauf zurück.
+  Jeder Start trägt eine Idempotenz-ID.
+- Worker übernehmen Aufträge nur per **Lease mit Heartbeat**. Läuft die Lease ab, wird der Auftrag **nicht**
+  automatisch neu vergeben – sein Zustand liegt auf dem alten Worker; das Ticket wird „pausiert“, ein Entwickler
+  entscheidet. So arbeitet nie ein zweiter Agent parallel.
+- Jede Änderung geht sofort über den Realtime-Stream an alle verbundenen Clients.
 
-### Während Phase 0/1 entscheiden
+### 9.4 Jira
+- **Zugang:** im Pilot ein persönlicher API-Token je Projekt (beim Anlegen hinterlegt), verschlüsselt gespeichert.
+  Später ein Service-Account. Alles, was mit diesem Token geschrieben wird, nennt im Text, wer es ausgelöst hat.
+- **Schreib-Defaults:** REST v3 vom Server. Priorität über `fields.priority`; Rangfolge über die Agile-API
+  (`/rest/agile/1.0/issue/rank`, vor bzw. nach dem Nachbarn); Freigabe = Label hinzufügen/entfernen; Beschreibung
+  im ADF-Format, beim Schärfen wird ein Abschnitt „Akzeptanzkriterien“ angehängt bzw. ersetzt, der übrige Text
+  bleibt; Anlegen mit Typ, Priorität, Zusammenfassung, Beschreibung, Labels (Komponenten, Epic und Vorlage je Projekt
+  später); Kommentare in ADF.
+- **Status-Übergänge:** Weil das Board die Spalten aus Jira übernimmt, setzt der Server den Jira-Status bei Start,
+  MR, Testen und Erledigt nach `statusMap` (Default: über `statusCategory` erkannt). Das sind Übergänge, keine
+  Kommentare.
+- **Board:** Spalten aus der Jira-Board-Konfiguration.
 
-- **Finding nach dem Merge:** neuer Branch (Name?), Agent bekommt Screenshot als Bild, neue MR verlinkt das Finding,
-  derselbe oder ein neuer Agent, wenn der alte archiviert ist.
-- **Jira-Schreibzugriffe im Detail:** Rangfolge über die Agile-API, Priorität, Label, Beschreibung im ADF-Format,
-  Felder beim Anlegen (Typ, Komponenten, Epic, Vorlage je Projekt).
-- **Board-Spalten:** aus der Jira-Board-Konfiguration übernehmen oder feste Flow-Spalten?
-- **Lane ändern:** wer (nur Entwickler?) und wo (vor dem Start in der Ticket-Ansicht).
-- **Änderungen in Jira während ein Agent läuft:** Label entfernt, Ticket geschlossen, Beschreibung geändert –
-  Agent stoppen, informieren oder ignorieren; Aufräumen von Worktree und Branch.
-- **Kev bleibt beim Schärfen „zu vage“:** Grenze der Runden, manuelles „trotzdem bereit“?
-- **Gesperrte Flow-Tools:** `open_mr`, `submit_fix` usw. dürfen im Tools-Tab nicht abschaltbar sein.
-- **Projekt-Konfiguration:** Schema (alle heutigen Felder aus `jira-flow.config.json` plus Mitglieder, Default-
-  Permissions, Compaction-Schwelle), mehrere Repos je Projekt, Migration der heutigen Datei.
-- **Benutzerbezogener Zustand:** „NEU“ und „angesehen“ je Benutzer; Mitteilungen (wer bekommt was: PO bei Klärung
-  und Testen, Entwickler bei Risiko, Blocker, Worker offline) in Tauri, Browser, später Handy.
-- **Mehrere Benutzer gleichzeitig:** Realtime-Stream, zwei POs beantworten dieselbe Klärung, Konflikte.
-- **Feed bei vielen Tickets:** Filter (Lane, Status, Priorität), Suche, erledigte ausblenden – fehlt im Mockup.
-- **Sprache der Oberfläche:** Das Mockup mischt Deutsch mit englischen Stat-Begriffen (ready, waiting you).
+### 9.5 Änderungen in Jira, während ein Agent läuft
+Der Poller vergleicht jedes laufende Ticket mit dem letzten Stand:
 
-### Später
+| Änderung in Jira | Reaktion |
+|---|---|
+| Freigabe-Label entfernt | Agent pausiert nach dem aktuellen Schritt; Karte „Freigabe entzogen – fortsetzen oder abbrechen?“ |
+| Ticket auf Done oder geschlossen | Lauf wird abgebrochen, Ticket „in Jira erledigt“; Branch bleibt, Worktree wird nach 7 Tagen aufgeräumt |
+| Beschreibung oder Akzeptanzkriterien geändert | Agent bekommt die Änderung als nächste Nachricht; liegt schon ein MR vor, wird das Ticket zur Nacharbeit markiert |
+| Priorität oder Rang geändert | nur Reihenfolge in Warteschlange und Feed |
+| einer Person zugewiesen | Agent pausiert: „von <Name> übernommen“ |
+| Kommentar | ignoriert (der Kanal ist die Session); Ausnahme `/approve` bei Auto-Merge |
 
-Reports im Detail (welcher Jira-Status zu welchem Band, Zeitraum, Caching und Jira-Rate-Limits) · Funktionsumfang auf
-dem Handy und PWA · SSO · Server-Worker im Betrieb · Kosten-Anzeige (Abo, „API-Äquivalent“) und ob PMs sie sehen ·
-Anbindung der Shop-/Incident-Demo · Auto-Merge im Dashboard (Freigabe-Karte), solange es aus ist, nicht sichtbar.
+### 9.6 Kev
+Kev läuft auf dem Host, nicht im Container: Docker und Podman starten auf dem Mac eine Linux-VM. Die hat keinen
+Zugriff auf Metal/MLX, worauf Kev auf Apple Silicon läuft (Podman bietet experimentell nur eine Vulkan-GPU an, die Kev
+nicht nutzt); Kev fiele auf die CPU zurück und wäre um ein Vielfaches langsamer. Der Container erreicht
+Kev über `host.containers.internal` (Podman) bzw. `host.docker.internal` (Docker). Auf einem späteren Linux-Server
+braucht Kev eine GPU (CUDA) oder läuft auf einem Mac im Netz.
+
+### 9.7 Dispatch
+- Je Projekt `manual` (Default) oder `auto`; je Worker „nimmt automatisch verteilte Tickets an“ ja/nein.
+  Automatisch gestartet wird nur, wenn beides zutrifft.
+- Reihenfolge: Priorität, bei Gleichstand Jira-Rangfolge, dann Alter.
+- Kapazität: Slots je Worker. Ein Ticket in der Klärung belegt keinen Slot.
+- Automatisch nur Tickets, die Kev als startklar einstuft (oder die geschärft sind).
+
+## 10. Offen
+
+**Bei deinen Antworten nachgehakt (bitte bestätigen):**
+- **Jira-Status-Übergänge** (9.4): Du hast gefragt, ob wir eine Zuordnung brauchen. Ja – sobald das Board die
+  Spalten aus Jira übernimmt, stünde sonst jedes Agenten-Ticket bis zum Erledigen in „To Do“. Vorschlag: automatische
+  Zuordnung über `statusCategory`, je Projekt überschreibbar.
+- **„Jeder darf alles“** (4): widerspricht „nur Entwickler ändern den Permission-Modus“ und der Grundidee, dass PMs
+  Agenten nicht steuern. Umgesetzt als: Projekt-Verwaltung offen für alle, Agent-Werkzeuge nur Entwickler.
+- **Persönlicher Jira-Token** (9.4): reicht für Phase 1, aber alles erscheint in Jira als dieser eine Mensch, und
+  verlässt er das Projekt oder läuft der Token ab, steht das Projekt. Daher nennen Texte den Auslöser; vor dem
+  Teamstart ein Service-Account.
+- **Pull und Datenbank** (9.2): Der Server kann nicht die DB der Agenten-Ausführung sein – Durable Pi führt lokal auf
+  SQLite aus. Die Aufteilung oben erfüllt dein Ziel (Zustand bleibt erhalten, Worker setzt fort), solange die Platte
+  des Workers erhalten bleibt. Ist ein Worker endgültig weg, sind nicht gepushte Commits verloren. **Vorschlag:**
+  `submit_fix` pusht den Branch (ohne MR), damit Arbeit einen Worker-Verlust übersteht und neu vergeben werden kann.
+- **Nur nach Priorität** (9.7): Bei gleicher Priorität entscheidet die Rangfolge, die man im Feed per Ziehen setzt –
+  sonst wäre das Ziehen wirkungslos.
+- **Lane für jeder** (7.2): nur vor dem Start. Danach sind Playbook und Stepper des Agenten festgelegt; ein Wechsel
+  hieße Neustart.
+- **„Gesperrte Tools“** (7.9): gemeint war „nicht abschaltbar“ (immer an), nicht „nicht nutzbar“.
+
+**Während Phase 0/1:** Mitteilungen im Detail (Kanäle, wer bekommt was) · mehrere Repos je Projekt in der UI ·
+Report-Details (Status → Band, Zeitraum, Caching, Jira-Rate-Limits) · Verhalten, wenn GitLab oder Jira nicht
+erreichbar sind.
+
+**Später:** Funktionsumfang auf dem Handy und PWA · SSO · Server-Worker im Betrieb · Anbindung der
+Shop-/Incident-Demo · Auto-Merge im Dashboard (Freigabe-Karte), solange es aus ist, nicht sichtbar.

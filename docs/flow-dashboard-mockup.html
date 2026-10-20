@@ -77,6 +77,15 @@ body.mobile .shell { width: 390px; height: 820px; margin: 22px auto; border: 10p
 .trow .n { font: 11.5px var(--mono); background: #c93a50; color: #fff; border-radius: 4px; padding: 0 5px; }
 .trow .act { font: 11.5px var(--mono); color: var(--accent); } .trow .wk { font: 10.5px var(--mono); color: #9d8889; border: 1px solid #3b2c2e; border-radius: 3px; padding: 0 3px; }
 .trow.off { opacity: .55; } .tgroup { padding: 10px 14px 3px; font-size: 11px; letter-spacing: 1.2px; text-transform: uppercase; color: #9d8889; display: flex; justify-content: space-between; }
+.filters { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; padding: 8px 12px; border-bottom: 1px solid var(--line); background: #171112; }
+.filters input { padding: 4px 9px; font-size: 13px; width: 170px; } .filters select { padding: 3px 6px; font-size: 12.5px; }
+.fchip { font-size: 12.5px; padding: 3px 9px; border-radius: 99px; border: 1px solid #3b2c2e; color: #d9cdcd; } .fchip.on { background: #2b1f20; border-color: #6b4a4d; color: #f2eeee; }
+.fchip b { font: 11px var(--mono); color: #9d8889; margin-left: 3px; } .fcount { margin-left: auto; font: 12px var(--mono); color: #9d8889; }
+.approval { border: 1px solid var(--warn); background: #3a2a1755; border-radius: 10px; padding: 10px 12px; margin: 8px 0 12px; box-shadow: 0 0 22px #f2b25c22; } /* no entry animation: it would replay on every re-render */
+.approval code { display: block; margin: 6px 0; padding: 6px 9px; background: #120d0e; border: 1px solid #3b2c2e; border-radius: 6px; font-size: 12.5px; }
+.approval .row { margin-top: 6px; justify-content: flex-start; gap: 6px; flex-wrap: wrap; }
+.lanesel { font: 10.5px var(--mono); text-transform: uppercase; border: 1px solid #4a3537; border-radius: 99px; padding: 1px 4px; background: #1e1718; color: var(--secondary); }
+.cost-line { font: 12px var(--mono); color: var(--secondary); margin-top: 6px; } .pcost { font: 12px var(--mono); color: var(--secondary); white-space: nowrap; }
 .newtag { font: 600 10px var(--mono); color: #2a1013; background: var(--accent); border-radius: 3px; padding: 0 4px; margin-right: 6px; }
 .treemode { display: flex; gap: 0; margin: 4px 10px 2px; } .treemode .seg { width: 100%; } .treemode .seg button { flex: 1; }
 .mlist button { width: 100%; justify-content: flex-start; text-align: left; padding: 10px; border-radius: 7px; gap: 12px; } .mlist button:hover:not(:disabled), .mlist button.on { background: #402b2d; }
@@ -118,7 +127,7 @@ body.mobile .shell { width: 390px; height: 820px; margin: 22px auto; border: 10p
 .log-row:hover { background: #ffffff06; } .log-row.sel { background: #ffffff0a; border-left-color: var(--accent); }
 .log-row.new { animation: rowIn .45s ease, flash 1.6s ease; }
 .log-row .t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .log-row .t b { font-weight: 600; }
-.grip { color: #6f5a5c; cursor: grab; user-select: none; visibility: hidden; } .log-row:hover .grip { visibility: visible; }
+.grip { color: #6f5a5c; cursor: grab; user-select: none; opacity: .35; } .log-row:hover .grip { opacity: 1; color: var(--secondary); }
 .log-row.drag { opacity: .35; } .log-row.over { border-top: 1px solid var(--accent); }
 .prio { font: 700 11px var(--mono); letter-spacing: .02em; text-transform: uppercase; background: none; border: 0; padding: 0; cursor: pointer; }
 .prio.Highest { color: var(--bad); } .prio.High { color: #ff9a62; } .prio.Medium { color: var(--warn); } .prio.Low, .prio.Lowest { color: #a99596; }
@@ -149,7 +158,7 @@ body.mobile .shell { width: 390px; height: 820px; margin: 22px auto; border: 10p
 .field { display: block; margin-bottom: 10px; } .field span { display: block; font-size: 12px; color: var(--secondary); margin-bottom: 3px; } .field input, .field select, .field textarea { width: 100%; }
 .legend { display: flex; gap: 10px; flex-wrap: wrap; font-size: 12px; color: #a99596; } .legend i { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; }
 svg text { fill: #9d8889; font: 10.5px var(--font, "DM Sans"); }
-.prow { display: grid; grid-template-columns: 1.4fr 70px 70px 70px 70px 1fr; gap: 10px; align-items: center; padding: 9px 14px; border-bottom: 1px solid #ffffff08; cursor: pointer; }
+.prow { display: grid; grid-template-columns: 1.4fr 60px 60px 60px 60px 80px 1fr; gap: 10px; align-items: center; padding: 9px 14px; border-bottom: 1px solid #ffffff08; cursor: pointer; }
 .prow:hover { background: #ffffff06; } .prow .num { font: 500 15px var(--mono); } .prow small { color: #a99596; font-size: 11.5px; display: block; }
 .bar { height: 6px; border-radius: 99px; background: #2b2021; overflow: hidden; } .bar i { display: block; height: 100%; background: var(--ready); }
 
@@ -306,6 +315,7 @@ const TICKETS = [
   T("SHOP-151", "Gutscheincodes im Checkout einlösen", "Story", "High", "grill", { lane: "feature", tier: "COMPLEX", kev: "vague", model: "Opus 5.5", started: true, tokens: 22100, cost: 0.64, found: "08:31:02" }),
   T("SHOP-147", "Lieferzeit auf der Produktseite anzeigen", "Story", "Medium", "review", { lane: "ticket", tier: "MODERATE", kev: "ready", model: "Sonnet 5.5", started: true, tokens: 131900, cost: 2.81, round: 1, found: "Gestern" }),
   T("SHOP-145", "Firmenkunden: Pflichtfelder fehlen bei Registrierung", "Bug", "High", "mr", { lane: "ticket", tier: "MODERATE", kev: "ready", model: "Sonnet 5.5", started: true, mr: "!3312", round: 3, tokens: 412800, cost: 4.73, risks: [["checkout/Profile.ts:593", "Login-Handler sendet das Profil ohne die neuen Felder erneut; eine späte Antwort überschreibt den Warenkorb."]], found: "Gestern" }),
+  T("SHOP-136", "Versandkosten im Warenkorb falsch gerundet", "Bug", "Medium", "pipeline", { lane: "quick", tier: "SIMPLE", kev: "ready", model: "Sonnet 5.5", started: true, mr: "!3305", round: 1, tokens: 41800, cost: 0.57, found: "Di" }),
   T("SHOP-141", "Newsletter-Checkbox standardmäßig abgewählt", "Task", "Low", "test", { lane: "quick", tier: "SIMPLE", kev: "ready", model: "Sonnet 5.5", started: true, mr: "!3301", round: 1, tokens: 30400, cost: 0.41, found: "Mo" }),
   T("SHOP-138", "Suche findet Artikel mit Umlauten nicht", "Bug", "High", "test", { lane: "ticket", tier: "MODERATE", kev: "ready", model: "Sonnet 5.5", started: true, mr: "!3297", round: 2, tokens: 95100, cost: 1.38, found: "Mo" }),
   T("SHOP-150", "Rabatt wird bei Teillieferung doppelt abgezogen", "Bug", "Highest", "blocked", { lane: "ticket", tier: "COMPLEX", kev: "ready", model: "Opus 5.5", started: true, round: 2, tokens: 520300, cost: 7.12, why: "Review: 1 Blocker nach 2 Versuchen – Teillieferungen sind im Backend nicht testbar.", found: "Fr" }),
@@ -393,6 +403,7 @@ const DRAFT_Q = [
 // ======================================================================= state
 const S = {
   role: "pm", device: "desktop", project: "SHOP", sel: null, mid: "feed", ctab: "ticket", mpanel: "mid",
+  filter: { q: "", group: "open", lane: "", prio: "" },
   open: { SHOP: true }, jiraOpen: {}, focus: true, treeMode: "projects", poll: { left: 9, span: 10 }, arrivals: 0, grill: {}, refine: {}, draft: null, finding: null,
   perm: { SHOP: "auto" }, compact: 200, live: 0, typing: false, transcripts: {},
 };
@@ -409,20 +420,25 @@ const CHIP = {
   backlog: (t) => (t.kev === "pending" ? ["Kev prüft…", "pending"] : t.kev === "ready" ? ["Bereit", "ready"] : ["Zu vage", "clar"]),
   ready: () => ["Freigegeben", "ready"], grill: () => ["Klärung", "waiting"], implement: () => ["Agent arbeitet", "progress"],
   review: () => ["Review", "progress"], mr: (t) => (t.risks ? ["Entscheidung", "waiting"] : ["MR offen", "waiting"]),
+  pipeline: () => ["Pipeline läuft", "progress"], pipefail: () => ["Pipeline rot", "blocked"],
   test: () => ["Testen", "test"], rework: () => ["Nacharbeit", "progress"], done: () => ["Erledigt", "done"], blocked: () => ["Hilfe nötig", "blocked"],
 };
-const STAGE = { implement: "implement", grill: "grill", review: "review", mr: "mr_open", test: "merged", rework: "implement", done: "merged", blocked: "blocked" };
-const STATUS = { ready: ["Freigegeben", "idle"], implement: ["Agent arbeitet", ""], grill: ["Wartet auf Klärung", "warn"], review: ["Review läuft", ""], mr: ["MR wartet auf Review", "warn"], test: ["Bitte testen", "warn"], rework: ["Nacharbeit", ""], blocked: ["Hilfe nötig", "bad"], done: ["Erledigt", "ok"] };
+const STAGE = { pipeline: "merged", pipefail: "merged", implement: "implement", grill: "grill", review: "review", mr: "mr_open", test: "merged", rework: "implement", done: "merged", blocked: "blocked" };
+const STATUS = { ready: ["Freigegeben", "idle"], implement: ["Agent arbeitet", ""], grill: ["Wartet auf Klärung", "warn"], review: ["Review läuft", ""], mr: ["MR wartet auf Review", "warn"], test: ["Bitte testen", "warn"], rework: ["Nacharbeit", ""], blocked: ["Hilfe nötig", "bad"], done: ["Erledigt", "ok"], pipeline: ["Gemerged · Pipeline läuft", "idle"], pipefail: ["Pipeline rot", "bad"] };
 const worker = (t) => WORKERS.find((w) => w.id === t.worker);
 const paused = (t) => t.started && t.worker && !worker(t).online && !["done", "test", "mr"].includes(t.flow);
-const statusOf = (t) => (paused(t) ? ["Pausiert · Worker offline", "bad"] : STATUS[t.flow] || ["Im Backlog", "idle"]);
-const chipOf = (t) => CHIP[t.flow](t);
-const active = (t) => ["implement", "review", "rework"].includes(t.flow) && !paused(t);
+const statusOf = (t) => (paused(t) ? ["Pausiert · Worker offline", "bad"] : t.approval ? [isDev() ? "Wartet auf Freigabe" : "Wartet auf Entwickler", "warn"] : STATUS[t.flow] || ["Im Backlog", "idle"]);
+// What a ticket's agents cost, as the API would charge it (the subscription itself adds nothing).
+const reviewCost = (t) => (t.round ? t.round * 0.62 : 0);
+const costOf = (t) => (t.cost || 0) + reviewCost(t);
+const usd = (n) => "$" + n.toFixed(2);
+const chipOf = (t) => (t.approval ? ["Freigabe", "waiting"] : CHIP[t.flow](t));
+const active = (t) => ["implement", "review", "rework"].includes(t.flow) && !paused(t) && !t.approval;
 // "Braucht dich", per role: POs clarify, test and release new tickets; developers test, review MRs and unblock.
 const needsYou = (t) => isDev()
-  ? t.fresh || t.flow === "test" || t.flow === "mr" || t.flow === "blocked" || paused(t)
+  ? t.fresh || t.flow === "test" || t.flow === "mr" || t.flow === "blocked" || t.flow === "pipefail" || paused(t) || !!t.approval
   : t.fresh || t.flow === "grill" || t.flow === "test";
-const dotOf = (t) => (paused(t) || t.flow === "blocked" ? "bad" : active(t) ? "live" : ["grill", "test", "mr"].includes(t.flow) || t.fresh ? "warn" : t.flow === "done" ? "ok" : "idle");
+const dotOf = (t) => (paused(t) || ["blocked", "pipefail"].includes(t.flow) ? "bad" : active(t) ? "live" : ["grill", "test", "mr"].includes(t.flow) || t.fresh || t.approval ? "warn" : t.flow === "done" ? "ok" : "idle");
 const DOT_TIP = { bad: "blockiert oder pausiert", live: "ein Agent arbeitet", warn: "wartet auf einen Menschen", ok: "fertig", idle: "ruhig" };
 // A project's dot is the most urgent state of its tickets.
 const projDot = (pk) => { const ds = ofProject(pk).map(dotOf); return ["bad", "warn", "live", "ok", "idle"].find((d) => ds.includes(d)) || "idle"; };
@@ -431,7 +447,7 @@ const steps = (t) => {
   return ["Eingeordnet", ...(t.lane === "feature" && !t.scoped ? ["Klärung"] : []), "Entwicklung", "Review", "MR", "Testen", "Erledigt"];
 };
 const stepIndex = (t) => {
-  const map = { backlog: 0, ready: 0, grill: 1, implement: t.lane === "feature" ? 2 : 1, rework: t.lane === "feature" ? 2 : 1, review: t.lane === "feature" ? 3 : 2, mr: t.lane === "feature" ? 4 : 3, blocked: t.lane === "feature" ? 3 : 2, test: t.lane === "feature" ? 5 : 4, done: 99 };
+  const map = { backlog: 0, ready: 0, grill: 1, implement: t.lane === "feature" ? 2 : 1, rework: t.lane === "feature" ? 2 : 1, review: t.lane === "feature" ? 3 : 2, mr: t.lane === "feature" ? 4 : 3, blocked: t.lane === "feature" ? 3 : 2, test: t.lane === "feature" ? 5 : 4, pipeline: t.lane === "feature" ? 4 : 3, pipefail: t.lane === "feature" ? 4 : 3, done: 99 };
   return map[t.flow];
 };
 
@@ -472,10 +488,12 @@ function transcript(t, agent = "main") {
 const LIVE = [
   { at: 4, add: { k: "tool", name: "edit", arg: `{"path": "src/checkout/cart.store.ts"}`, live: true } },
   { at: 7, done: true, out: "Applied 1 edit." },
-  { at: 9, add: { k: "tool", name: "bash", arg: `{"command": "npm run test -- cart"}`, live: true } },
-  { at: 13, done: true, out: "✓ 38 tests passed (1 new)" },
-  { at: 15, add: { k: "tool", name: "submit_fix", arg: `{"commit_message": "fix(cart): keep guest items after login (SHOP-149)"}`, out: "Committed 9b1e07d on feature/SHOP-149" } },
-  { at: 17, add: { k: "tool", name: "request_review", arg: "{}", out: "Review round 1 requested. End your turn now." }, flow: "review" },
+  // the clock stops here until a developer decides (unless the session runs in YOLO)
+  { at: 9, approval: { tool: "bash", cmd: "npm install --save-dev @testing-library/user-event", why: "Kev (Auto): Installation lädt Pakete aus dem Netz und ändert package.json – wartet auf dich.", rule: "npm install --save-dev *" } },
+  { at: 11, add: { k: "tool", name: "bash", arg: `{"command": "npm run test -- cart"}`, live: true } },
+  { at: 15, done: true, out: "✓ 38 tests passed (1 new)" },
+  { at: 17, add: { k: "tool", name: "submit_fix", arg: `{"commit_message": "fix(cart): keep guest items after login (SHOP-149)"}`, out: "Committed 9b1e07d on feature/SHOP-149" } },
+  { at: 19, add: { k: "tool", name: "request_review", arg: "{}", out: "Review round 1 requested. End your turn now." }, flow: "review" },
 ];
 
 // ======================================================================= rendering: top bar
@@ -577,16 +595,32 @@ function stats(ts) {
     <div><span>${c((t) => t.flow === "blocked")}</span><small>blocked</small></div></div>`;
 }
 
+// The feed's filters, shared with the board.
+const GROUPS = [["open", "Offen", (t) => t.flow !== "done"], ["you", "Braucht dich", needsYouF], ["new", "Neu", (t) => !t.started && ["backlog", "ready"].includes(t.flow)], ["work", "In Arbeit", (t) => t.started && !["done", "test", "pipeline"].includes(t.flow)], ["test", "Testen", (t) => ["test", "pipeline", "pipefail"].includes(t.flow)], ["done", "Erledigt", (t) => t.flow === "done"], ["all", "Alle", () => true]];
+function needsYouF(t) { return needsYou(t); }
+function filtered(ts) {
+  const f = S.filter, q = f.q.trim().toLowerCase(), g = GROUPS.find(([id]) => id === f.group)[2];
+  return ts.filter((t) => g(t) && (!f.lane || t.lane === f.lane) && (!f.prio || t.prio === f.prio) && (!q || `${t.key} ${t.title}`.toLowerCase().includes(q)));
+}
+function filterBar(ts) {
+  const f = S.filter, shown = filtered(ts).length;
+  return `<div class="filters"><input id="feedSearch" data-act="fSearch" placeholder="Suchen: Key oder Titel" value="${esc(f.q)}">
+    ${GROUPS.map(([id, n, fn]) => `<button class="fchip ${f.group === id ? "on" : ""}" data-act="fGroup" data-v="${id}">${n}<b>${ts.filter(fn).length}</b></button>`).join("")}
+    <select data-act="fLane"><option value="">Lane: alle</option>${Object.entries(LANE).map(([id, n]) => `<option value="${id}" ${f.lane === id ? "selected" : ""}>${n}</option>`).join("")}</select>
+    <select data-act="fPrio"><option value="">Prio: alle</option>${PRIOS.map((p) => `<option ${f.prio === p ? "selected" : ""}>${p}</option>`).join("")}</select>
+    <span class="fcount">${shown} / ${ts.length}</span></div>`;
+}
 function feed() {
-  const ts = ofProject(); const running = ts.filter((t) => t.started && t.flow !== "done");
+  const all = ofProject(); const ts = filtered(all); const running = all.filter((t) => t.started && t.flow !== "done");
   const tone = (t) => ({ live: "", warn: "warn", bad: "bad", ok: "ok", idle: "idle" })[dotOf(t)];
   return `<div class="stream-head"><div><h2>Ticket feed</h2><small>Jira · label = ready-for-agent · ${proj().key}</small></div><span class="pill" style="border:0"><span class="dot live"></span>Live</span></div>
-    ${stats(ts)}
+    ${stats(all)}
     ${running.map((t) => { const [st, sc] = statusOf(t); return `<div class="pinned ${tone(t)} ${S.sel === t.key ? "sel" : ""} ${t.isNew ? "new" : ""}" data-sel="${t.key}">
       ${active(t) ? `<span class="spin"></span>` : `<span class="dot ${dotOf(t)}"></span>`}<strong>${t.key}</strong><span class="t">${esc(t.title)}</span>
-      <span class="status ${sc}"><i></i>${st}</span><span class="open-agent hide-m">${isDev() ? "Agent ↗" : "Öffnen ↗"}</span></div>`; }).join("")}
-    <div class="log-head"><span class="mh"></span><span>Gefunden</span><span class="mh">Prio</span><span>Ticket</span><span style="text-align:right">Kev / Status</span><span class="mh" style="text-align:right">Agent</span></div>
-    <div id="feedrows">${ts.map((t) => { const [c, cls] = chipOf(t); return `<div class="log-row ${S.sel === t.key ? "sel" : ""} ${t.isNew ? "new" : ""}" draggable="true" data-key="${t.key}" data-sel="${t.key}">
+      <span class="pcost hide-m" title="API-Äquivalent">${usd(costOf(t))}</span><span class="status ${sc}"><i></i>${st}</span><span class="open-agent hide-m">${isDev() ? "Agent ↗" : "Öffnen ↗"}</span></div>`; }).join("")}
+    ${filterBar(all)}
+    <div class="log-head" style="margin-top:0"><span class="mh"></span><span>Gefunden</span><span class="mh">Prio</span><span>Ticket</span><span style="text-align:right">Kev / Status</span><span class="mh" style="text-align:right">Agent</span></div>
+    <div id="feedrows">${ts.length ? "" : `<div class="empty" style="height:auto;padding:30px"><p>Keine Tickets für diesen Filter.</p></div>`}${ts.map((t) => { const [c, cls] = chipOf(t); return `<div class="log-row ${S.sel === t.key ? "sel" : ""} ${t.isNew ? "new" : ""}" draggable="true" data-key="${t.key}" data-sel="${t.key}">
       <span class="grip mh" title="Ziehen = Rangfolge in Jira">⋮⋮</span><span style="color:#9d8889">${t.found}</span>
       <button class="prio ${t.prio} mh" data-act="prio" data-key="${t.key}" title="Klick = Priorität ändern">${t.prio}</button>
       <span class="t">${t.fresh ? `<span class="newtag">NEU</span>` : ""}<b>${t.key}</b> — ${esc(t.title)} <span class="lane">· ${LANE[t.lane]}</span></span>
@@ -596,8 +630,9 @@ function feed() {
 }
 
 function board() {
-  const COLS = [["Zu erledigen", ["backlog", "ready"]], ["In Arbeit", ["grill", "implement", "rework", "blocked"]], ["Review", ["review", "mr"]], ["Testen", ["test"]], ["Erledigt", ["done"]]];
-  return `<div style="overflow:auto"><div class="board">${COLS.map(([n, fl]) => { const ts = ofProject().filter((t) => fl.includes(t.flow)); return `<div class="bcol"><h3>${n}<span style="color:#9d8889;font-family:var(--mono)">${ts.length}</span></h3>${ts.map((t) => { const [c, cls] = chipOf(t); return `<div class="bcard" data-sel="${t.key}"><div class="k"><span>${t.key}</span><span class="prio ${t.prio}">${t.prio}</span></div><div style="margin:4px 0">${esc(t.title)}</div><span class="chip ${cls}">${c}</span>${active(t) ? `<div class="agent"><span class="dot live"></span>Agent arbeitet</div>` : ""}</div>`; }).join("")}</div>`; }).join("")}</div></div>`;
+  // Columns as configured on the project's Jira board; flow stages map onto Jira statuses (see the spec).
+  const COLS = [["To Do", ["backlog", "ready"]], ["In Progress", ["grill", "implement", "rework", "blocked"]], ["In Review", ["review", "mr", "pipeline", "pipefail"]], ["QA", ["test"]], ["Done", ["done"]]];
+  return `<div class="stream-head"><div><h2>Board</h2><small>Spalten aus dem Jira-Board „${proj().key} Kanban“</small></div></div>${filterBar(ofProject())}<div style="overflow:auto"><div class="board">${COLS.map(([n, fl]) => { const ts = filtered(ofProject()).filter((t) => fl.includes(t.flow)); return `<div class="bcol"><h3>${n}<span style="color:#9d8889;font-family:var(--mono)">${ts.length}</span></h3>${ts.map((t) => { const [c, cls] = chipOf(t); return `<div class="bcard" data-sel="${t.key}"><div class="k"><span>${t.key}</span><span class="prio ${t.prio}">${t.prio}</span></div><div style="margin:4px 0">${esc(t.title)}</div><span class="chip ${cls}">${c}</span>${active(t) ? `<div class="agent"><span class="dot live"></span>Agent arbeitet</div>` : ""}</div>`; }).join("")}</div>`; }).join("")}</div></div>`;
 }
 
 function cfd(h = 170) {
@@ -614,6 +649,10 @@ function reports() {
   const thr = [3, 4, 2, 5, 4, 6, 5, 7];
   return `<div class="stats" style="grid-template-columns:repeat(4,1fr)"><div class="s-done"><span>63%</span><small>Fortschritt</small></div><div><span>5,3</span><small>Tickets / Woche</small></div><div><span>2,4 d</span><small>Durchlaufzeit (Median)</small></div><div class="s-ready"><span>71%</span><small>von Agenten umgesetzt</small></div></div>
   <div class="pad"><div class="card"><div style="display:flex;justify-content:space-between;align-items:baseline"><h2>Kumulativer Fluss</h2><small style="color:#9d8889">aus der Jira-Historie (Changelog)</small></div><p style="font-size:12.5px;color:#d9cdcd;margin:4px 0 6px">Ein breiter werdendes Band = Stau. Review wächst seit KW 41.</p>${cfd()}</div>
+  <div class="card" style="margin-top:10px"><div style="display:flex;justify-content:space-between;align-items:baseline"><h2>Kosten</h2><small style="color:#9d8889">API-Äquivalent – das Abo kostet nichts zusätzlich</small></div>
+    <div class="stats" style="grid-template-columns:repeat(4,1fr);margin:8px -12px 10px;border-top:1px solid var(--line)"><div><span>${usd(ofProject().reduce((n, t) => n + costOf(t), 0))}</span><small>laufende + erledigte Tickets</small></div><div><span>$2.84</span><small>pro erledigtem Ticket (Ø)</small></div><div><span>$31.40</span><small>diese Woche</small></div><div><span>18%</span><small>davon Reviews</small></div></div>
+    ${[["Feature", 6.9], ["Ticket", 2.6], ["Klein", 0.7], ["Frage", 0.3]].map(([n, v]) => `<div style="display:grid;grid-template-columns:70px 1fr 60px;gap:8px;align-items:center;font-size:12.5px;margin:4px 0"><span>${n}</span><div class="bar"><i style="width:${v / 7 * 100}%;background:var(--accent)"></i></div><span style="font-family:var(--mono);text-align:right">${usd(v)}</span></div>`).join("")}
+    <p class="phint">Ø Kosten pro Ticket je Lane. Opus-Anteil 41 %, Sonnet 59 %.</p></div>
   <div class="grid2" style="margin-top:10px"><div class="card"><h2>Durchsatz</h2><svg viewBox="0 0 300 120" width="100%">${thr.map((v, i) => `<rect x="${12 + i * 36}" y="${100 - v * 12}" width="24" height="${v * 12}" rx="3" fill="#ff8997" opacity=".85"/><text x="${24 + i * 36}" y="114" text-anchor="middle">${36 + i}</text>`).join("")}</svg></div>
   <div class="card"><h2>Burnup</h2><svg viewBox="0 0 300 120" width="100%"><polyline points="10,40 50,38 90,36 130,33 170,30 210,29 250,27 290,26" fill="none" stroke="#c9a87c" stroke-width="2" stroke-dasharray="4 3"/><polyline points="10,110 50,101 90,95 130,84 170,76 210,66 250,58 290,50" fill="none" stroke="#7fd6a4" stroke-width="3"/><text x="210" y="22">Umfang</text><text x="230" y="76">erledigt</text></svg></div></div></div>`;
 }
@@ -622,7 +661,9 @@ function settings() {
   const p = proj(), dis = isDev() ? "" : "disabled";
   return `<div class="pad"><div class="grid2"><div class="card"><h2 style="margin-bottom:10px">Projekt</h2>
     <label class="field"><span>Name</span><input value="${esc(p.name)}"></label><label class="field"><span>Jira-Projekt</span><input value="${p.key}" disabled></label>
-    <label class="field"><span>Label „Freigegeben für Agent“</span><input value="ready-for-agent"></label><label class="field"><span>Mitglieder & Rollen</span><textarea rows="3">${p.members}</textarea></label></div>
+    <label class="field"><span>Label „Freigegeben für Agent“</span><input value="ready-for-agent"></label>
+    <label class="field"><span>Agenten starten</span><select><option>Manuell (Standard)</option><option>Automatisch, nach Priorität</option></select></label>
+    <label class="field"><span>Jira-Token</span><input type="password" value="••••••••••" title="persönlicher Token von Max Krüger"></label><label class="field"><span>Mitglieder & Rollen</span><textarea rows="3">${p.members}</textarea></label></div>
     <div class="card"><h2 style="margin-bottom:10px">Entwicklung ${isDev() ? "" : `<span class="dev-mark">DEV</span>`}</h2>
     <label class="field"><span>GitLab-Repository</span><input value="${p.repo}" ${dis}></label><div class="grid2"><label class="field"><span>Ziel-Branch</span><input value="${p.branch}" ${dis}></label><label class="field"><span>Branch-Schema</span><input value="${p.schema}" ${dis}></label></div>
     ${isDev() ? `<label class="field"><span>Test-Befehl</span><input value="${p.test}"></label><label class="field"><span>Standard-Permissions neuer Agenten</span><select><option>Auto (Kev entscheidet)</option><option>Ask</option><option>YOLO</option></select></label><label class="field"><span>Reviewer-Modell · Review-Versuche</span><input value="Opus 5.5 · 2"></label>` : `<p style="font-size:12.5px;color:#9d8889">Nur Entwickler ändern Repo, Tests und Agent-Einstellungen.</p>`}</div></div>
@@ -632,11 +673,11 @@ function settings() {
 function portfolio() {
   return `<div class="stream-head"><div><h2>Projekte</h2><small>${PROJECTS.length} Projekte · Jira Cloud</small></div><button class="secondary" data-act="newProject">+ Neues Projekt</button></div>
     ${stats(TICKETS)}
-    <div class="log-head" style="display:grid;grid-template-columns:1.4fr 70px 70px 70px 70px 1fr;margin-top:0"><span>Projekt</span><span>Offen</span><span>In Arbeit</span><span>Dich</span><span>Erledigt</span><span>Fortschritt</span></div>
+    <div class="log-head" style="display:grid;grid-template-columns:1.4fr 60px 60px 60px 60px 80px 1fr;margin-top:0"><span>Projekt</span><span>Offen</span><span>In Arbeit</span><span>Dich</span><span>Erledigt</span><span>Kosten</span><span>Fortschritt</span></div>
     ${PROJECTS.map((p) => { const ts = ofProject(p.key), c = (f) => ts.filter(f).length, done = c((t) => t.flow === "done"); return `<div class="prow" data-act="project" data-v="${p.key}">
       <div><b>${esc(p.name)}</b><small>${p.key} · ${p.repo.split("/").slice(1).join("/")}</small></div>
       <span class="num">${c((t) => ["backlog", "ready"].includes(t.flow))}</span><span class="num">${c((t) => active(t) || t.flow === "grill")}</span>
-      <span class="num" style="color:var(--bad)">${c(needsYou)}</span><span class="num" style="color:var(--ready)">${done}</span>
+      <span class="num" style="color:var(--bad)">${c(needsYou)}</span><span class="num" style="color:var(--ready)">${done}</span><span class="num" style="font-size:13px;color:var(--secondary)" title="API-Äquivalent">${usd(ts.reduce((n, t) => n + costOf(t), 0))}</span>
       <div><div class="bar"><i style="width:${Math.round(done / ts.length * 100)}%"></i></div><small title="${DOT_TIP[projDot(p.key)]}"><span class="dot ${projDot(p.key)}" style="width:6px;height:6px"></span> ${Math.round(done / ts.length * 100)}% erledigt${c(active) ? ` · ▸${c(active)} aktiv` : ""}</small></div></div>`; }).join("")}`;
 }
 
@@ -714,11 +755,12 @@ function jiraDetails(t) {
 function card(t) {
   const st = steps(t), idx = stepIndex(t), [s, sc] = statusOf(t);
   const tone = { live: "", warn: "warn", bad: "bad", ok: "ok", idle: "" }[dotOf(t)];
-  const sum = { grill: "Der Agent klärt den Scope mit dir, bevor er entwickelt.", implement: "Der Agent entwickelt gerade.", review: `Unabhängiges Review läuft (Runde ${t.round || 1}).`, mr: t.risks ? `Review bestanden mit ${t.risks.length} offenem Risiko – MR ${t.mr} ist ein Draft und wartet auf eine Entscheidung.` : `MR ${t.mr} wartet auf Code-Review durch einen Entwickler.`, test: `Gemerged und auf der Dev-Stage. Bitte testen.`, rework: "Der Agent arbeitet dein Finding ab. Danach folgt ein neuer MR.", done: "Erledigt.", blocked: t.why, ready: "Freigegeben – startet, sobald ein Worker frei ist.", backlog: t.kev === "vague" ? "Kev: zu vage für einen direkten Start. Schärfe das Ticket unten – oder gib es frei, dann klärt der Agent mit dir." : t.scoped ? "Geschärft und in Jira aktualisiert – Kev: startklar. Zum Starten freigeben." : "Kev: startklar. Zum Starten freigeben." }[t.flow];
-  return `<div class="icard ${tone}"><div class="itop"><span style="color:${tone === "ok" ? "var(--ready)" : "var(--bad)"}">⎇</span><strong>${t.key}</strong><span class="lchip">${LANE[t.lane]}</span><span class="ititle">${esc(t.title)}</span>${t.started || t.flow === "ready" ? `<span class="status ${sc}"><i></i>${s}</span>` : ""}</div>
+  const sum = { grill: "Der Agent klärt den Scope mit dir, bevor er entwickelt.", implement: "Der Agent entwickelt gerade.", review: `Unabhängiges Review läuft (Runde ${t.round || 1}).`, mr: t.risks ? `Review bestanden mit ${t.risks.length} offenem Risiko – MR ${t.mr} ist ein Draft und wartet auf eine Entscheidung.` : `MR ${t.mr} wartet auf Code-Review durch einen Entwickler.`, test: `Gemerged, Pipeline grün, auf der Dev-Stage. Bitte testen und als erledigt markieren.`, rework: "Der Agent arbeitet dein Finding ab. Danach folgt ein neuer MR.", done: `Erledigt${t.doneBy ? ` – markiert von ${t.doneBy}, Jira auf Done` : ""}.`, blocked: t.why, pipeline: `MR ${t.mr} gemerged. Die Pipeline auf develop läuft – ist sie grün, geht das Ticket ins Testen.`, pipefail: "Die Pipeline auf develop ist rot. Ein Entwickler muss sich das ansehen.", ready: "Freigegeben – startet, sobald ein Worker frei ist.", backlog: t.kev === "vague" ? "Kev: zu vage für einen direkten Start. Schärfe das Ticket unten – oder gib es frei, dann klärt der Agent mit dir." : t.scoped ? "Geschärft und in Jira aktualisiert – Kev: startklar. Zum Starten freigeben." : "Kev: startklar. Zum Starten freigeben." }[t.flow];
+  return `<div class="icard ${tone}"><div class="itop"><span style="color:${tone === "ok" ? "var(--ready)" : "var(--bad)"}">⎇</span><strong>${t.key}</strong>${t.started ? `<span class="lchip">${LANE[t.lane]}</span>` : `<select class="lanesel" data-act="laneSel" data-key="${t.key}" title="Lane ändern (vor dem Start)">${Object.entries(LANE).map(([id, n]) => `<option value="${id}" ${t.lane === id ? "selected" : ""}>${n}</option>`).join("")}</select>`}<span class="ititle">${esc(t.title)}</span>${t.started || t.flow === "ready" ? `<span class="status ${sc}"><i></i>${s}</span>` : ""}</div>
     ${t.started ? `<ol class="steps">${st.map((n, i) => `<li class="${i < idx ? "done" : i === idx ? "cur" : ""}"><i></i>${n}</li>`).join("")}</ol>` : ""}
     <p class="isum">${esc(paused(t) ? `Pausiert – der Rechner von ${worker(t).owner} ist seit ${worker(t).since} offline. Der Agent macht weiter, sobald er wieder online ist.` : sum)}</p>
     ${t.risks && isDev() ? `<div class="risk"><b>⚠ Decision needed</b>${t.risks.map(([l, s]) => `<div><code>${l}</code> — ${esc(s)}</div>`).join("")}</div>` : ""}
+    ${t.started ? `<div class="cost-line" title="So viel würde es über die API kosten. Das Abo selbst kostet nichts zusätzlich.">${usd(costOf(t))} API-Äquivalent · Main ${usd(t.cost || 0)}${t.round ? ` · Review ${usd(reviewCost(t))}` : ""} · ${k(t.tokens || 0)} Tokens</div>` : ""}
     ${jiraDetails(t)}</div>`;
 }
 
@@ -728,8 +770,9 @@ function ticketBody(t) {
   if (!t.started && t.kev === "vague") return refine(t);
   let action = "";
   if (t.flow === "test") action = S.finding === t.key ? findingForm(t) : `<div class="card" style="margin-bottom:12px"><h2>Bereit zum Testen</h2><p style="font-size:13.5px;color:#d9cdcd;margin:6px 0 10px">Auf der Dev-Stage: <a href="#" data-act="noop">dev.shop.example.com</a> · MR ${t.mr} gemerged</p>
-      <div style="display:flex;gap:8px"><button class="secondary ok" data-act="testOk" data-key="${t.key}">✓ Funktioniert</button><button class="secondary warn" data-act="finding" data-key="${t.key}">Finding melden</button></div></div>`;
-  const tl = [["Von Kev eingeordnet", `${LANE[t.lane]} · ${t.tier.toLowerCase()} · ${t.kev === "vague" ? "zu vage" : "startklar"}`], ...(t.ready ? [["Für Agent freigegeben", "Lena Weber"]] : []), ...(t.started ? [["Agent gestartet", `${t.model || ""}${isDev() && worker(t) ? ` · auf ${worker(t).name}` : ""}`]] : []), ...(t.flow === "grill" && isDev() ? [["Klärung mit der PO", "2 von 4 Fragen beantwortet"]] : []), ...(t.round ? [["Unabhängig geprüft", t.risks ? "bestanden mit offenem Risiko" : "bestanden"]] : []), ...(t.mr ? [[`Merge Request ${t.mr}`, t.flow === "done" || t.flow === "test" ? "gemerged" : t.risks ? "Draft" : "offen"]] : []), ...(t.flow === "rework" ? [["Finding gemeldet", "Agent arbeitet nach"]] : [])];
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="secondary ok" data-act="testOk" data-key="${t.key}">✓ Als erledigt markieren</button><button class="secondary warn" data-act="finding" data-key="${t.key}">Finding melden</button></div>
+      <p class="phint">Erledigt setzt das Jira-Ticket auf Done und kommentiert, wer es markiert hat.</p></div>`;
+  const tl = [["Von Kev eingeordnet", `${LANE[t.lane]} · ${t.tier.toLowerCase()} · ${t.kev === "vague" ? "zu vage" : "startklar"}`], ...(t.ready ? [["Für Agent freigegeben", "Lena Weber"]] : []), ...(t.started ? [["Agent gestartet", `${t.model || ""}${isDev() && worker(t) ? ` · auf ${worker(t).name}` : ""}`]] : []), ...(t.flow === "grill" && isDev() ? [["Klärung mit der PO", "2 von 4 Fragen beantwortet"]] : []), ...(t.round ? [["Unabhängig geprüft", t.risks ? "bestanden mit offenem Risiko" : "bestanden"]] : []), ...(t.mr ? [[`Merge Request ${t.mr}`, t.flow === "done" || t.flow === "test" ? "gemerged" : t.risks ? "Draft" : "offen"]] : []), ...(["pipeline", "test", "done"].includes(t.flow) ? [["Pipeline auf develop", t.flow === "pipeline" ? "läuft" : "grün"]] : []), ...(t.flow === "rework" ? [["Finding gemeldet", "Agent arbeitet nach"]] : []), ...(t.approval ? [["Wartet auf Freigabe", `${t.approval.tool}: ${t.approval.cmd}`]] : []), ...(t.flow === "done" && t.doneBy ? [["Als erledigt markiert", `${t.doneBy} · Jira: Done + Kommentar`]] : [])];
   return `<div class="chat">${action}
     <div class="slabel">Verlauf</div><div class="timeline">${tl.map(([a, b], i) => `<div class="${i === tl.length - 1 && t.flow !== "done" ? "now" : ""}">${a}<small>${esc(b)}</small></div>`).join("")}</div>
     <div class="slabel" style="margin-top:14px">Aktionen</div>
@@ -781,7 +824,11 @@ function agentBody(t, agent) {
     return `<details class="tool ${it.isNew ? "entry new" : ""}"><summary><span style="color:var(--ready)">✓</span><b>${it.name}</b><code>${esc(it.arg)}</code><span class="tstat">Done</span></summary><pre>${esc(it.out || "")}</pre></details>`;
   }).join("");
   const working = agent === "main" && active(t);
-  return `<div class="chat" id="chat">${html}${working ? `<div class="typing"><i></i><i></i><i></i></div>` : ""}</div>
+  const ap = agent === "main" && t.approval;
+  const card = ap ? `<div class="approval"><div style="display:flex;gap:8px;align-items:center">🔐 <b>${ap.tool}</b> wartet auf Freigabe <span class="tagx" style="margin-left:auto">${(S.perm[t.key] || "auto").toUpperCase()} · Kev</span></div>
+      <code>${esc(ap.cmd)}</code><div class="phint" style="margin:0">${esc(ap.why)}</div>
+      <div class="row"><button class="secondary ok" data-act="approve" data-key="${t.key}">Erlauben</button><button class="secondary" data-act="approveRule" data-key="${t.key}">Immer erlauben: <code style="display:inline;margin:0;padding:0 4px">${esc(ap.rule)}</code></button><button class="secondary warn" data-act="deny" data-key="${t.key}">Ablehnen</button></div></div>` : "";
+  return `<div class="chat" id="chat">${html}${card}${working ? `<div class="typing"><i></i><i></i><i></i></div>` : ""}</div>
     ${agent === "main" ? `<div class="composer-region"><div class="composer"><textarea id="agentMsg" placeholder="Talk to the ${t.key} agent…"></textarea><div class="ctool"><select><option>Follow-up</option><option>Steer</option></select><span style="display:flex;gap:8px"><button class="interrupt" data-act="noop">■ Interrupt</button><button class="send" data-act="agentSend" data-key="${t.key}">↑</button></span></div></div>
       <div class="footnote"><span><span class="dot live" style="width:5px;height:5px"></span> Schließen unterbricht den Agenten nie.</span><span class="hide-m">Enter senden · Shift+Enter Zeile</span></div></div>` : `<div class="composer-region"><p class="phint">Review-Sessions sind nur lesbar. Der Reviewer sieht nie die Begründungen des Coders.</p></div>`}`;
 }
@@ -840,7 +887,8 @@ function newWorkerModal() {
     <div class="mlist" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px">${KINDS.map(([id, n, d]) => `<button class="${kind === id ? "on" : ""}" data-act="wkind" data-v="${id}" style="border:1px solid #403536"><div><b>${n}</b><small>${d}</small></div></button>`).join("")}</div>
     <div class="grid2"><label class="field"><span>Name</span><input id="wkName" value="${kind === "exe-dev" ? "server-1" : kind === "local" ? "MacBook Max" : "MacBook Sara"}"></label><label class="field"><span>Parallele Agents (Slots)</span><input value="${kind === "exe-dev" ? 6 : 2}"></label></div>
     ${kind !== "local" ? `<label class="field"><span>${kind === "url" ? "URL" : "Host"}</span><input value="${kind === "url" ? "https://agents.team.local:4780" : kind === "ssh" ? "sara@mac-sara.local" : "server-1.exe.xyz"}"></label>` : ""}
-    <label class="field"><span>Projekte</span><select><option>Alle Projekte</option><option>Nur Webshop Relaunch</option></select></label>
+    <div class="grid2"><label class="field"><span>Projekte</span><select><option>Alle Projekte</option><option>Nur Webshop Relaunch</option></select></label>
+    <label class="field"><span>Automatisch verteilte Tickets</span><select><option>annehmen</option><option>nicht annehmen (nur manuell)</option></select></label></div>
     <div class="slabel" style="margin-top:4px">Ausführen</div><pre class="card" style="margin:0 0 8px;font-size:12px;padding:8px 10px">${cmd}</pre>
     <p class="phint" style="margin:0 0 10px">Claude: Auf dem Worker meldet sich sein Besitzer mit dem eigenen Abo an (<code>claude /login</code> oder <code>claude setup-token</code>). Der Flow-Server speichert keine Claude-Zugangsdaten.</p>
     <button class="primary" data-act="wkCreate">Worker verbinden</button></div></div>`;
@@ -848,7 +896,10 @@ function newWorkerModal() {
 function newProjectModal() {
   return `<div class="shade" data-act="close"><div class="modal" data-stop><header><div><span class="eyebrow">Projekt</span><h2>Neues Projekt</h2></div><button class="icon-btn" data-act="close">✕</button></header>
     <label class="field"><span>Jira-Projekt (Schlüssel)</span><input id="npKey" placeholder="z. B. CRM"></label><div id="npCheck" style="font-size:12.5px;margin:-4px 0 8px"></div>
-    <label class="field"><span>Name</span><input id="npName" placeholder="CRM Integration"></label><label class="field"><span>GitLab-Repository</span><input placeholder="gitlab.example.com/gruppe/projekt"></label>
+    <label class="field"><span>Name</span><input id="npName" placeholder="CRM Integration"></label>
+    <label class="field"><span>Jira-Token (diva-e.atlassian.net)</span><input type="password" placeholder="persönlicher API-Token – verschlüsselt gespeichert"></label>
+    <label class="field"><span>GitLab-Repository</span><input placeholder="gitlab.example.com/gruppe/projekt"></label>
+    <label class="field"><span>Agenten starten</span><select><option>Manuell (Standard)</option><option>Automatisch, nach Priorität, wenn ein Worker frei ist</option></select></label>
     <div class="grid2"><label class="field"><span>Ziel-Branch</span><input value="develop"></label><label class="field"><span>Branch-Schema</span><input value="feature/{key}"></label></div>
     <label class="field"><span>Mitglieder einladen</span><input placeholder="E-Mail, Rolle wählbar"></label><button class="primary" data-act="npCreate">Projekt anlegen</button></div></div>`;
 }
@@ -917,6 +968,7 @@ document.addEventListener("click", (e) => {
   const a = el.dataset.act, key = el.dataset.key, v = el.dataset.v, t = key && byKey(key);
   const A = {
     home: () => { S.project = null; S.focus = false; S.sel = null; S.mid = "feed"; render(); },
+    fGroup: () => { S.filter.group = v; render(); },
     portfolio: () => { closeOverlay(); S.project = null; S.focus = false; S.sel = null; S.mid = "feed"; S.mpanel = "mid"; render(); },
     project: () => { closeOverlay(); S.project = v; S.open[v] = true; S.sel = null; S.mid = "feed"; S.draft = null; S.mpanel = "mid"; render(); },
     focus: () => { closeOverlay(); S.project = v; S.focus = true; S.open[v] = true; S.sel = null; S.mid = "feed"; S.draft = null; S.mpanel = "mid"; render(); },
@@ -956,7 +1008,10 @@ document.addEventListener("click", (e) => {
     grillAns: () => { S.grill[key].push(v); render(); },
     grillOwn: () => { const inp = document.getElementById("grillOwn"); const val = inp.value.trim(); if (val) { inp.value = ""; S.grill[key].push(val); render(); } },
     grillOk: () => { t.flow = "implement"; render(); toast(`Scope für ${key} bestätigt – der Agent entwickelt jetzt`); },
-    testOk: () => { t.flow = "done"; render(); toast(`${key} erledigt – in Jira auf Done`); },
+    testOk: () => { t.flow = "done"; t.doneBy = USERS[S.role].name; render(); toast(`${key} erledigt – Jira: Done, Kommentar „Als erledigt markiert von ${t.doneBy}“`); },
+    approve: () => { const l = transcript(t, "main"); l.push({ k: "tool", name: t.approval.tool, arg: JSON.stringify({ command: t.approval.cmd }), out: "added 1 package in 2s", isNew: true }); t.approval = null; S.live++; render(); toast("Erlaubt – der Agent macht weiter"); },
+    approveRule: () => { const rule = t.approval.rule; const l = transcript(t, "main"); l.push({ k: "tool", name: t.approval.tool, arg: JSON.stringify({ command: t.approval.cmd }), out: "added 1 package in 2s", isNew: true }); t.approval = null; S.live++; render(); toast(`Regel gespeichert: „${rule}“ läuft in dieser Session ohne Nachfrage`); },
+    deny: () => { const l = transcript(t, "main"); l.push({ k: "agent", n: 30, text: "Abgelehnt – ich nutze stattdessen die vorhandene Testbibliothek und installiere nichts.", isNew: true }); t.approval = null; S.live++; render(); },
     finding: () => { S.finding = key; render(); },
     findingCancel: () => { S.finding = null; render(); },
     findingSend: () => { t.flow = "rework"; S.finding = null; render(); toast(`Finding gesendet – Agent ${key} arbeitet nach, neuer MR folgt`); },
@@ -965,9 +1020,13 @@ document.addEventListener("click", (e) => {
   };
   A[a]?.();
 });
-document.addEventListener("change", (e) => { const el = e.target; if (el.dataset.act === "prioSel") { byKey(el.dataset.key).prio = el.value; render(); toast(`Priorität ${el.value} (in Jira gespeichert)`); } });
+document.addEventListener("change", (e) => { const el = e.target;
+  if (el.dataset.act === "laneSel") { const tk = byKey(el.dataset.key); tk.lane = el.value; render(); toast(`${tk.key}: Lane ${LANE[tk.lane]}`); return; }
+  if (el.dataset.act === "fLane" || el.dataset.act === "fPrio") { S.filter[el.dataset.act === "fLane" ? "lane" : "prio"] = el.value; render(); return; }
+  if (el.dataset.act === "prioSel") { byKey(el.dataset.key).prio = el.value; render(); toast(`Priorität ${el.value} (in Jira gespeichert)`); } });
 // The auto-compaction slider updates its marks in place, so dragging is not interrupted by a re-render.
 document.addEventListener("input", (e) => {
+  if (e.target.dataset.act === "fSearch") { S.filter.q = e.target.value; render(); return; }
   if (e.target.dataset.act !== "compact") return;
   S.compact = +e.target.value; const a = S.compact / 10;
   const set = (id, f) => { const el = document.getElementById(id); if (el) f(el); };
@@ -996,10 +1055,17 @@ setInterval(() => {
     render();
     if (mine.length) toast(`Neu aus Jira: ${mine.join(", ")} – Kev ordnet ein …`);
   }
+  // the merge pipeline of SHOP-136 turns green: the ticket moves to testing
+  S.tick = (S.tick || 0) + 1;
+  if (S.tick === 25) { const p = byKey("SHOP-136"); if (p.flow === "pipeline") { p.flow = "test"; render(); toast("SHOP-136: Pipeline auf develop grün – bereit zum Testen"); } }
   // live agent on SHOP-149
-  if (S.sel === "SHOP-149" && S.ctab === "main") S.live++;
   const t = byKey("SHOP-149"); const l = transcript(t, "main");
-  for (const s of LIVE) if (S.sel === "SHOP-149" && S.ctab === "main" && s.at === S.live) {
+  if (S.sel === "SHOP-149" && S.ctab === "main" && !t.approval) S.live++;
+  for (const s of LIVE) if (S.sel === "SHOP-149" && S.ctab === "main" && s.at === S.live && !t.approval) {
+    if (s.approval) {
+      if ((S.perm["SHOP-149"] || "auto") === "yolo") l.push({ k: "tool", name: "bash", arg: JSON.stringify({ command: s.approval.cmd }), out: "added 1 package (YOLO: ohne Freigabe)", isNew: true });
+      else { t.approval = s.approval; toast("SHOP-149: bash wartet auf deine Freigabe"); }
+    }
     if (s.add) l.push({ ...s.add, isNew: true });
     if (s.done) { const last = l[l.length - 1]; last.live = false; last.out = s.out; last.isNew = true; }
     if (s.flow) { t.flow = s.flow; t.round = 1; }
