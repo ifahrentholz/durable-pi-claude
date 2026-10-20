@@ -470,6 +470,14 @@ Rangfolge (9.7) · Lane nur vor dem Start · Flow-Tools nicht abschaltbar · Age
 Ebenfalls bestätigt: `submit_fix` pusht den Branch (ohne MR), damit ein Lauf einen endgültigen Worker-Verlust
 übersteht (9.2).
 
+Defaults bestätigt: WIP-Limit 3 offene MRs je Projekt (`review.wipLimit`), 2 Slots je Worker. Flow Desk in Phase 1
+(7.6).
+
+**Vor dem Teamstart zu klären (bewusst vertagt):**
+- **Hosting-Ort des Servers** – die replizierten Transkripte enthalten Kundencode (Verträge/NDA, DSGVO), und der
+  Server muss GitLab erreichen (12).
+- **Verteilung der Tauri-App** – Apple Developer ID für Signierung und Notarisierung; ob PMs Windows nutzen (13).
+
 **Während Phase 0/1:** Mitteilungen im Detail (Kanäle, wer bekommt was) · mehrere Repos je Projekt in der UI ·
 Report-Details (Status → Band, Zeitraum, Caching, Jira-Rate-Limits) · Verhalten, wenn GitLab oder Jira nicht
 erreichbar sind.
