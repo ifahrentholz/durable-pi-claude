@@ -3,669 +3,838 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Flow Dashboard – klickbares Mockup</title>
+<title>Flow Dashboard – Mockup v2</title>
 <!--
-  Klickbares Mockup des Flow Dashboards (Pilot, Branch pilot/flow-dashboard). Eine Datei, keine Abhängigkeiten,
-  alle Daten sind Beispiele und leben nur im Browser. Oben rechts: Rolle (PM/PO ↔ Entwickler) und Gerät
-  (Desktop ↔ Handy) umschalten; "Zugriffswege" zeigt Web, Tauri, Handy und Terminal nebeneinander.
+  Klickbares Mockup v2 des Flow Dashboards (Branch pilot/flow-dashboard): Jira Flow und Durable-Pi-Agent-Session in
+  einer Oberfläche, im Design der bestehenden Apps. Eine Datei, Beispieldaten, alles läuft nur im Browser.
+  Oben rechts: Rolle (PM/PO ↔ Entwickler) und Gerät (Desktop ↔ Handy). Das "?" zeigt Zugriffswege und Architektur.
 -->
 <style>
-  :root {
-    --bg: #151010; --surface: #1e1718; --surface2: #261d1e; --line: #332829; --text: #f2eeee; --muted: #b9a7a0;
-    --accent: #ff8997; --secondary: #c9a87c; --ready: #7fd6a4; --warn: #f2b25c; --bad: #ff6b7d; --info: #8ab4ff;
-    --font: "DM Sans", system-ui, -apple-system, sans-serif; --title: "Manrope", var(--font); --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
-  }
-  * { box-sizing: border-box; }
-  html, body { margin: 0; background: #0d0909; color: var(--text); font: 14px/1.45 var(--font); }
-  button, input, select, textarea { font: inherit; color: inherit; }
-  a { color: var(--accent); }
-  #frame { min-height: 100vh; background: var(--bg); margin: 0 auto; position: relative; overflow: hidden; }
-  body.mobile #frame { width: 390px; min-height: 0; height: 820px; margin: 24px auto; border-radius: 42px; border: 10px solid #2b2223; box-shadow: 0 20px 60px #000a; overflow-y: auto; }
-  body.mobile #frame::-webkit-scrollbar { display: none; }
+@import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;650;700&family=Manrope:wght@500;600;650;700;750&family=IBM+Plex+Mono:wght@400;500;600&display=swap");
+:root {
+  font-family: "DM Sans", system-ui, sans-serif; color: #f2eeee; background: #0d0909; font-size: 14.5px;
+  --secondary: #c9a87c; --line: #332829; --accent: #ff8997; --surface: #1e1718; --title: "Manrope", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, monospace; --ready: #7fd6a4; --warn: #f2b25c; --bad: #ff6b7d; --info: #9fc3d6;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: #0d0909; }
+button, input, textarea, select { font: inherit; color: inherit; }
+button { cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 6px; background: none; border: 0; }
+button:not(:disabled):hover { filter: brightness(1.13); }
+input, textarea, select { background: #161011; border: 1px solid var(--line); border-radius: 7px; padding: 7px 10px; outline: none; min-width: 0; }
+input:focus, textarea:focus, select:focus { border-color: #856669; }
+select { color-scheme: dark; cursor: pointer; }
+textarea { resize: vertical; line-height: 1.55; }
+h1, h2, h3, p { margin: 0; } h1, h2, h3 { font-family: var(--title); } h2 { font-size: 15px; font-weight: 650; }
+pre, code { font-family: var(--mono); }
+a { color: var(--accent); }
+::-webkit-scrollbar { width: 8px; height: 8px; } ::-webkit-scrollbar-thumb { background: #3d2e30; border-radius: 8px; }
 
-  /* top bar */
-  .topbar { display: flex; align-items: center; gap: 14px; padding: 10px 20px; border-bottom: 1px solid var(--line); background: #1a1314; position: sticky; top: 0; z-index: 5; }
-  .brand { display: flex; align-items: center; gap: 8px; font: 700 15px var(--title); white-space: nowrap; cursor: pointer; }
-  .brand i { width: 22px; height: 22px; border-radius: 6px; background: linear-gradient(135deg, var(--accent), #c25b7a); display: inline-block; }
-  .switcher { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 5px 10px; width: auto; max-width: 260px; }
-  .spacer { flex: 1; }
-  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
-  .seg button { background: none; border: 0; padding: 5px 10px; cursor: pointer; color: var(--muted); }
-  .seg button.on { background: var(--surface2); color: var(--text); }
-  .who { display: flex; align-items: center; gap: 8px; color: var(--muted); white-space: nowrap; }
-  .avatar { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 12px; background: var(--surface2); color: var(--secondary); }
-  .demo-bar { display: flex; gap: 10px; align-items: center; padding: 6px 20px; background: #241a12; color: var(--secondary); font-size: 12px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
-  .demo-bar b { color: var(--text); }
+.shell { height: 100vh; display: flex; flex-direction: column; overflow: hidden; background: #151010; }
+body.mobile .shell { width: 390px; height: 820px; margin: 22px auto; border: 10px solid #2b2223; border-radius: 42px; box-shadow: 0 20px 60px #000a; position: relative; }
 
-  /* nav */
-  .nav { display: flex; gap: 4px; padding: 8px 20px 0; border-bottom: 1px solid var(--line); overflow-x: auto; }
-  .nav a { padding: 8px 12px; border-radius: 8px 8px 0 0; color: var(--muted); text-decoration: none; white-space: nowrap; border-bottom: 2px solid transparent; }
-  .nav a.on { color: var(--text); border-bottom-color: var(--accent); }
-  .nav a .count { background: var(--accent); color: #2a1013; border-radius: 999px; padding: 0 6px; font-size: 11px; margin-left: 4px; font-weight: 700; }
-  body.mobile .topbar { padding: 34px 14px 10px; gap: 8px; }
-  body.mobile .topbar .hide-m { display: none; }
-  body.mobile .nav { position: sticky; bottom: 0; }
-  body.mobile .demo-bar { display: none; }
+/* ---------- top bar */
+.topbar { height: 56px; min-height: 56px; border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; padding: 0 16px; background: #1a1415; gap: 12px; }
+.brand, .top-actions { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.brand strong { font: 750 15px var(--title); letter-spacing: -0.4px; white-space: nowrap; }
+.brandmark { width: 40px; height: 22px; flex-shrink: 0; cursor: pointer; }
+.brand-sep { color: #6f5a5c; }
+.brand-scope { color: var(--secondary); cursor: pointer; white-space: nowrap; display: inline-flex; align-items: center; gap: 4px; }
+.pill { display: flex; align-items: center; gap: 7px; font-size: 13.5px; color: var(--secondary); border: 1px solid #3b3031; border-radius: 999px; padding: 4px 11px; white-space: nowrap; }
+.pill b { font-family: var(--mono); font-weight: 500; color: #f2eeee; }
+.ring { transform: rotate(-90deg); } .ring .track { stroke: #3b3031; } .ring .fill { stroke: var(--ready); stroke-linecap: round; transition: stroke-dashoffset 1s linear; }
+.dot { width: 7px; height: 7px; border-radius: 50%; background: #756062; display: inline-block; flex-shrink: 0; }
+.dot.live { background: var(--accent); box-shadow: 0 0 9px #ff899766; animation: pulse 1.6s infinite; }
+.dot.ok { background: var(--ready); } .dot.warn { background: var(--warn); } .dot.bad { background: var(--bad); animation: pulse 1.2s infinite; }
+.seg { display: inline-flex; border: 1px solid #453032; border-radius: 8px; overflow: hidden; }
+.seg button { padding: 4px 10px; font-size: 13px; color: #d9cdcd; } .seg button + button { border-left: 1px solid #453032; }
+.seg button.on { background: #2b1f20; color: #f2eeee; }
+.icon-btn { width: 30px; height: 30px; border-radius: 6px; color: var(--secondary); }
+.icon-btn:hover { background: #ffffff0b; color: #f2eeee; }
+.avatar { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font: 700 11px var(--title); background: #2b2021; color: var(--secondary); border: 1px solid #443738; cursor: pointer; }
+.primary { padding: 8px 13px; background: var(--accent); color: #2a1013; border: 1px solid var(--accent); font-weight: 650; border-radius: 7px; white-space: nowrap; }
+.secondary { border: 1px solid #443738; background: #2b2021; padding: 6px 11px; border-radius: 6px; font-weight: 500; white-space: nowrap; }
+.secondary.ok { color: var(--ready); border-color: #2f5b44; background: #18291f; } .secondary.warn { color: var(--warn); border-color: #5b4422; background: #2a2114; }
+.ghost { color: var(--secondary); padding: 4px 6px; border-radius: 5px; } .ghost:hover { background: #ffffff0b; }
 
-  main { padding: 20px; max-width: 1280px; margin: 0 auto; }
-  body.mobile main { padding: 14px; }
-  h1 { font: 700 22px var(--title); margin: 0 0 4px; }
-  h2 { font: 700 16px var(--title); margin: 0 0 10px; }
-  .sub { color: var(--muted); margin: 0 0 18px; }
-  .grid { display: grid; gap: 14px; }
-  .g2 { grid-template-columns: 2fr 1fr; } .g3 { grid-template-columns: repeat(3, 1fr); } .g4 { grid-template-columns: repeat(4, 1fr); } .g5 { grid-template-columns: repeat(5, 1fr); }
-  body.mobile .g2, body.mobile .g3, body.mobile .g4 { grid-template-columns: 1fr; } body.mobile .g5 { grid-template-columns: repeat(2, 1fr); }
-  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px; }
-  .card.click { cursor: pointer; transition: border-color .15s; } .card.click:hover { border-color: var(--accent); }
-  .kpi .n { font: 700 26px var(--title); } .kpi .l { color: var(--muted); font-size: 12px; }
-  .kpi.warn .n { color: var(--warn); } .kpi.ok .n { color: var(--ready); } .kpi.bad .n { color: var(--bad); }
-  .row { display: flex; align-items: center; gap: 10px; } .wrap { flex-wrap: wrap; } .between { justify-content: space-between; }
-  .muted { color: var(--muted); } .small { font-size: 12px; } .mono { font-family: var(--mono); font-size: 12px; }
-  .bar { height: 8px; border-radius: 99px; background: var(--surface2); overflow: hidden; } .bar > i { display: block; height: 100%; background: var(--ready); }
+/* ---------- workspace */
+.workspace { flex: 1; min-height: 0; display: grid; grid-template-columns: 240px minmax(0, 1.12fr) minmax(0, 1fr); }
+.col { min-height: 0; min-width: 0; display: flex; flex-direction: column; border-right: 1px solid var(--line); }
+.col:last-child { border-right: 0; }
+.col-head { min-height: 50px; display: flex; align-items: center; gap: 8px; padding: 0 14px; border-bottom: 1px solid var(--line); background: #1c1415; }
+.col-body { flex: 1; overflow: auto; min-height: 0; }
+.eyebrow { font-size: 12px; letter-spacing: 1.6px; font-weight: 600; color: var(--secondary); text-transform: uppercase; }
 
-  .btn { background: var(--surface2); border: 1px solid var(--line); border-radius: 8px; padding: 7px 12px; cursor: pointer; white-space: nowrap; }
-  .btn:hover { border-color: var(--muted); }
-  .btn.primary { background: var(--accent); color: #2a1013; border-color: var(--accent); font-weight: 700; }
-  .btn.ok { background: #1f3a2b; border-color: #2f6b4b; color: var(--ready); }
-  .btn.warn { background: #3a2c17; border-color: #6b4f22; color: var(--warn); }
-  .btn.small { padding: 3px 8px; font-size: 12px; }
-  input[type=text], textarea, select { background: #120d0d; border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; width: 100%; }
-  textarea { min-height: 70px; resize: vertical; }
-  label.f { display: block; margin-bottom: 12px; } label.f span { display: block; color: var(--muted); font-size: 12px; margin-bottom: 4px; }
+/* ---------- tree (left) */
+.tree { background: #181213; }
+.tree .section { padding: 12px 10px 4px 14px; display: flex; align-items: center; justify-content: space-between; }
+.trow { display: flex; align-items: center; gap: 7px; padding: 6px 10px; margin: 1px 6px; border-radius: 6px; cursor: pointer; white-space: nowrap; color: #e9dede; border: 1px solid transparent; }
+.trow:hover { background: #ffffff08; } .trow.on { background: #2b1f20; border-color: #4a3537; }
+.trow .name { overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0; }
+.trow .tag { font: 11px var(--mono); color: var(--secondary); border: 1px solid #403536; border-radius: 4px; padding: 0 4px; }
+.trow .n { font: 11.5px var(--mono); background: #4a2028; color: #ffd0d6; border-radius: 4px; padding: 0 5px; }
+.trow.l1 { padding-left: 24px; } .trow.l2 { padding-left: 40px; font-size: 13px; color: #d9cdcd; }
+.chev { width: 12px; color: #9d8889; font-size: 10px; display: inline-block; transition: transform .15s; } .chev.open { transform: rotate(90deg); }
+.worker { padding: 6px 14px; display: flex; gap: 8px; align-items: center; font-size: 13px; color: #d9cdcd; }
+.worker small { color: #9d8889; font-family: var(--mono); font-size: 11.5px; margin-left: auto; }
 
-  .chip { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px; font-size: 11px; border: 1px solid var(--line); white-space: nowrap; }
-  .chip.ready { color: var(--ready); border-color: #2f6b4b; } .chip.warn { color: var(--warn); border-color: #6b4f22; }
-  .chip.bad { color: var(--bad); border-color: #6b2a33; } .chip.info { color: var(--info); border-color: #2b406b; }
-  .chip.done { color: var(--muted); } .chip.agent { color: var(--accent); border-color: #6b3540; }
-  .dev-tag { font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: var(--info); border: 1px dashed #2b406b; border-radius: 6px; padding: 1px 6px; }
-  .prio { font-size: 11px; font-weight: 700; } .prio.Highest { color: var(--bad); } .prio.High { color: #ff9b6b; } .prio.Medium { color: var(--warn); } .prio.Low { color: var(--secondary); } .prio.Lowest { color: var(--muted); }
-  .key { font-family: var(--mono); font-size: 12px; color: var(--secondary); cursor: pointer; text-decoration: underline dotted; }
+/* ---------- middle: tabs, feed */
+.tabs { display: flex; align-items: stretch; border-bottom: 1px solid var(--line); background: #191213; padding: 0 8px; overflow-x: auto; scrollbar-width: none; min-height: 46px; }
+.tabs button { padding: 0 11px; color: #d9cdcd; border-bottom: 2px solid transparent; white-space: nowrap; font-size: 14px; gap: 5px; }
+.tabs button.on { color: var(--accent); border-bottom-color: var(--accent); }
+.tabs button:disabled { opacity: .35; cursor: default; }
+.tabs .div { width: 1px; background: var(--line); margin: 10px 6px; }
+.tabs .count { font: 11.5px var(--mono); padding: 0 5px; background: #462f31; border-radius: 4px; }
+.dev-mark { font: 600 9.5px var(--mono); letter-spacing: .5px; color: var(--info); border: 1px dashed #36505e; border-radius: 4px; padding: 0 4px; }
+.stream-head { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; gap: 10px; border-bottom: 1px solid var(--line); background: #1c1415; }
+.stream-head small { font: 12px var(--mono); color: var(--secondary); display: block; }
+.stats { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); border-bottom: 1px solid var(--line); background: #181213; }
+.stats > div { display: flex; flex-direction: column; padding: 8px 12px; border-right: 1px solid #2a2021; cursor: default; }
+.stats > div:last-child { border-right: 0; }
+.stats span { font: 500 17px var(--mono); } .stats small { font-size: 12px; color: #a99596; }
+.stats .s-ready span { color: var(--secondary); } .stats .s-clar span { color: var(--warn); } .stats .s-wait span { color: var(--bad); } .stats .s-done span { color: var(--ready); }
+.pinned { display: flex; align-items: center; gap: 9px; margin: 8px 10px 0; padding: 7px 10px; border: 1px solid #8a3c48; border-radius: 8px; background: #3a1a20; cursor: pointer; }
+.pinned.ok { border-color: #3f6f55; background: #1a3326; } .pinned.warn { border-color: #6b5222; background: #2e2414; } .pinned.sel { outline: 1px solid #ffffff3a; }
+.pinned strong { font-family: var(--mono); font-size: 13.5px; } .pinned .t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.status { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; white-space: nowrap; padding: 2px 9px; border-radius: 999px; background: #4a2028; color: #ffd0d6; }
+.status i { width: 6px; height: 6px; border-radius: 50%; background: var(--bad); animation: pulse 1.2s infinite; }
+.status.ok { background: #1f4733; color: #c9f5da; } .status.ok i { background: var(--ready); animation: none; }
+.status.warn { background: #4a3517; color: #ffe1b3; } .status.warn i { background: var(--warn); }
+.open-agent { color: #ffd0d6; white-space: nowrap; font-size: 13px; } .ok .open-agent { color: #c9f5da; }
+.log-head, .log-row { display: grid; grid-template-columns: 14px 62px 74px 1fr 128px 74px; gap: 9px; align-items: center; }
+.log-head { padding: 9px 14px 5px; font-size: 11.5px; letter-spacing: .8px; text-transform: uppercase; color: #9d8889; border-bottom: 1px solid #2a2021; margin-top: 8px; }
+.log-row { padding: 5px 14px; font: 13px var(--mono); border-bottom: 1px solid #ffffff08; border-left: 3px solid transparent; cursor: pointer; }
+.log-row:hover { background: #ffffff06; } .log-row.sel { background: #ffffff0a; border-left-color: var(--accent); }
+.log-row.new { animation: rowIn .45s ease, flash 1.6s ease; }
+.log-row .t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .log-row .t b { font-weight: 600; }
+.grip { color: #6f5a5c; cursor: grab; user-select: none; visibility: hidden; } .log-row:hover .grip { visibility: visible; }
+.log-row.drag { opacity: .35; } .log-row.over { border-top: 1px solid var(--accent); }
+.prio { font: 700 11px var(--mono); letter-spacing: .02em; text-transform: uppercase; background: none; border: 0; padding: 0; cursor: pointer; }
+.prio.Highest { color: var(--bad); } .prio.High { color: #ff9a62; } .prio.Medium { color: var(--warn); } .prio.Low, .prio.Lowest { color: #a99596; }
+.lane { color: #e2c9a6; font-size: 12px; }
+.chip { justify-self: end; font: 11.5px var(--mono); letter-spacing: .5px; text-transform: uppercase; padding: 2px 7px; border-radius: 4px; border: 1px solid transparent; white-space: nowrap; }
+.chip.new { animation: chipIn .4s ease; }
+.chip.pending { color: #9d8889; border-color: #3b2c2e; animation: pulse 1s infinite; }
+.chip.ready { color: var(--ready); border-color: #2f5b44; } .chip.clar { color: var(--warn); border-color: #5b4422; }
+.chip.progress { color: var(--secondary); border-color: var(--line); } .chip.waiting { color: var(--bad); border-color: #6b2a33; }
+.chip.test { color: #1d1408; background: var(--warn); font-weight: 600; } .chip.done { color: var(--ready); opacity: .75; }
+.chip.blocked { color: #fff; background: #c93a50; font-weight: 600; box-shadow: 0 0 12px #ff6b7d55; }
+.rel { justify-self: end; display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; color: #a99596; cursor: pointer; user-select: none; }
+.sw { width: 26px; height: 15px; border-radius: 99px; background: #2b2021; border: 1px solid #443738; position: relative; transition: .15s; display: inline-block; flex-shrink: 0; }
+.sw::after { content: ""; position: absolute; top: 2px; left: 2px; width: 9px; height: 9px; border-radius: 50%; background: #8d7b7c; transition: .15s; }
+.sw.on { background: #1f4733; border-color: #3f6f55; } .sw.on::after { left: 13px; background: var(--ready); }
 
-  /* backlog */
-  .list { display: flex; flex-direction: column; gap: 6px; }
-  .bl { display: grid; grid-template-columns: 22px 64px 1fr 120px 150px 190px 120px; gap: 10px; align-items: center; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px; }
-  .bl.drag { opacity: .4; } .bl.over { border-color: var(--accent); }
-  .grip { cursor: grab; color: var(--muted); user-select: none; }
-  body.mobile .bl { grid-template-columns: 18px 1fr; } body.mobile .bl > .hm { display: none; }
-  .toggle { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; user-select: none; }
-  .toggle i { width: 32px; height: 18px; border-radius: 99px; background: var(--surface2); border: 1px solid var(--line); position: relative; transition: .15s; }
-  .toggle i::after { content: ""; position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 50%; background: var(--muted); transition: .15s; }
-  .toggle.on i { background: #1f3a2b; border-color: #2f6b4b; } .toggle.on i::after { left: 16px; background: var(--ready); }
+/* board / reports / settings / portfolio */
+.board { display: grid; grid-template-columns: repeat(5, minmax(150px, 1fr)); gap: 8px; padding: 10px; min-width: 760px; }
+.bcol { background: #181213; border: 1px solid var(--line); border-radius: 9px; padding: 8px; min-height: 260px; }
+.bcol h3 { font-size: 12.5px; margin: 0 0 8px; display: flex; justify-content: space-between; color: #e9dede; }
+.bcard { background: var(--surface); border: 1px solid #3b2c2e; border-radius: 7px; padding: 7px 8px; margin-bottom: 6px; cursor: pointer; font-size: 13px; }
+.bcard:hover { border-color: #6b4a4d; } .bcard .k { font: 11.5px var(--mono); color: var(--secondary); display: flex; justify-content: space-between; }
+.bcard .agent { color: var(--accent); font-size: 11.5px; display: flex; align-items: center; gap: 5px; margin-top: 4px; }
+.pad { padding: 14px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.kv { display: grid; grid-template-columns: 130px 1fr; gap: 6px 10px; font-size: 13.5px; } .kv dt { color: var(--secondary); } .kv dd { margin: 0; font-family: var(--mono); font-size: 13px; }
+.field { display: block; margin-bottom: 10px; } .field span { display: block; font-size: 12px; color: var(--secondary); margin-bottom: 3px; } .field input, .field select, .field textarea { width: 100%; }
+.legend { display: flex; gap: 10px; flex-wrap: wrap; font-size: 12px; color: #a99596; } .legend i { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; }
+svg text { fill: #9d8889; font: 10.5px var(--font, "DM Sans"); }
+.prow { display: grid; grid-template-columns: 1.4fr 70px 70px 70px 70px 1fr; gap: 10px; align-items: center; padding: 9px 14px; border-bottom: 1px solid #ffffff08; cursor: pointer; }
+.prow:hover { background: #ffffff06; } .prow .num { font: 500 15px var(--mono); } .prow small { color: #a99596; font-size: 11.5px; display: block; }
+.bar { height: 6px; border-radius: 99px; background: #2b2021; overflow: hidden; } .bar i { display: block; height: 100%; background: var(--ready); }
 
-  /* board */
-  .board { display: grid; grid-template-columns: repeat(5, minmax(200px, 1fr)); gap: 12px; overflow-x: auto; }
-  .col { background: #191314; border: 1px solid var(--line); border-radius: 12px; padding: 10px; min-height: 300px; }
-  .col h3 { margin: 0 0 10px; font: 700 13px var(--title); display: flex; justify-content: space-between; }
-  .tcard { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px; margin-bottom: 8px; cursor: pointer; }
-  .tcard:hover { border-color: var(--muted); }
+/* ---------- right: conversation */
+.side { background: #161011; }
+.ctabs { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; flex: 1; min-width: 0; }
+.ctab { padding: 6px 10px; border-radius: 6px; white-space: nowrap; color: #d9cdcd; border: 1px solid transparent; font-size: 13.5px; }
+.ctab.on { background: #2b1f20; border-color: #4a3537; color: #f2eeee; }
+.ctab .dot { width: 6px; height: 6px; }
+.cost { font: 12.5px var(--mono); color: var(--secondary); white-space: nowrap; }
+.model-chip { border: 1px solid #423435; background: #251c1d; border-radius: 7px; padding: 3px 8px 3px 4px; font-size: 13px; white-space: nowrap; }
+.aimg { width: 20px; height: 20px; border-radius: 4px; background: #f0e8e9; color: #1a1a1a; font: 700 10px var(--title); display: grid; place-items: center; }
+.icard { margin: 10px 12px 0; border: 1px solid #6b3a41; border-radius: 9px; background: linear-gradient(180deg, #3a1d22aa, #24161800); padding: 4px 12px 10px; }
+.icard.ok { border-color: #3f6f55; background: linear-gradient(180deg, #1c3a2b99, #16201b00); }
+.icard.warn { border-color: #6b5222; background: linear-gradient(180deg, #3a2c17aa, #22191300); }
+.itop { display: flex; align-items: center; gap: 9px; padding: 8px 0 6px; }
+.itop strong { font-family: var(--mono); } .itop .ititle { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #e9dede; }
+.lchip { font: 10.5px var(--mono); text-transform: uppercase; letter-spacing: .5px; border: 1px solid #4a3537; border-radius: 99px; padding: 1px 6px; color: var(--secondary); }
+.steps { display: flex; list-style: none; padding: 0; margin: 2px 0 8px; gap: 5px; }
+.steps li { flex: 1; display: flex; flex-direction: column; gap: 5px; font-size: 12px; color: #9d8889; }
+.steps li i { height: 4px; border-radius: 2px; background: #3b2c2e; }
+.steps li.done { color: #e9dede; } .steps li.done i { background: var(--accent); } .ok .steps li.done i { background: var(--ready); }
+.steps li.cur { color: #f2eeee; } .steps li.cur i { background: var(--accent); animation: pulse 1.2s infinite; }
+.isum { line-height: 1.5; color: #e9dede; font-size: 13.5px; }
+.risk { margin-top: 8px; border: 1px solid #6b5222; background: #2a2114; border-radius: 8px; padding: 8px 10px; font-size: 13px; }
+.risk code { font-size: 12px; color: var(--secondary); }
+.chat { flex: 1; overflow: auto; padding: 14px 18px 8px; min-height: 0; }
+.entry { margin-bottom: 16px; } .entry.new { animation: slideIn .35s ease; }
+.mlabel { display: flex; gap: 7px; align-items: center; font-size: 12.5px; letter-spacing: 1.2px; margin-bottom: 6px; color: #e9dede; }
+.mlabel span { font-family: var(--mono); letter-spacing: 0; color: #9d8889; } .mlabel .stream { margin-left: auto; color: var(--accent); letter-spacing: 0; }
+.pi-user .mlabel { justify-content: flex-end; } .umsg { line-height: 1.65; white-space: pre-wrap; text-align: right; }
+.pi-user { padding-bottom: 12px; border-bottom: 1px solid #392628; }
+.brief-label { color: var(--bad); }
+.brief { border: 1px solid #6b3a41; background: linear-gradient(180deg, #3a1d2266, #22151700); border-radius: 8px; padding: 10px 12px; }
+.brief p { white-space: pre-wrap; line-height: 1.6; font: 13px/1.6 var(--mono); }
+.brief summary, .thinking summary { cursor: pointer; color: var(--secondary); font-size: 13px; }
+.md { line-height: 1.65; font-size: 14px; } .md code { font-size: 12.5px; background: #3a2628; padding: 1px 5px; border-radius: 4px; }
+.tool { border: 1px solid #453032; border-radius: 6px; background: #251819; margin: 6px 0; overflow: hidden; }
+.tool summary { display: flex; gap: 8px; align-items: center; list-style: none; padding: 6px 10px; cursor: pointer; font-size: 13px; }
+.tool summary code { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; color: #b9a5a6; font-size: 12px; min-width: 0; flex: 1; }
+.tool pre { padding: 8px 10px; margin: 0; border-top: 1px solid #412b2d; font-size: 12px; max-height: 200px; overflow: auto; white-space: pre-wrap; }
+.tstat { color: var(--secondary); white-space: nowrap; }
+.live-tool { border: 1px solid #624346; background: #2c1d1e; border-radius: 6px; padding: 7px 10px; margin: 6px 0; font-size: 13px; display: flex; gap: 8px; align-items: center; animation: glow 1.6s infinite; }
+.live-tool code { color: #b9a5a6; font-size: 12px; flex: 1; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.typing { display: flex; gap: 5px; padding: 6px 0; } .typing i { height: 6px; width: 6px; background: #af7c81; border-radius: 50%; animation: pulse 1.2s infinite; }
+.typing i:nth-child(2) { animation-delay: .2s; } .typing i:nth-child(3) { animation-delay: .4s; }
+.spin { display: inline-block; width: 12px; height: 12px; border: 2px solid #5a3a3d; border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; }
+.rec { margin-top: 6px; border: 1px solid #2f5b44; border-radius: 8px; padding: 7px 9px; background: #16261d; font-size: 13.5px; }
+.composer-region { padding: 8px 14px 10px; }
+.composer { background: #281c1d; border: 1px solid #513d3f; border-radius: 10px; overflow: hidden; }
+.composer textarea { width: 100%; display: block; resize: none; min-height: 52px; border: 0; background: none; padding: 10px 12px 4px; }
+.ctool { display: flex; align-items: center; justify-content: space-between; padding: 4px 8px 8px 10px; gap: 6px; }
+.ctool select { border: 0; background: none; padding: 2px; font-size: 13px; }
+.interrupt { padding: 4px 8px; border-radius: 5px; border: 1px solid #66414460; background: #452b2d24; font-size: 13px; }
+.send { width: 30px; height: 30px; background: var(--accent); color: #2a1013; border-radius: 7px; font-weight: 700; }
+.footnote { display: flex; justify-content: space-between; margin-top: 6px; font-size: 12px; color: #b9a5a6; gap: 8px; }
+.timeline { border-left: 2px solid #3b2c2e; margin: 4px 0 0 4px; padding-left: 14px; }
+.timeline div { position: relative; margin-bottom: 11px; font-size: 13.5px; } .timeline div small { display: block; color: #9d8889; font-size: 12px; }
+.timeline div::before { content: ""; position: absolute; left: -20px; top: 4px; width: 10px; height: 10px; border-radius: 50%; background: #3b2c2e; border: 2px solid #161011; }
+.timeline div.now::before { background: var(--accent); animation: pulse 1.2s infinite; }
+.empty { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; height: 100%; padding: 30px; gap: 4px; }
+.orb { position: relative; width: 54px; height: 54px; border: 1px solid #503a3c; background: radial-gradient(ellipse at top, #492d2f, #281a1b); border-radius: 16px; display: grid; place-items: center; margin-bottom: 16px; }
+.orb i { position: absolute; right: -2px; bottom: -1px; width: 11px; height: 11px; border: 3px solid #161011; background: var(--accent); border-radius: 50%; animation: pulse 1.6s infinite; }
+.empty h2 { font-size: 24px; font-weight: 500; letter-spacing: -0.7px; margin: 8px 0; }
+.empty p { color: #d9cdcd; line-height: 1.6; max-width: 420px; }
+.starters { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 22px; width: 100%; max-width: 440px; }
+.starters button { flex-direction: column; align-items: flex-start; text-align: left; padding: 13px; border: 1px solid #3c2c2d; border-radius: 8px; background: #221718; gap: 3px; }
+.starters span { color: #d9cdcd; font-size: 13px; }
 
-  /* drawer / modal */
-  .shade { position: fixed; inset: 0; background: #0009; z-index: 20; display: flex; justify-content: flex-end; }
-  .shade.center { justify-content: center; align-items: center; }
-  .drawer { width: min(560px, 100%); height: 100%; overflow-y: auto; background: var(--surface); border-left: 1px solid var(--line); padding: 20px; }
-  .modal { width: min(560px, 94%); max-height: 90vh; overflow-y: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 20px; }
-  body.mobile .shade { position: absolute; }
-  .x { float: right; background: none; border: 0; font-size: 20px; cursor: pointer; color: var(--muted); }
-  .timeline { border-left: 2px solid var(--line); margin: 6px 0 0 6px; padding-left: 14px; }
-  .timeline div { margin-bottom: 10px; position: relative; } .timeline div::before { content: ""; position: absolute; left: -20px; top: 5px; width: 10px; height: 10px; border-radius: 50%; background: var(--line); }
-  .timeline div.now::before { background: var(--accent); }
-  .devbox { border: 1px dashed #2b406b; border-radius: 10px; padding: 12px; margin-top: 14px; background: #121722; }
-  .riskbox { border: 1px solid #6b4f22; background: #2a2114; border-radius: 10px; padding: 12px; margin: 10px 0; }
+/* ---------- dev inspector (middle column) */
+.insp-sec { padding: 14px 18px; border-bottom: 1px solid var(--line); }
+.insp-sec h1 { font-size: 15px; font-weight: 650; display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 6px; }
+.path { font: 13px var(--mono); color: #e9dede; display: flex; gap: 6px; align-items: center; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.status-pill { background: #352728; color: #f2eeee; display: inline-flex; align-items: center; gap: 6px; border-radius: 4px; padding: 3px 8px; font-size: 13px; }
+.status-pill i { width: 5px; height: 5px; border-radius: 50%; background: currentColor; } .status-pill.working { color: var(--accent); background: #412b2d; } .status-pill.working i { animation: pulse 1.5s infinite; }
+.slabel { display: flex; justify-content: space-between; align-items: center; font-size: 12.5px; letter-spacing: 1.3px; color: #e9dede; margin: 0 0 9px; text-transform: uppercase; }
+.slabel a { letter-spacing: 0; text-transform: none; color: var(--warn); text-decoration: none; font-size: 13px; }
+.model-btn { width: 100%; background: #251c1d; border: 1px solid #423435; padding: 9px 11px; border-radius: 8px; justify-content: flex-start; gap: 10px; text-align: left; }
+.model-btn .aimg { width: 28px; height: 28px; font-size: 13px; } .model-btn div { flex: 1; } .model-btn small { display: block; color: var(--secondary); font-size: 12.5px; }
+.row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 10px; font-size: 13.5px; }
+.perm .seg button.on.ask { background: #2c2514; color: #f2c94c; } .perm .seg button.on.auto { background: #142c1e; color: #6fd39b; } .perm .seg button.on.yolo { background: #3a1a1d; color: #ff8997; }
+.phint { margin: 6px 0 0; font-size: 12.5px; line-height: 1.45; color: #d9cdcd; } .phint.yolo { color: #ff8997; } .phint.ask { color: #f2c94c; } .phint.auto { color: #6fd39b; }
+.ctx-num { font: 500 18px var(--title); } .ctx-num small { font: 13px "DM Sans"; color: #d9cdcd; margin-left: 4px; }
+.ctxbar { position: relative; height: 10px; border-radius: 99px; margin: 26px 0 22px; background: repeating-linear-gradient(135deg, #2b2021 0 6px, #241b1c 6px 12px); border: 1px solid #3b2c2e; }
+.ctxbar .fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 99px; background: linear-gradient(90deg, #6b4a4d, var(--accent)); transition: width .6s; }
+.ctxbar .mk { position: absolute; top: -5px; width: 4px; height: 18px; border-radius: 2px; }
+.ctxbar .mk.auto { background: #f2c94c; } .ctxbar .mk.res { background: #f2eeee; }
+.ctxbar .lab { position: absolute; font: 12px var(--mono); white-space: nowrap; transform: translateX(-50%); }
+.ctxbar .lab.auto { top: -22px; color: #f2c94c; } .ctxbar .lab.res { top: 16px; color: #f2eeee; }
+.ctxrange { width: 100%; accent-color: #f2c94c; margin: 0; padding: 0; border: 0; background: none; }
+.metrics { display: grid; grid-template-columns: 1fr 1.2fr .7fr; margin-top: 4px; } .metrics span { font: 500 17px var(--title); display: block; } .metrics small { color: #d9cdcd; font-size: 12.5px; }
+.list-row { display: flex; align-items: center; gap: 9px; padding: 9px 18px; border-bottom: 1px solid #ffffff08; font-size: 13.5px; }
+.list-row code { font-size: 12.5px; } .list-row .grow { flex: 1; min-width: 0; } .list-row small { color: #9d8889; display: block; font-size: 12px; }
+.tagx { font: 11px var(--mono); color: #e9dede; background: #302526; border: 1px solid #403536; border-radius: 4px; padding: 0 5px; white-space: nowrap; }
+.json { width: 100%; min-height: 340px; font: 12.5px/1.55 var(--mono); }
 
-  /* chat */
-  .chat { display: flex; flex-direction: column; gap: 10px; }
-  .msg { max-width: 85%; padding: 10px 12px; border-radius: 12px; background: var(--surface2); }
-  .msg.me { align-self: flex-end; background: #3a1f25; }
-  .msg.tool { font-family: var(--mono); font-size: 12px; background: #121722; color: var(--info); max-width: 100%; }
-  .rec { border: 1px solid #2f6b4b; border-radius: 10px; padding: 8px 10px; margin-top: 8px; background: #16261d; }
-  .meter { height: 10px; border-radius: 99px; background: var(--surface2); overflow: hidden; } .meter i { display: block; height: 100%; transition: width .4s; }
+/* ---------- overlays */
+.shade { position: fixed; inset: 0; z-index: 50; background: #0d0808bd; backdrop-filter: blur(6px); display: flex; align-items: center; justify-content: center; padding: 20px; }
+body.mobile .shade { position: absolute; border-radius: 32px; }
+.modal { background: #251a1b; border: 1px solid #544042; border-radius: 13px; box-shadow: 0 30px 100px #0007; padding: 20px; width: 520px; max-width: 100%; max-height: 90%; overflow: auto; }
+.modal.wide { width: 1100px; }
+.modal header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; } .modal header h2 { font-size: 20px; font-weight: 550; margin-top: 4px; }
+.toast { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%); z-index: 100; background: #2b1b20; box-shadow: 0 8px 30px #0005; border: 1px solid #c87885; border-radius: 8px; padding: 10px 16px; font-weight: 600; animation: slideIn .3s ease; max-width: 90%; }
+body.mobile .toast { position: absolute; bottom: 70px; }
+.arch { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; } .box { border: 1px solid var(--line); border-radius: 10px; padding: 10px; background: var(--surface); font-size: 13px; } .box.c { border-style: dashed; border-color: #36505e; } .box h4 { margin: 0 0 4px; font: 700 13px var(--title); }
+.win { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: #151010; font-size: 12.5px; } .win .chrome { display: flex; gap: 5px; align-items: center; padding: 6px 9px; background: #221a1b; border-bottom: 1px solid var(--line); color: #9d8889; font-size: 11.5px; }
+.win .chrome i { width: 9px; height: 9px; border-radius: 50%; } .tui { background: #0b0b0b; color: #cfe8d6; font: 11.5px/1.35 var(--mono); padding: 10px; white-space: pre; overflow-x: auto; }
 
-  .stepper { display: flex; gap: 4px; flex-wrap: wrap; margin: 8px 0; }
-  .stepper span { font-size: 11px; padding: 3px 8px; border-radius: 99px; border: 1px solid var(--line); color: var(--muted); }
-  .stepper span.done { color: var(--ready); border-color: #2f6b4b; } .stepper span.cur { color: var(--accent); border-color: var(--accent); }
+/* ---------- mobile */
+.mnav { display: none; }
+body.mobile .workspace { grid-template-columns: minmax(0, 1fr); }
+body.mobile .col { display: none; border-right: 0; } body.mobile .col.mshow { display: flex; }
+body.mobile .mnav { display: flex; border-top: 1px solid var(--line); background: #1a1415; }
+body.mobile .mnav button { flex: 1; padding: 10px 0 14px; color: #a99596; flex-direction: column; gap: 2px; font-size: 11.5px; }
+body.mobile .mnav button.on { color: var(--accent); }
+body.mobile .hide-m { display: none !important; }
+body.mobile .log-head, body.mobile .log-row { grid-template-columns: 58px 1fr auto; } body.mobile .log-row .mh, body.mobile .log-head .mh { display: none; }
+body.mobile .stats { grid-template-columns: repeat(3, 1fr); } body.mobile .topbar { padding: 26px 12px 0; height: 70px; }
 
-  .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #1f3a2b; color: var(--ready); border: 1px solid #2f6b4b; border-radius: 10px; padding: 10px 16px; z-index: 40; box-shadow: 0 10px 30px #0008; }
-  body.mobile .toast { position: absolute; bottom: 70px; width: 90%; }
-
-  /* clients page */
-  .win { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--bg); }
-  .win .chrome { display: flex; align-items: center; gap: 6px; padding: 8px 10px; background: #221a1b; border-bottom: 1px solid var(--line); font-size: 12px; color: var(--muted); }
-  .win .chrome i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; } .win .chrome .url { flex: 1; background: #120d0d; border-radius: 6px; padding: 2px 8px; margin-left: 8px; }
-  .tui { background: #0b0b0b; color: #cfe8d6; font: 12px/1.35 var(--mono); padding: 12px; white-space: pre; overflow-x: auto; }
-  .phone { width: 220px; border: 7px solid #2b2223; border-radius: 28px; overflow: hidden; margin: 0 auto; background: var(--bg); }
-  .arch { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; align-items: stretch; }
-  body.mobile .arch { grid-template-columns: 1fr; }
-  .box { border: 1px solid var(--line); border-radius: 12px; padding: 12px; background: var(--surface); }
-  .box.container { border-style: dashed; border-color: var(--info); }
-  .box h4 { margin: 0 0 6px; font: 700 13px var(--title); }
-  svg text { fill: var(--muted); font: 11px var(--font); }
-  .legend { display: flex; gap: 12px; flex-wrap: wrap; font-size: 12px; color: var(--muted); } .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 4px; vertical-align: -1px; }
-
-  /* login */
-  .login { max-width: 760px; margin: 60px auto; text-align: center; }
-  body.mobile .login { margin: 30px auto; }
-  .login .grid { text-align: left; margin-top: 20px; }
+@keyframes pulse { 0%, 100% { opacity: .45; } 50% { opacity: 1; } }
+@keyframes rowIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes chipIn { from { opacity: 0; transform: scale(.85); } to { opacity: 1; transform: none; } }
+@keyframes slideIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+@keyframes flash { 0% { background: #ff899733; } 100% { background: transparent; } }
+@keyframes glow { 0%, 100% { box-shadow: 0 0 0 #ff899700; } 50% { box-shadow: 0 0 14px #ff899733; } }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; } }
 </style>
 </head>
 <body>
-<div id="frame"><div id="app"></div></div>
+<div class="shell" id="shell"></div>
 <div id="overlay"></div>
 <script>
-// ---------------------------------------------------------------- sample data (everything is fictional)
-const USERS = {
-  lena: { id: "lena", name: "Lena Weber", short: "LW", role: "pm", title: "Product Owner" },
-  max: { id: "max", name: "Max Krüger", short: "MK", role: "dev", title: "Entwickler" },
-};
+// ======================================================================= sample data (fictional)
+const LOGO = `<svg viewBox="0 0 9 5" class="brandmark" data-act="home"><g fill="#fff" transform="translate(.5 .5)"><path d="M0 0H1V4H0Z"/><path d="M1 0H2V1H3V2H2V1H1Z"/><path d="M2 2H3V3H2V4H1V3H2Z"/><g transform="translate(4)"><path d="M0 0H3V2H2V1H0Z"/><path d="M0 1H1V2H2V3H1V4H0Z"/><path d="M3 2H4V4H3Z"/></g></g></svg>`;
+const USERS = { pm: { name: "Lena Weber", short: "LW", title: "Product Owner" }, dev: { name: "Max Krüger", short: "MK", title: "Entwickler" } };
 const PROJECTS = [
-  { key: "SHOP", name: "Webshop Relaunch", repo: "gitlab.example.com/shop/storefront", branch: "develop", schema: "feature/{key}", label: "ready-for-agent", test: "npm run test", members: ["Lena Weber · PO", "Max Krüger · Dev", "Sara Yilmaz · Dev"], health: "ok" },
-  { key: "PORTAL", name: "Kundenportal", repo: "gitlab.example.com/portal/web", branch: "main", schema: "feature/{key}", label: "ready-for-agent", test: "npm test", members: ["Tom Becker · PM", "Max Krüger · Dev"], health: "warn" },
-  { key: "APP", name: "Mobile App", repo: "gitlab.example.com/app/client", branch: "develop", schema: "feat/{key_lower}", label: "ready-for-agent", test: "", members: ["Lena Weber · PO", "Jonas Hahn · Dev"], health: "ok" },
+  { key: "SHOP", name: "Webshop Relaunch", repo: "gitlab.example.com/shop/storefront", branch: "develop", schema: "feature/{key}", test: "npm run test", health: "ok", members: "Lena Weber · PO\nMax Krüger · Dev\nSara Yilmaz · Dev" },
+  { key: "PORTAL", name: "Kundenportal", repo: "gitlab.example.com/portal/web", branch: "main", schema: "feature/{key}", test: "npm test", health: "warn", members: "Tom Becker · PM\nMax Krüger · Dev" },
+  { key: "APP", name: "Mobile App", repo: "gitlab.example.com/app/client", branch: "develop", schema: "feat/{key_lower}", test: "", health: "ok", members: "Lena Weber · PO\nJonas Hahn · Dev" },
 ];
-// flow: backlog | ready | grill | implement | review | mr | test | rework | done | blocked
-const T = (key, title, type, prio, flow, extra = {}) => ({ key, title, type, prio, flow, ready: ["ready","grill","implement","review","mr","test","rework","done","blocked"].includes(flow), ...extra });
+const T = (key, title, type, prio, flow, x = {}) => ({ key, title, type, prio, flow, ready: !["backlog"].includes(flow), found: x.found || "09:14:13", ...x });
 const TICKETS = [
-  T("SHOP-151", "Gutscheincodes im Checkout einlösen", "Story", "High", "grill", { lane: "feature", tier: "COMPLEX", kev: "vague", desc: "Kunden sollen im Checkout einen Gutscheincode eingeben können.", started: true }),
-  T("SHOP-149", "Warenkorb verliert Artikel nach Login", "Bug", "Highest", "implement", { lane: "ticket", tier: "MODERATE", kev: "ready", model: "Sonnet", desc: "Nach dem Login sind zuvor als Gast hinzugefügte Artikel weg.", started: true }),
-  T("SHOP-147", "Lieferzeit auf der Produktseite anzeigen", "Story", "Medium", "review", { lane: "ticket", tier: "MODERATE", kev: "ready", model: "Sonnet", started: true }),
-  T("SHOP-145", "Firmenkunden: Pflichtfelder fehlen bei Registrierung", "Bug", "High", "mr", { lane: "ticket", tier: "MODERATE", kev: "ready", model: "Sonnet", mr: "!3312", risks: ["checkout/Profile.ts:593 — Login-Handler sendet das Profil ohne die neuen Felder erneut; eine späte Antwort überschreibt den Warenkorb."], started: true }),
-  T("SHOP-141", "Newsletter-Checkbox standardmäßig abgewählt", "Task", "Low", "test", { lane: "quick", tier: "SIMPLE", kev: "ready", model: "Sonnet", mr: "!3301", stage: "https://dev.shop.example.com", started: true }),
-  T("SHOP-138", "Suche findet Artikel mit Umlauten nicht", "Bug", "High", "test", { lane: "ticket", tier: "MODERATE", kev: "ready", model: "Sonnet", mr: "!3297", stage: "https://dev.shop.example.com", started: true }),
-  T("SHOP-153", "Filter nach Marke auf Kategorieseiten", "Story", "Medium", "ready", { lane: "ticket", tier: "MODERATE", kev: "ready" }),
-  T("SHOP-154", "Rechtschreibfehler im Footer (\"Impresum\")", "Task", "Lowest", "ready", { lane: "quick", tier: "SIMPLE", kev: "ready" }),
-  T("SHOP-155", "Wie berechnet der Shop die Versandkosten?", "Task", "Low", "backlog", { lane: "question", tier: "SIMPLE", kev: "ready" }),
-  T("SHOP-156", "Wunschliste teilen", "Story", "Medium", "backlog", { lane: "feature", tier: "COMPLEX", kev: "vague" }),
-  T("SHOP-157", "Ladezeit der Startseite verbessern", "Story", "High", "backlog", { lane: "feature", tier: "COMPLEX", kev: "vague" }),
-  T("SHOP-158", "Cookie-Banner: Ablehnen-Button gleich groß", "Bug", "Medium", "backlog", { lane: "quick", tier: "SIMPLE", kev: "ready" }),
-  T("SHOP-131", "PayPal Express im Warenkorb", "Story", "High", "done", { lane: "ticket", tier: "MODERATE", kev: "ready", model: "Opus", mr: "!3260" }),
-  T("SHOP-129", "Preise mit 2 Nachkommastellen in der Mini-Cart", "Bug", "Medium", "done", { lane: "quick", tier: "SIMPLE", kev: "ready", model: "Sonnet", mr: "!3255" }),
-  T("SHOP-127", "Produktbilder lazy laden", "Task", "Low", "done", { lane: "ticket", tier: "MODERATE", kev: "ready", model: "Sonnet", mr: "!3249" }),
-  T("SHOP-150", "Rabatt wird doppelt abgezogen bei Teillieferung", "Bug", "Highest", "blocked", { lane: "ticket", tier: "COMPLEX", kev: "ready", model: "Opus", blockedWhy: "Review: Blocker nach 2 Versuchen – Teillieferungen sind im Backend nicht testbar.", started: true }),
-  T("PORTAL-88", "Passwort-Reset-Mail kommt nicht an", "Bug", "Highest", "implement", { lane: "ticket", tier: "MODERATE", kev: "ready", model: "Sonnet", started: true }),
-  T("PORTAL-86", "Rechnungen als PDF herunterladen", "Story", "High", "grill", { lane: "feature", tier: "COMPLEX", kev: "vague", started: true }),
+  T("SHOP-149", "Warenkorb verliert Artikel nach dem Login", "Bug", "Highest", "implement", { lane: "ticket", tier: "MODERATE", kev: "ready", model: "Sonnet 5.5", started: true, tokens: 84200, cost: 1.92, found: "08:02:40" }),
+  T("SHOP-151", "Gutscheincodes im Checkout einlösen", "Story", "High", "grill", { lane: "feature", tier: "COMPLEX", kev: "vague", model: "Opus 5.5", started: true, tokens: 22100, cost: 0.64, found: "08:31:02" }),
+  T("SHOP-147", "Lieferzeit auf der Produktseite anzeigen", "Story", "Medium", "review", { lane: "ticket", tier: "MODERATE", kev: "ready", model: "Sonnet 5.5", started: true, tokens: 131900, cost: 2.81, round: 1, found: "Gestern" }),
+  T("SHOP-145", "Firmenkunden: Pflichtfelder fehlen bei Registrierung", "Bug", "High", "mr", { lane: "ticket", tier: "MODERATE", kev: "ready", model: "Sonnet 5.5", started: true, mr: "!3312", round: 3, tokens: 412800, cost: 4.73, risks: [["checkout/Profile.ts:593", "Login-Handler sendet das Profil ohne die neuen Felder erneut; eine späte Antwort überschreibt den Warenkorb."]], found: "Gestern" }),
+  T("SHOP-141", "Newsletter-Checkbox standardmäßig abgewählt", "Task", "Low", "test", { lane: "quick", tier: "SIMPLE", kev: "ready", model: "Sonnet 5.5", started: true, mr: "!3301", round: 1, tokens: 30400, cost: 0.41, found: "Mo" }),
+  T("SHOP-138", "Suche findet Artikel mit Umlauten nicht", "Bug", "High", "test", { lane: "ticket", tier: "MODERATE", kev: "ready", model: "Sonnet 5.5", started: true, mr: "!3297", round: 2, tokens: 95100, cost: 1.38, found: "Mo" }),
+  T("SHOP-150", "Rabatt wird bei Teillieferung doppelt abgezogen", "Bug", "Highest", "blocked", { lane: "ticket", tier: "COMPLEX", kev: "ready", model: "Opus 5.5", started: true, round: 2, tokens: 520300, cost: 7.12, why: "Review: 1 Blocker nach 2 Versuchen – Teillieferungen sind im Backend nicht testbar.", found: "Fr" }),
+  T("SHOP-153", "Filter nach Marke auf Kategorieseiten", "Story", "Medium", "ready", { lane: "ticket", tier: "MODERATE", kev: "ready", found: "10:32:16" }),
+  T("SHOP-154", "Rechtschreibfehler im Footer: „Impresum“", "Task", "Lowest", "ready", { lane: "quick", tier: "SIMPLE", kev: "ready", found: "10:05:51" }),
+  T("SHOP-155", "Wie berechnet der Shop die Versandkosten?", "Task", "Low", "backlog", { lane: "question", tier: "SIMPLE", kev: "ready", found: "09:58:12" }),
+  T("SHOP-156", "Wunschliste teilen", "Story", "Medium", "backlog", { lane: "feature", tier: "COMPLEX", kev: "vague", found: "09:40:30" }),
+  T("SHOP-157", "Ladezeit der Startseite verbessern", "Story", "High", "backlog", { lane: "feature", tier: "COMPLEX", kev: "vague", found: "09:22:05" }),
+  T("SHOP-158", "Cookie-Banner: Ablehnen-Button gleich groß", "Bug", "Medium", "backlog", { lane: "quick", tier: "SIMPLE", kev: "ready", found: "09:01:44" }),
+  T("SHOP-131", "PayPal Express im Warenkorb", "Story", "High", "done", { lane: "ticket", tier: "MODERATE", kev: "ready", started: true, mr: "!3260", round: 1, found: "Do" }),
+  T("SHOP-129", "Preise mit 2 Nachkommastellen in der Mini-Cart", "Bug", "Medium", "done", { lane: "quick", tier: "SIMPLE", kev: "ready", started: true, mr: "!3255", round: 1, found: "Do" }),
+  T("PORTAL-88", "Passwort-Reset-Mail kommt nicht an", "Bug", "Highest", "implement", { lane: "ticket", tier: "MODERATE", kev: "ready", model: "Sonnet 5.5", started: true, tokens: 51200, cost: 0.88 }),
+  T("PORTAL-86", "Rechnungen als PDF herunterladen", "Story", "High", "grill", { lane: "feature", tier: "COMPLEX", kev: "vague", model: "Opus 5.5", started: true, tokens: 12000, cost: 0.31 }),
   T("PORTAL-84", "Profilbild hochladen", "Story", "Medium", "ready", { lane: "ticket", tier: "MODERATE", kev: "ready" }),
   T("PORTAL-80", "Dark Mode", "Story", "Low", "backlog", { lane: "feature", tier: "COMPLEX", kev: "vague" }),
-  T("PORTAL-79", "Datumsformat im Verlauf", "Bug", "Low", "done", { lane: "quick", tier: "SIMPLE", kev: "ready", mr: "!412" }),
-  T("APP-41", "Push-Benachrichtigung bei Versand", "Story", "High", "review", { lane: "ticket", tier: "MODERATE", kev: "ready", model: "Sonnet", started: true }),
-  T("APP-39", "Absturz beim Öffnen alter Bestellungen", "Bug", "Highest", "done", { lane: "ticket", tier: "MODERATE", kev: "ready", mr: "!88" }),
+  T("PORTAL-79", "Datumsformat im Verlauf", "Bug", "Low", "done", { lane: "quick", tier: "SIMPLE", kev: "ready", started: true, mr: "!412" }),
+  T("APP-41", "Push-Benachrichtigung bei Versand", "Story", "High", "review", { lane: "ticket", tier: "MODERATE", kev: "ready", model: "Sonnet 5.5", started: true, round: 1, tokens: 70300, cost: 1.12 }),
+  T("APP-39", "Absturz beim Öffnen alter Bestellungen", "Bug", "Highest", "done", { lane: "ticket", tier: "MODERATE", kev: "ready", started: true, mr: "!88" }),
   T("APP-43", "Biometrischer Login", "Story", "Medium", "backlog", { lane: "feature", tier: "COMPLEX", kev: "vague" }),
 ];
 TICKETS.forEach((t, i) => (t.rank = i));
-
-const GRILL = {
-  "SHOP-151": [
-    { q: "Wer darf Gutscheine einlösen – nur eingeloggte Kunden oder auch Gäste?", rec: "Auch Gäste. Sonst brechen Neukunden im Checkout ab, und genau die bekommen die meisten Gutscheine.", alt: "Nur eingeloggte Kunden" },
-    { q: "Dürfen mehrere Gutscheine kombiniert werden?", rec: "Nein, ein Gutschein pro Bestellung. Kombinationen machen Rabattlogik und Retouren deutlich komplexer.", alt: "Ja, bis zu zwei" },
-    { q: "Was passiert, wenn der Warenkorbwert nach dem Einlösen unter den Mindestbestellwert fällt?", rec: "Der Gutschein bleibt sichtbar, ist aber ausgegraut mit Hinweis \"Mindestbestellwert 50 € nicht erreicht\".", alt: "Gutschein wird automatisch entfernt" },
-    { q: "Wie gehen wir mit Retouren um, wenn ein Gutschein eingelöst wurde?", rec: "Der Gutscheinwert wird anteilig auf die Artikel verteilt und bei Retoure anteilig nicht erstattet.", alt: "Gutschein verfällt bei jeder Retoure" },
-  ],
-};
-const ACTIVITY = [
-  { at: "09:42", text: "Agent hat SHOP-147 fertig entwickelt – unabhängiges Review läuft", kind: "agent" },
-  { at: "09:15", text: "SHOP-151 wartet auf deine Antworten in der Klärung", kind: "you" },
-  { at: "08:58", text: "SHOP-141 ist auf der Dev-Stage – bereit zum Testen", kind: "test" },
-  { at: "Gestern", text: "SHOP-131 erledigt (MR !3260 gemerged)", kind: "done" },
-  { at: "Gestern", text: "Kev hat 3 neue Tickets eingeordnet", kind: "agent" },
+const ARRIVALS = [
+  { key: "SHOP-159", title: "Produktvergleich zeigt mobil nur 2 Spalten", type: "Bug", prio: "Medium", lane: "quick", tier: "SIMPLE", kev: "ready" },
+  { key: "SHOP-160", title: "Treuepunkte im Kundenkonto anzeigen", type: "Story", prio: "High", lane: "feature", tier: "COMPLEX", kev: "vague" },
+  { key: "SHOP-161", title: "Wie lange dauert ein Retourenprozess?", type: "Task", prio: "Low", lane: "question", tier: "SIMPLE", kev: "ready" },
+];
+const GRILL = [
+  { q: "Wer darf Gutscheine einlösen – nur eingeloggte Kunden oder auch Gäste?", rec: "Auch Gäste. Sonst brechen Neukunden im Checkout ab, und genau die bekommen die meisten Gutscheine.", alt: "Nur eingeloggte Kunden" },
+  { q: "Dürfen mehrere Gutscheine kombiniert werden?", rec: "Nein, ein Gutschein pro Bestellung. Kombinationen machen Rabattlogik und Retouren deutlich komplexer.", alt: "Ja, bis zu zwei" },
+  { q: "Was passiert, wenn der Warenkorbwert unter den Mindestbestellwert fällt?", rec: "Der Gutschein bleibt sichtbar, aber ausgegraut, mit Hinweis „Mindestbestellwert 50 € nicht erreicht“.", alt: "Gutschein wird entfernt" },
+  { q: "Wie gehen wir mit Retouren um, wenn ein Gutschein eingelöst wurde?", rec: "Der Gutscheinwert wird anteilig auf die Artikel verteilt und bei Retoure anteilig nicht erstattet.", alt: "Gutschein verfällt bei jeder Retoure" },
+];
+const DRAFT_Q = [
+  { q: "Für wen soll das gelten – nur eingeloggte Kunden oder auch Gäste?", rec: "Nur eingeloggte Kunden: Gäste haben kein Konto, in dem Adressen liegen könnten.", alt: "Auch Gäste" },
+  { q: "Wie viele Adressen darf ein Kunde speichern?", rec: "Bis zu 5, eine davon als Standard markiert.", alt: "Unbegrenzt" },
+  { q: "Was gilt für Lieferungen ins Ausland?", rec: "Nur DE, AT und CH; andere Länder zeigen einen Hinweis.", alt: "Alle Lieferländer" },
 ];
 
-// ---------------------------------------------------------------- state
-const S = { user: null, role: "pm", device: "desktop", project: "SHOP", agentSel: "SHOP-149", grill: {}, draft: null, transcript: {} };
-
-// Plain-language status for non-technical readers; tech stage names stay in the developer view.
-const PLAIN = {
-  backlog: ["Im Backlog", ""], ready: ["Freigegeben für Agent", "ready"], grill: ["Klärung mit dir", "warn"],
-  implement: ["Agent entwickelt", "agent"], review: ["Wird unabhängig geprüft", "info"], mr: ["Wartet auf Code-Review", "info"],
-  test: ["Auf Dev-Stage – bitte testen", "warn"], rework: ["Nacharbeit nach deinem Test", "agent"], done: ["Erledigt", "done"], blocked: ["Braucht Hilfe", "bad"],
+// ======================================================================= state
+const S = {
+  role: "pm", device: "desktop", project: "SHOP", sel: null, mid: "feed", ctab: "ticket", mpanel: "mid",
+  open: { SHOP: true }, poll: { left: 14, span: 15 }, arrivals: 0, grill: {}, draft: null, finding: null,
+  perm: { SHOP: "auto" }, compact: 200, live: 0, typing: false, transcripts: {},
 };
-const STAGES = { implement: "implement", review: "review", mr: "mr_open", test: "merged", rework: "implement", grill: "grill", blocked: "blocked" };
-const COLS = [["todo", "Zu erledigen", ["backlog", "ready"]], ["progress", "In Arbeit", ["grill", "implement", "rework", "blocked"]], ["review", "Review", ["review", "mr"]], ["test", "Testen (Dev-Stage)", ["test"]], ["done", "Erledigt", ["done"]]];
-const PRIOS = ["Highest", "High", "Medium", "Low", "Lowest"];
-const LANE = { question: "Frage", quick: "Klein", ticket: "Ticket", feature: "Feature" };
-
 const isDev = () => S.role === "dev";
-const proj = () => PROJECTS.find((p) => p.key === S.project);
-const tickets = (k = S.project) => TICKETS.filter((t) => t.key.startsWith(k + "-")).sort((a, b) => a.rank - b.rank);
 const byKey = (k) => TICKETS.find((t) => t.key === k);
-const chip = (flow) => `<span class="chip ${PLAIN[flow][1]}">${PLAIN[flow][0]}</span>`;
-const kevChip = (t) => t.kev === "ready" ? `<span class="chip ready" title="Kev: genug Infos zum Starten">Kev: startklar</span>` : `<span class="chip warn" title="Kev: braucht Klärung">Kev: zu vage</span>`;
-const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-const needsYou = (k = S.project) => tickets(k).filter((t) => (t.flow === "grill" && !isDev()) || t.flow === "test" || (isDev() && (t.flow === "blocked" || (t.flow === "mr" && t.risks))));
+const proj = () => PROJECTS.find((p) => p.key === S.project);
+const ofProject = (k = S.project) => TICKETS.filter((t) => t.key.startsWith(k + "-")).sort((a, b) => a.rank - b.rank);
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const k = (n) => (n >= 1000 ? (n / 1000).toFixed(1) + "k" : String(n));
+const LANE = { question: "Frage", quick: "Klein", ticket: "Ticket", feature: "Feature" };
+const PRIOS = ["Highest", "High", "Medium", "Low", "Lowest"];
+// chip per flow: [text, class]; PM wording, the dev view adds the stage name elsewhere
+const CHIP = {
+  backlog: (t) => (t.kev === "pending" ? ["Kev prüft…", "pending"] : t.kev === "ready" ? ["Bereit", "ready"] : ["Zu vage", "clar"]),
+  ready: () => ["Freigegeben", "ready"], grill: () => ["Klärung", "waiting"], implement: () => ["Agent arbeitet", "progress"],
+  review: () => ["Review", "progress"], mr: (t) => (t.risks ? ["Entscheidung", "waiting"] : ["MR offen", "waiting"]),
+  test: () => ["Testen", "test"], rework: () => ["Nacharbeit", "progress"], done: () => ["Erledigt", "done"], blocked: () => ["Hilfe nötig", "blocked"],
+};
+const STAGE = { implement: "implement", grill: "grill", review: "review", mr: "mr_open", test: "merged", rework: "implement", done: "merged", blocked: "blocked" };
+const STATUS = { ready: ["Freigegeben", "ok"], implement: ["Agent arbeitet", ""], grill: ["Wartet auf dich", "warn"], review: ["Review läuft", ""], mr: ["MR offen", "ok"], test: ["Bitte testen", "warn"], rework: ["Nacharbeit", ""], blocked: ["Hilfe nötig", "warn"], done: ["Erledigt", "ok"] };
+const chipOf = (t) => CHIP[t.flow](t);
+const active = (t) => ["implement", "review", "rework"].includes(t.flow);
+const needsYou = (t) => (t.flow === "grill" && !isDev()) || t.flow === "test" || (isDev() && (t.flow === "blocked" || (t.flow === "mr" && t.risks)));
+const steps = (t) => {
+  if (t.lane === "question") return ["Eingeordnet", "Beantwortet"];
+  return ["Eingeordnet", ...(t.lane === "feature" ? ["Klärung"] : []), "Entwicklung", "Review", "MR", "Testen", "Erledigt"];
+};
+const stepIndex = (t) => {
+  const map = { backlog: 0, ready: 0, grill: 1, implement: t.lane === "feature" ? 2 : 1, rework: t.lane === "feature" ? 2 : 1, review: t.lane === "feature" ? 3 : 2, mr: t.lane === "feature" ? 4 : 3, blocked: t.lane === "feature" ? 3 : 2, test: t.lane === "feature" ? 5 : 4, done: 99 };
+  return map[t.flow];
+};
 
-function toast(text) {
-  document.querySelectorAll(".toast").forEach((t) => t.remove()); // only the latest one
-  const el = document.createElement("div"); el.className = "toast"; el.textContent = text;
-  (S.device === "mobile" ? document.getElementById("frame") : document.body).appendChild(el);
-  setTimeout(() => el.remove(), 3200);
-}
+function toast(text) { document.querySelectorAll(".toast").forEach((t) => t.remove()); const el = document.createElement("div"); el.className = "toast"; el.textContent = text; (S.device === "mobile" ? document.getElementById("shell") : document.body).appendChild(el); setTimeout(() => el.remove(), 3000); }
 
-// ---------------------------------------------------------------- shell
-function route() {
-  const h = location.hash.replace(/^#\/?/, "").split("/");
-  if (!S.user) return { page: "login" };
-  if (h[0] === "p" && PROJECTS.some((p) => p.key === h[1])) { S.project = h[1]; return { page: "project", tab: h[2] || "overview", arg: h[3] }; }
-  if (h[0] === "clients") return { page: "clients" };
-  return { page: "projects" };
-}
-
-function shell(content, r) {
-  const u = USERS[S.user];
-  const tabs = [
-    ["overview", "Übersicht"], ["backlog", "Backlog"], ["board", "Board"], ["new", "Neues Ticket"],
-    ["clarify", "Klärung", tickets().filter((t) => t.flow === "grill").length], ["testing", "Testen", tickets().filter((t) => t.flow === "test").length],
-    ["reports", "Reports"], ...(isDev() ? [["agents", "Agents ⚙", tickets().filter((t) => t.flow === "blocked" || t.risks).length]] : []), ["settings", "Einstellungen"],
+// ======================================================================= transcripts
+function transcript(t, agent = "main") {
+  const id = t.key + ":" + agent;
+  if (S.transcripts[id]) return S.transcripts[id];
+  const brief = { k: "brief", n: 14, text: `${t.key} — ${t.title}\n\nPriority: ${t.prio}. Kev: ${t.tier} / lane ${t.lane} / ${t.kev === "ready" ? "ready" : "needs clarification"}.` };
+  let items; const cart = t.key === "SHOP-149";
+  if (agent === "review") items = [
+    { k: "brief", n: 3, label: "REVIEW BRIEF", text: `Review round ${t.round} of ${t.key} on branch feature/${t.key} against develop.\n\nAcceptance: none stated (judge against the ticket description)` },
+    { k: "tool", name: "bash", arg: `{"command": "git diff origin/develop...HEAD --stat"}`, out: " src/checkout/Profile.ts | 42 +++++++---\n src/checkout/Profile.test.ts | 61 ++++++++++\n 2 files changed, 91 insertions(+), 12 deletions(-)" },
+    { k: "tool", name: "bash", arg: `{"command": "npm run type-check && npm run test"}`, out: "✓ 214 tests passed" },
+    { k: "agent", n: 9, thinking: "Der isLoggedIn-Handler ruft updatePersonalData ohne await auf …", text: t.risks ? "**submit_review** — 0 blocking, 1 risk, 2 minor. Gates: type-check → pass, test → pass." : "**submit_review** — keine Blocker. Gates: type-check → pass, test → pass." },
   ];
-  return `
-  <div class="demo-bar">🧪 <b>Mockup</b> · Beispieldaten · Rolle und Gerät oben rechts umschalten ·
-    <a href="#/clients">Zugriffswege & Architektur ansehen →</a></div>
-  <div class="topbar">
-    <div class="brand" data-go="#/projects"><i></i><span class="hide-m">Flow Dashboard</span></div>
-    ${r.page === "project" ? `<select class="switcher" data-act="switch">${PROJECTS.map((p) => `<option value="${p.key}" ${p.key === S.project ? "selected" : ""}>${p.name}</option>`).join("")}</select>` : `<span class="muted hide-m">Alle Projekte</span>`}
-    <div class="spacer"></div>
-    <div class="seg hide-m" title="Demo: Rolle wechseln"><button class="${!isDev() ? "on" : ""}" data-act="role" data-v="pm">PM/PO</button><button class="${isDev() ? "on" : ""}" data-act="role" data-v="dev">Entwickler</button></div>
-    <div class="seg" title="Demo: Gerät wechseln"><button class="${S.device === "desktop" ? "on" : ""}" data-act="device" data-v="desktop">🖥</button><button class="${S.device === "mobile" ? "on" : ""}" data-act="device" data-v="mobile">📱</button></div>
-    <div class="who"><span class="hide-m">${u.name}</span><span class="avatar" title="${u.title} – abmelden" data-act="logout">${u.short}</span></div>
-  </div>
-  ${r.page === "project" ? `<div class="nav">${tabs.map(([id, label, n]) => `<a href="#/p/${S.project}/${id}" class="${r.tab === id ? "on" : ""}">${label}${n ? `<span class="count">${n}</span>` : ""}</a>`).join("")}</div>` : ""}
-  <main>${content}</main>`;
-}
-
-// ---------------------------------------------------------------- pages
-function pageLogin() {
-  return `<div class="login">
-    <div class="brand" style="justify-content:center;font-size:20px"><i></i>Flow Dashboard</div>
-    <p class="sub" style="margin-top:12px">Anmeldung über Einladungs-Account (Pilot). Später: Single Sign-on über GitLab.</p>
-    <div class="grid g2" style="grid-template-columns:1fr 1fr">
-      ${Object.values(USERS).map((u) => `<div class="card click" data-act="login" data-v="${u.id}">
-        <div class="row"><span class="avatar">${u.short}</span><div><b>${u.name}</b><div class="muted small">${u.title}</div></div></div>
-        <p class="small muted" style="margin:10px 0 0">${u.role === "pm" ? "Sieht: Projekte, Backlog, Priorisierung, Tickets anlegen, Klärung, Testen, Reports. <b>Kein</b> Zugriff auf Agenten." : "Sieht alles, was PMs sehen, plus Agents: Chat, Reviews, Risiken, Modelle, MRs."}</p>
-      </div>`).join("")}
-    </div></div>`;
-}
-
-function cfdMini(k) {
-  const ts = tickets(k); const done = ts.filter((t) => t.flow === "done").length; const all = ts.length;
-  return `<div class="bar"><i style="width:${Math.round((done / all) * 100)}%"></i></div><div class="small muted" style="margin-top:4px">${done} von ${all} erledigt · ${Math.round((done / all) * 100)}%</div>`;
-}
-
-function pageProjects() {
-  return `<div class="row between wrap"><div><h1>Projekte</h1><p class="sub">Alle Projekte, in denen du Mitglied bist. Ein Klick öffnet das Projekt-Dashboard.</p></div>
-    <button class="btn primary" data-act="newProject">+ Neues Projekt</button></div>
-    <div class="grid g3">${PROJECTS.map((p) => {
-      const ts = tickets(p.key); const c = (f) => ts.filter((t) => f.includes(t.flow)).length; const you = needsYou(p.key).length;
-      return `<div class="card click" data-go="#/p/${p.key}/overview">
-        <div class="row between"><div><b style="font-size:16px">${p.name}</b><div class="mono muted">${p.key} · ${p.repo.split("/").slice(1).join("/")}</div></div>
-          <span class="chip ${p.health === "ok" ? "ready" : "warn"}">${p.health === "ok" ? "Im Plan" : "Engpass Review"}</span></div>
-        <div class="grid g4" style="margin:14px 0;gap:8px">
-          <div class="kpi"><div class="n">${c(["backlog", "ready"])}</div><div class="l">Offen</div></div>
-          <div class="kpi"><div class="n">${c(["grill", "implement", "review", "mr", "rework"])}</div><div class="l">In Arbeit</div></div>
-          <div class="kpi warn"><div class="n">${you}</div><div class="l">Braucht dich</div></div>
-          <div class="kpi ok"><div class="n">${c(["done"])}</div><div class="l">Erledigt</div></div>
-        </div>${cfdMini(p.key)}
-        ${isDev() ? `<div class="small" style="margin-top:8px"><span class="dev-tag">Dev</span> ${ts.filter((t) => ["implement", "review", "rework"].includes(t.flow)).length} Agenten aktiv</div>` : ""}
-      </div>`;
-    }).join("")}</div>`;
-}
-
-function pageOverview() {
-  const ts = tickets(); const c = (f) => ts.filter((t) => f.includes(t.flow)).length; const you = needsYou();
-  return `<h1>${proj().name}</h1><p class="sub">Stand heute. Zahlen kommen live aus Jira, Agent-Status aus dem Flow.</p>
-    <div class="grid g5">
-      <div class="kpi card"><div class="n">${c(["backlog"])}</div><div class="l">Im Backlog</div></div>
-      <div class="kpi card ok"><div class="n">${c(["ready"])}</div><div class="l">Freigegeben für Agent</div></div>
-      <div class="kpi card"><div class="n">${c(["grill", "implement", "review", "mr", "rework"])}</div><div class="l">In Arbeit</div></div>
-      <div class="kpi card warn"><div class="n">${c(["test"])}</div><div class="l">Bereit zum Testen</div></div>
-      <div class="kpi card ok"><div class="n">${c(["done"])}</div><div class="l">Erledigt (30 Tage)</div></div>
-    </div>
-    <div class="grid g2" style="margin-top:14px">
-      <div class="card"><h2>Braucht deine Aufmerksamkeit</h2>
-        ${you.length ? `<div class="list">${you.map((t) => `<div class="row between" style="padding:8px 0;border-bottom:1px solid var(--line)">
-          <div><span class="key" data-ticket="${t.key}">${t.key}</span> ${esc(t.title)}<div>${chip(t.flow)} ${t.flow === "mr" && t.risks ? `<span class="chip warn">⚠ offenes Risiko</span>` : ""}</div></div>
-          ${t.flow === "grill" ? `<a class="btn small" href="#/p/${S.project}/clarify/${t.key}">Fragen beantworten</a>` : t.flow === "test" ? `<a class="btn small" href="#/p/${S.project}/testing">Testen</a>` : `<a class="btn small" href="#/p/${S.project}/agents/${t.key}">Ansehen</a>`}
-        </div>`).join("")}</div>` : `<p class="muted">Nichts offen. 🎉</p>`}
-      </div>
-      <div class="card"><h2>Aktivität</h2>${ACTIVITY.map((a) => `<div style="margin-bottom:10px"><div class="small muted">${a.at}</div>${a.text}</div>`).join("")}</div>
-    </div>
-    <div class="card" style="margin-top:14px"><div class="row between"><h2>Fluss der letzten 8 Wochen</h2><a href="#/p/${S.project}/reports" class="small">Alle Reports →</a></div>${cfdSvg(160)}</div>`;
-}
-
-function pageBacklog() {
-  const ts = tickets().filter((t) => !["done"].includes(t.flow));
-  return `<div class="row between wrap"><div><h1>Backlog</h1><p class="sub">Ziehen zum Sortieren (Rangfolge in Jira) · Priorität direkt ändern · Schalter gibt ein Ticket für den Agenten frei (Jira-Label <span class="mono">${proj().label}</span>).</p></div>
-    <a class="btn primary" href="#/p/${S.project}/new">+ Ticket formulieren</a></div>
-    <div class="list" id="backlog">${ts.map((t) => `<div class="bl" draggable="true" data-key="${t.key}">
-      <span class="grip" title="Ziehen">⋮⋮</span>
-      <span class="key" data-ticket="${t.key}">${t.key}</span>
-      <div><div>${esc(t.title)}</div><div class="small muted">${t.type} · ${LANE[t.lane]}${isDev() ? ` · <span class="dev-tag">${t.tier}</span>` : ""}</div></div>
-      <select class="hm" data-act="prio" data-key="${t.key}">${PRIOS.map((p) => `<option ${p === t.prio ? "selected" : ""}>${p}</option>`).join("")}</select>
-      <span class="hm">${kevChip(t)}</span>
-      <span class="hm">${chip(t.flow)}</span>
-      <span class="hm">${t.started ? `<span class="small muted">läuft</span>` : `<span class="toggle ${t.ready ? "on" : ""}" data-act="ready" data-key="${t.key}"><i></i><span class="small">${t.ready ? "Freigegeben" : "Freigeben"}</span></span>`}</span>
-    </div>`).join("")}</div>
-    <p class="small muted" style="margin-top:12px">Freigegebene Tickets starten ${isDev() ? "per Klick im Agents-Tab oder automatisch, wenn ein Slot frei ist" : "automatisch, sobald ein Entwickler-Rechner frei ist"}. Vage Tickets starten mit einer Klärung mit dir.</p>`;
-}
-
-function pageBoard() {
-  return `<h1>Board</h1><p class="sub">Kanban wie in Jira, ergänzt um den Agent-Status.</p>
-  <div class="board">${COLS.map(([id, name, flows]) => { const ts = tickets().filter((t) => flows.includes(t.flow));
-    return `<div class="col"><h3>${name}<span class="muted">${ts.length}</span></h3>${ts.map((t) => `<div class="tcard" data-ticket="${t.key}">
-      <div class="row between"><span class="mono muted">${t.key}</span><span class="prio ${t.prio}">${t.prio}</span></div>
-      <div style="margin:6px 0">${esc(t.title)}</div>${chip(t.flow)}${t.risks ? ` <span class="chip warn">⚠ Risiko</span>` : ""}
-    </div>`).join("")}</div>`; }).join("")}</div>`;
-}
-
-function pageNew() {
-  const d = S.draft || (S.draft = { step: 0, idea: "", answers: [], created: null });
-  const Q = [
-    { q: "Für wen soll das gelten – nur eingeloggte Kunden oder auch Gäste?", rec: "Nur eingeloggte Kunden: Gäste haben kein Konto, in dem Adressen gespeichert werden könnten.", alt: "Auch Gäste (per E-Mail-Link)" },
-    { q: "Wie viele Adressen darf ein Kunde speichern?", rec: "Bis zu 5, eine davon als Standard markiert.", alt: "Unbegrenzt" },
-    { q: "Was gilt für Lieferungen ins Ausland?", rec: "Nur Adressen in DE, AT und CH; andere Länder zeigen einen Hinweis.", alt: "Alle Länder, in die wir liefern" },
+  else if (t.flow === "grill") items = [brief, { k: "agent", n: 16, text: "Das Ticket ist als Feature eingeordnet und noch nicht scharf genug. Ich kläre den Scope mit der PO – eine Frage nach der anderen. Bisher 0 von 4 beantwortet." }];
+  else items = [
+    brief,
+    ...(cart ? [
+      { k: "agent", n: 18, thinking: "Ich suche zuerst, wo der Gast-Warenkorb beim Login übernommen wird …", text: "" },
+      { k: "tool", name: "bash", arg: `{"command": "rg -n \\"mergeGuestCart\\" src"}`, out: "src/checkout/cart.store.ts:211: export async function mergeGuestCart(" },
+      { k: "tool", name: "read", arg: `{"path": "src/checkout/cart.store.ts"}`, out: "… 180 Zeilen …" },
+      { k: "agent", n: 22, text: "Ursache gefunden: Nach dem Login wird `fetchCart()` vor `mergeGuestCart()` aufgerufen und überschreibt den Gast-Warenkorb. Ich drehe die Reihenfolge um und ergänze einen Test." },
+    ] : [
+      { k: "agent", n: 18, thinking: `Ich lese zuerst den Code rund um „${t.title}“ …`, text: "" },
+      { k: "tool", name: "bash", arg: `{"command": "rg -n -i \\"${t.title.split(" ")[0].toLowerCase()}\\" src | head"}`, out: "… 6 Treffer …" },
+      { k: "agent", n: 22, text: "Die betroffene Stelle ist gefunden. Ich ändere sie minimal und ergänze einen Test, der genau dieses Verhalten prüft." },
+    ]),
+    ...(t.flow !== "implement" ? [{ k: "tool", name: "submit_fix", arg: `{"commit_message": "fix: ${t.title.slice(0, 40)} (${t.key})"}`, out: "Committed 3f2a91c on feature/" + t.key }, { k: "tool", name: "request_review", arg: "{}", out: `Review round ${t.round || 1} requested.` }] : []),
+    ...(t.flow === "mr" ? [{ k: "agent", n: 31, text: `Review bestanden mit 1 offenem Risiko. MR ${t.mr} ist als **Draft** geöffnet und listet das Risiko oben. Du entscheidest.` }] : []),
   ];
-  const score = d.step === 0 ? 0 : [35, 58, 76, 92][Math.min(d.answers.length, 3)];
-  const ready = score >= 85;
-  const acs = ["Ein eingeloggter Kunde kann im Checkout eine neue Lieferadresse speichern.", d.answers[1] ? `Es können ${d.answers[1].includes("5") ? "bis zu 5 Adressen" : "beliebig viele Adressen"} gespeichert werden; eine ist die Standardadresse.` : null, d.answers[0] ? (d.answers[0].startsWith("Nur") ? "Gäste sehen die Option nicht." : "Gäste erhalten einen Link per E-Mail.") : null, d.answers[2] ? (d.answers[2].startsWith("Nur") ? "Adressen außerhalb DE/AT/CH werden mit Hinweis abgelehnt." : "Alle Lieferländer sind erlaubt.") : null].filter(Boolean);
-  const chat = [`<div class="msg">Beschreib kurz in deinen Worten, was gebraucht wird. Ich formuliere daraus ein Ticket und frage nach, wo etwas fehlt. Den Code fasse ich nicht an.</div>`];
-  if (d.idea) chat.push(`<div class="msg me">${esc(d.idea)}</div>`);
-  Q.forEach((q, i) => {
-    if (d.step < 1 || i > d.answers.length) return;
-    chat.push(`<div class="msg">${q.q}${i === d.answers.length ? `<div class="rec"><b>Empfehlung:</b> ${q.rec}</div><div class="row wrap" style="margin-top:8px"><button class="btn small ok" data-act="draftAns" data-v="${esc(q.rec)}">Empfehlung übernehmen</button><button class="btn small" data-act="draftAns" data-v="${esc(q.alt)}">${q.alt}</button></div>` : ""}</div>`);
-    if (d.answers[i]) chat.push(`<div class="msg me">${esc(d.answers[i])}</div>`);
-  });
-  if (d.answers.length === 3) chat.push(`<div class="msg">Danke – das Ticket ist vollständig. Kev stuft es als <b>startklar</b> ein.</div>`);
-  return `<h1>Neues Ticket formulieren</h1><p class="sub">Ein Assistent ohne Code-Zugriff hilft beim Schreiben. Kev prüft live, ob ein Agent damit starten könnte.</p>
-  <div class="grid g2">
-    <div class="card"><div class="chat">${chat.join("")}</div>
-      ${d.step === 0 ? `<div style="margin-top:12px"><textarea id="idea" placeholder="z. B. Kunden sollen im Checkout mehrere Lieferadressen speichern können">Kunden sollen im Checkout ihre Lieferadressen speichern können, damit sie sie nicht jedes Mal neu eingeben müssen.</textarea><button class="btn primary" style="margin-top:8px" data-act="draftStart">Senden</button></div>` : ""}
-    </div>
-    <div class="card"><h2>Entwurf</h2>
-      <label class="f"><span>Titel</span><input type="text" value="${d.step ? "Lieferadressen im Checkout speichern" : ""}" placeholder="…" /></label>
-      <label class="f"><span>Typ · Priorität</span><div class="row"><select><option>Story</option><option>Bug</option><option>Task</option></select><select>${PRIOS.map((p) => `<option ${p === "Medium" ? "selected" : ""}>${p}</option>`).join("")}</select></div></label>
-      <div class="small muted">Akzeptanzkriterien</div><ol style="margin:6px 0 14px;padding-left:18px">${acs.length && d.step ? acs.map((a) => `<li>${a}</li>`).join("") : `<li class="muted">entstehen beim Gespräch</li>`}</ol>
-      <div class="small muted">Kev: Kann ein Agent damit starten?</div>
-      <div class="meter" style="margin:6px 0"><i style="width:${score}%;background:${ready ? "var(--ready)" : "var(--warn)"}"></i></div>
-      <div class="small">${d.step === 0 ? "—" : ready ? "✓ startklar · Lane „Ticket“, mittlere Komplexität" : "noch zu vage – der Assistent fragt nach"}</div>
-      <div class="row wrap" style="margin-top:14px">
-        <button class="btn primary" data-act="draftCreate" ${ready && !d.created ? "" : "disabled style='opacity:.5'"}>In Jira anlegen</button>
-        ${d.created ? `<span class="chip ready">✓ ${d.created} angelegt</span> <span class="toggle ${byKey(d.created).ready ? "on" : ""}" data-act="ready" data-key="${d.created}"><i></i><span class="small">für Agent freigeben</span></span>` : ""}
-      </div>
+  return (S.transcripts[id] = items);
+}
+
+// live agent script for SHOP-149 (runs while the mockup is open)
+const LIVE = [
+  { at: 4, add: { k: "tool", name: "edit", arg: `{"path": "src/checkout/cart.store.ts"}`, live: true } },
+  { at: 7, done: true, out: "Applied 1 edit." },
+  { at: 9, add: { k: "tool", name: "bash", arg: `{"command": "npm run test -- cart"}`, live: true } },
+  { at: 13, done: true, out: "✓ 38 tests passed (1 new)" },
+  { at: 15, add: { k: "tool", name: "submit_fix", arg: `{"commit_message": "fix(cart): keep guest items after login (SHOP-149)"}`, out: "Committed 9b1e07d on feature/SHOP-149" } },
+  { at: 17, add: { k: "tool", name: "request_review", arg: "{}", out: "Review round 1 requested. End your turn now." }, flow: "review" },
+];
+
+// ======================================================================= rendering: top bar
+function topBar() {
+  const u = USERS[S.role], R = 2 * Math.PI * 7;
+  return `<div class="topbar">
+    <div class="brand">${LOGO}<strong class="hide-m">Flow</strong><span class="brand-sep hide-m">/</span>
+      <span class="brand-scope" data-act="projMenu">${S.project ? esc(proj().name) : "Alle Projekte"} ▾</span></div>
+    <div class="top-actions">
+      <span class="pill hide-m" title="Nächster Jira-Poll"><svg class="ring" width="16" height="16" viewBox="0 0 18 18"><circle class="track" cx="9" cy="9" r="7" fill="none" stroke-width="2.4"/><circle id="ringfill" class="fill" cx="9" cy="9" r="7" fill="none" stroke-width="2.4" stroke-dasharray="${R}" stroke-dashoffset="${R * (S.poll.left / S.poll.span)}"/></svg>Polling · <b id="pollsec">${S.poll.left}s</b></span>
+      <span class="pill hide-m">Kev <b>kev (local)</b></span>
+      <span class="pill hide-m"><span class="dot live"></span>Worker <b>1 of 1</b></span>
+      <div class="seg hide-m" title="Demo: Rolle"><button class="${!isDev() ? "on" : ""}" data-act="role" data-v="pm">PM/PO</button><button class="${isDev() ? "on" : ""}" data-act="role" data-v="dev">Entwickler</button></div>
+      <div class="seg" title="Demo: Gerät"><button class="${S.device === "desktop" ? "on" : ""}" data-act="device" data-v="desktop">🖥</button><button class="${S.device === "mobile" ? "on" : ""}" data-act="device" data-v="mobile">📱</button></div>
+      <button class="icon-btn hide-m" title="Zugriffswege & Architektur" data-act="clients">?</button>
+      <button class="primary hide-m" data-act="newTicket">+ Ticket</button>
+      <span class="avatar" title="${u.name} · ${u.title}">${u.short}</span>
     </div></div>`;
 }
 
-function pageClarify(arg) {
-  const list = tickets().filter((t) => t.flow === "grill");
-  const key = arg || list[0]?.key;
-  if (!key || !byKey(key) || byKey(key).flow !== "grill") return `<h1>Klärung</h1><p class="sub">Keine offenen Klärungen. Neue Features mit offenen Fragen landen hier.</p>`;
-  const t = byKey(key); const qs = GRILL[key] || GRILL["SHOP-151"]; const ans = S.grill[key] || (S.grill[key] = []);
-  const done = ans.length === qs.length;
-  return `<h1>Klärung</h1><p class="sub">Bevor der Agent ein Feature baut, klärt er mit dir alle fachlichen Fragen – eine nach der anderen, jeweils mit Empfehlung. Technisches bleibt beim Entwickler.</p>
-  <div class="grid g2">
-    <div class="card"><div class="row between"><div><span class="key" data-ticket="${t.key}">${t.key}</span> <b>${esc(t.title)}</b></div><span class="small muted">Frage ${Math.min(ans.length + 1, qs.length)} von ${qs.length}</span></div>
-      <div class="bar" style="margin:10px 0 16px"><i style="width:${(ans.length / qs.length) * 100}%"></i></div>
-      <div class="chat">${qs.map((q, i) => i > ans.length ? "" : `<div class="msg">${q.q}${i === ans.length ? `<div class="rec"><b>Empfehlung:</b> ${q.rec}</div>
-        <div class="row wrap" style="margin-top:8px"><button class="btn small ok" data-act="grillAns" data-key="${key}" data-v="${esc(q.rec)}">Empfehlung übernehmen</button><button class="btn small" data-act="grillAns" data-key="${key}" data-v="${esc(q.alt)}">${q.alt}</button><button class="btn small" data-act="grillOwn" data-key="${key}">Eigene Antwort…</button></div>` : ""}</div>${ans[i] ? `<div class="msg me">${esc(ans[i])}</div>` : ""}`).join("")}
-      ${done ? `<div class="msg">Damit sind alle Fragen geklärt. Hier ist der Scope zum Bestätigen →</div>` : ""}</div>
-    </div>
-    <div class="card"><h2>Scope ${done ? "zum Bestätigen" : "(entsteht)"}</h2>
-      <p class="muted small">Das Jira-Ticket bleibt die Spezifikation. Der bestätigte Scope schärft es und geht an Agent und Reviewer.</p>
-      <ol style="padding-left:18px">${ans.map((a, i) => `<li><b>AC-${i + 1}</b> ${esc(a)}</li>`).join("") || `<li class="muted">noch leer</li>`}</ol>
-      ${done ? `<button class="btn primary" data-act="grillConfirm" data-key="${key}">Scope bestätigen – Agent darf loslegen</button>` : ""}
-      ${list.length > 1 ? `<div style="margin-top:16px" class="small muted">Weitere Klärungen: ${list.filter((x) => x.key !== key).map((x) => `<a href="#/p/${S.project}/clarify/${x.key}">${x.key}</a>`).join(", ")}</div>` : ""}
-    </div></div>`;
-}
-
-function pageTesting() {
-  const ts = tickets().filter((t) => ["test", "rework"].includes(t.flow));
-  return `<h1>Testen</h1><p class="sub">Diese Tickets sind gemerged und auf der Dev-Stage. Funktioniert alles? Oder hast du etwas gefunden?</p>
-  ${ts.length ? `<div class="grid g2" style="grid-template-columns:1fr 1fr">${ts.map((t) => `<div class="card">
-    <div class="row between"><span class="key" data-ticket="${t.key}">${t.key}</span>${chip(t.flow)}</div>
-    <h2 style="margin:8px 0">${esc(t.title)}</h2>
-    ${t.flow === "test" ? `<p class="small muted">Testen auf: <a href="#" onclick="return false">${t.stage}</a> · MR ${t.mr}</p>
-      <div class="row wrap"><button class="btn ok" data-act="testOk" data-key="${t.key}">✓ Funktioniert</button><button class="btn warn" data-act="finding" data-key="${t.key}">Finding melden</button></div>`
-    : `<p class="small">${esc(t.finding || "")}</p><p class="small muted">Der Agent arbeitet nach. Ein neuer MR wird geöffnet; danach kommt das Ticket wieder hierher.</p>`}
-  </div>`).join("")}</div>` : `<p class="muted">Gerade ist nichts zum Testen da.</p>`}`;
-}
-
-function cfdSvg(h = 220) {
-  // 8 weeks, stacked: done, test, review, progress, todo (cumulative counts)
-  const weeks = 8, w = 760, pad = 26; const data = [];
-  for (let i = 0; i < weeks; i++) { const done = 3 + i * 2.2, test = 1 + (i % 3) * 0.6, review = 1.5 + (i % 2), prog = 2.5 + Math.sin(i) * 0.8, todo = 9 - i * 0.4; data.push([done, test, review, prog, todo]); }
-  const max = Math.max(...data.map((d) => d.reduce((a, b) => a + b, 0))) * 1.1;
-  const colors = ["#7fd6a4", "#f2b25c", "#8ab4ff", "#ff8997", "#5a4a4b"]; const names = ["Erledigt", "Testen", "Review", "In Arbeit", "Zu erledigen"];
-  const x = (i) => pad + (i * (w - pad * 2)) / (weeks - 1); const y = (v) => h - 20 - (v / max) * (h - 30);
-  let layers = "", base = Array(weeks).fill(0);
-  for (let l = 0; l < 5; l++) {
-    const top = data.map((d, i) => base[i] + d[l]);
-    const pts = top.map((v, i) => `${x(i)},${y(v)}`).join(" ") + " " + base.map((v, i) => `${x(i)},${y(v)}`).reverse().join(" ");
-    layers += `<polygon points="${pts}" fill="${colors[l]}" opacity=".85"/>`; base = top;
+// ======================================================================= left: project tree
+function tree() {
+  const rows = [`<div class="section"><span class="eyebrow">⌗ Projekte</span><button class="ghost" data-act="newProject" title="Neues Projekt">＋</button></div>`,
+    `<div class="trow ${!S.project ? "on" : ""}" data-act="portfolio"><span class="chev"></span>▦ <span class="name">Alle Projekte</span></div>`];
+  for (const p of PROJECTS) {
+    const ts = ofProject(p.key), you = ts.filter(needsYou).length, open = S.open[p.key];
+    rows.push(`<div class="trow ${S.project === p.key && !S.sel ? "on" : ""}" data-act="project" data-v="${p.key}"><span class="chev ${open ? "open" : ""}" data-act="toggle" data-v="${p.key}">▶</span><span class="dot ${p.health === "ok" ? "ok" : "warn"}"></span><span class="name">${esc(p.name)}</span>${you ? `<span class="n">${you}</span>` : `<span class="tag">${p.key}</span>`}</div>`);
+    if (!open) continue;
+    for (const t of ts.filter((t) => t.started && t.flow !== "done")) {
+      const d = active(t) ? "live" : t.flow === "blocked" ? "bad" : needsYou(t) ? "warn" : "ok";
+      rows.push(`<div class="trow l1 ${S.sel === t.key ? "on" : ""}" data-sel="${t.key}" title="${esc(t.title)}"><span class="dot ${d}"></span><span class="name">${t.key} <span style="color:#9d8889">${esc(t.title)}</span></span></div>`);
+      if (isDev() && S.sel === t.key) {
+        rows.push(`<div class="trow l2 ${S.ctab === "main" ? "on" : ""}" data-ctab="main">💬 Main</div>`);
+        if (t.round) rows.push(`<div class="trow l2 ${S.ctab === "review" ? "on" : ""}" data-ctab="review">🔍 Review #${t.round}</div>`);
+      }
+    }
   }
-  const labels = Array.from({ length: weeks }, (_, i) => `<text x="${x(i)}" y="${h - 4}" text-anchor="middle">KW ${36 + i}</text>`).join("");
-  return `<svg viewBox="0 0 ${w} ${h}" width="100%" preserveAspectRatio="none" style="max-height:${h}px">${layers}${labels}</svg>
-    <div class="legend">${names.map((n, i) => `<span><i style="background:${colors[i]}"></i>${n}</span>`).join("")}</div>`;
+  rows.push(`<div class="section" style="margin-top:12px"><span class="eyebrow">⚙ Worker</span></div>
+    <div class="worker"><span class="dot live"></span>local · MacBook Max<small>3 agents</small></div>
+    <div class="worker" style="opacity:.55"><span class="dot"></span>server-1<small>später</small></div>`);
+  return `<div class="col tree ${S.mpanel === "tree" ? "mshow" : ""}"><div class="col-body">${rows.join("")}</div></div>`;
 }
 
-function pageReports() {
+// ======================================================================= middle
+function mid() {
+  const sel = S.sel && byKey(S.sel); const devOk = isDev() && sel?.started;
+  const pmTabs = S.project ? [["feed", "Feed"], ["board", "Board"], ["reports", "Reports"], ["settings", "Einstellungen"]] : [["feed", "Projekte"]];
+  const devTabs = [["session", "Session"], ["state", "State"], ["tasks", "Tasks"], ["tools", "Tools"], ["extend", "Extend"]];
+  if (!isDev() && devTabs.some(([id]) => id === S.mid)) S.mid = "feed";
+  if (isDev() && !devOk && devTabs.some(([id]) => id === S.mid)) S.mid = "feed";
+  const tabs = `<div class="tabs">${pmTabs.map(([id, l]) => `<button class="${S.mid === id ? "on" : ""}" data-mid="${id}">${l}</button>`).join("")}
+    ${isDev() && S.project ? `<span class="div"></span>${devTabs.map(([id, l]) => `<button class="${S.mid === id ? "on" : ""}" data-mid="${id}" ${devOk ? "" : "disabled title='Ein laufendes Ticket wählen'"}>${l}${id === "tasks" && devOk && active(sel) ? `<span class="count">2</span>` : ""}</button>`).join("")}` : ""}</div>`;
+  let body;
+  if (!S.project) body = portfolio();
+  else body = { feed, board, reports, settings, session: () => session(sel), state: () => stateP(sel), tasks: () => tasksP(sel), tools: () => toolsP(sel), extend: () => extendP(sel) }[S.mid]();
+  return `<div class="col ${S.mpanel === "mid" ? "mshow" : ""}">${tabs}<div class="col-body" id="midbody">${body}</div></div>`;
+}
+
+function stats(ts) {
+  const c = (f) => ts.filter(f).length;
+  return `<div class="stats">
+    <div class="s-ready"><span>${c((t) => t.flow === "ready" || (t.flow === "backlog" && t.kev === "ready"))}</span><small>ready</small></div>
+    <div class="s-clar"><span>${c((t) => t.flow === "backlog" && t.kev === "vague")}</span><small>needs clar.</small></div>
+    <div><span>${c((t) => active(t) || t.flow === "grill")}</span><small>in progress</small></div>
+    <div class="s-wait"><span>${c(needsYou)}</span><small>waiting you</small></div>
+    <div class="s-done"><span>${c((t) => t.flow === "done")}</span><small>done</small></div>
+    <div><span>${c((t) => t.flow === "blocked")}</span><small>blocked</small></div></div>`;
+}
+
+function feed() {
+  const ts = ofProject(); const running = ts.filter((t) => t.started && t.flow !== "done");
+  const tone = (t) => (["mr", "test"].includes(t.flow) && !t.risks ? "ok" : needsYou(t) || t.flow === "blocked" ? "warn" : "");
+  return `<div class="stream-head"><div><h2>Ticket feed</h2><small>Jira · label = ready-for-agent · ${proj().key}</small></div><span class="pill" style="border:0"><span class="dot live"></span>Live</span></div>
+    ${stats(ts)}
+    ${running.map((t) => { const [st, sc] = STATUS[t.flow]; return `<div class="pinned ${tone(t)} ${S.sel === t.key ? "sel" : ""} ${t.isNew ? "new" : ""}" data-sel="${t.key}">
+      ${active(t) ? `<span class="spin"></span>` : `<span class="dot ${t.flow === "blocked" ? "bad" : needsYou(t) ? "warn" : "ok"}"></span>`}<strong>${t.key}</strong><span class="t">${esc(t.title)}</span>
+      <span class="status ${sc}"><i></i>${st}</span><span class="open-agent hide-m">${isDev() ? "Agent ↗" : "Öffnen ↗"}</span></div>`; }).join("")}
+    <div class="log-head"><span class="mh"></span><span>Gefunden</span><span class="mh">Prio</span><span>Ticket</span><span style="text-align:right">Kev / Status</span><span class="mh" style="text-align:right">Agent</span></div>
+    <div id="feedrows">${ts.map((t) => { const [c, cls] = chipOf(t); return `<div class="log-row ${S.sel === t.key ? "sel" : ""} ${t.isNew ? "new" : ""}" draggable="true" data-key="${t.key}" data-sel="${t.key}">
+      <span class="grip mh" title="Ziehen = Rangfolge in Jira">⋮⋮</span><span style="color:#9d8889">${t.found}</span>
+      <button class="prio ${t.prio} mh" data-act="prio" data-key="${t.key}" title="Klick = Priorität ändern">${t.prio}</button>
+      <span class="t"><b>${t.key}</b> — ${esc(t.title)} <span class="lane">· ${LANE[t.lane]}</span></span>
+      <span class="chip ${cls} ${t.chipNew ? "new" : ""}">${c}</span>
+      <span class="mh">${t.started ? `<span class="rel">${active(t) ? `<span class="dot live"></span>läuft` : "–"}</span>` : t.kev === "pending" ? "" : `<span class="rel" data-act="release" data-key="${t.key}" title="Für Agent freigeben (Jira-Label)"><span class="sw ${t.ready ? "on" : ""}"></span></span>`}</span>
+    </div>`; }).join("")}</div>`;
+}
+
+function board() {
+  const COLS = [["Zu erledigen", ["backlog", "ready"]], ["In Arbeit", ["grill", "implement", "rework", "blocked"]], ["Review", ["review", "mr"]], ["Testen", ["test"]], ["Erledigt", ["done"]]];
+  return `<div style="overflow:auto"><div class="board">${COLS.map(([n, fl]) => { const ts = ofProject().filter((t) => fl.includes(t.flow)); return `<div class="bcol"><h3>${n}<span style="color:#9d8889;font-family:var(--mono)">${ts.length}</span></h3>${ts.map((t) => { const [c, cls] = chipOf(t); return `<div class="bcard" data-sel="${t.key}"><div class="k"><span>${t.key}</span><span class="prio ${t.prio}">${t.prio}</span></div><div style="margin:4px 0">${esc(t.title)}</div><span class="chip ${cls}">${c}</span>${active(t) ? `<div class="agent"><span class="dot live"></span>Agent arbeitet</div>` : ""}</div>`; }).join("")}</div>`; }).join("")}</div></div>`;
+}
+
+function cfd(h = 170) {
+  const W = 620, P = 22, n = 8, data = [];
+  for (let i = 0; i < n; i++) data.push([3 + i * 2.2, 1 + (i % 3) * .6, 1.5 + (i % 2) + (i > 4 ? 1.2 : 0), 2.5 + Math.sin(i) * .8, 9 - i * .4]);
+  const max = Math.max(...data.map((d) => d.reduce((a, b) => a + b))) * 1.08, col = ["#7fd6a4", "#f2b25c", "#9fc3d6", "#ff8997", "#4a3b3c"];
+  const x = (i) => P + i * (W - 2 * P) / (n - 1), y = (v) => h - 18 - v / max * (h - 26);
+  let base = Array(n).fill(0), out = "";
+  for (let l = 0; l < 5; l++) { const topv = data.map((d, i) => base[i] + d[l]); out += `<polygon fill="${col[l]}" opacity=".85" points="${topv.map((v, i) => `${x(i)},${y(v)}`).join(" ")} ${base.map((v, i) => `${x(i)},${y(v)}`).reverse().join(" ")}"/>`; base = topv; }
+  return `<svg viewBox="0 0 ${W} ${h}" width="100%">${out}${data.map((_, i) => `<text x="${x(i)}" y="${h - 4}" text-anchor="middle">KW ${36 + i}</text>`).join("")}</svg>
+    <div class="legend">${["Erledigt", "Testen", "Review", "In Arbeit", "Zu erledigen"].map((l, i) => `<span><i style="background:${col[i]}"></i>${l}</span>`).join("")}</div>`;
+}
+function reports() {
   const thr = [3, 4, 2, 5, 4, 6, 5, 7];
-  return `<h1>Reports</h1><p class="sub">Kanban-Kennzahlen, berechnet aus der Jira-Historie (Changelog). Burndown gibt es nur mit Sprints – für Kanban zeigen Fluss, Durchsatz und Durchlaufzeit, wie es läuft.</p>
-  <div class="grid g4">
-    <div class="card kpi ok"><div class="n">63%</div><div class="l">Projektfortschritt (Story-Tickets)</div><div class="bar" style="margin-top:8px"><i style="width:63%"></i></div></div>
-    <div class="card kpi"><div class="n">5,3</div><div class="l">Tickets pro Woche (Ø 8 Wochen)</div></div>
-    <div class="card kpi"><div class="n">2,4 Tage</div><div class="l">Durchlaufzeit (Median, Start → Erledigt)</div></div>
-    <div class="card kpi"><div class="n">71%</div><div class="l">von Agenten umgesetzt</div></div>
-  </div>
-  <div class="card" style="margin-top:14px"><h2>Kumulativer Fluss (CFD)</h2><p class="small muted">Wird ein Band breiter, staut es sich dort. Hier: Review nimmt seit KW 41 leicht zu.</p>${cfdSvg(240)}</div>
-  <div class="grid g2" style="margin-top:14px">
-    <div class="card"><h2>Durchsatz pro Woche</h2><svg viewBox="0 0 400 150" width="100%">${thr.map((v, i) => `<rect x="${20 + i * 46}" y="${130 - v * 15}" width="30" height="${v * 15}" rx="4" fill="#ff8997"/><text x="${35 + i * 46}" y="145" text-anchor="middle">KW${36 + i}</text><text x="${35 + i * 46}" y="${124 - v * 15}" text-anchor="middle">${v}</text>`).join("")}</svg></div>
-    <div class="card"><h2>Burnup bis zum Release-Ziel</h2><p class="small muted">Für Kanban mit Ziel: erledigt vs. Gesamtumfang. Steigt die obere Linie, wächst der Scope.</p>
-      <svg viewBox="0 0 400 150" width="100%"><polyline points="20,60 70,58 120,55 170,52 220,48 270,47 320,45 370,44" fill="none" stroke="#c9a87c" stroke-width="2" stroke-dasharray="4 3"/><polyline points="20,135 70,125 120,118 170,105 220,96 270,85 320,76 370,66" fill="none" stroke="#7fd6a4" stroke-width="3"/><text x="372" y="40">Umfang</text><text x="372" y="62">erledigt</text></svg></div>
-  </div>`;
+  return `<div class="stats" style="grid-template-columns:repeat(4,1fr)"><div class="s-done"><span>63%</span><small>Fortschritt</small></div><div><span>5,3</span><small>Tickets / Woche</small></div><div><span>2,4 d</span><small>Durchlaufzeit (Median)</small></div><div class="s-ready"><span>71%</span><small>von Agenten umgesetzt</small></div></div>
+  <div class="pad"><div class="card"><div style="display:flex;justify-content:space-between;align-items:baseline"><h2>Kumulativer Fluss</h2><small style="color:#9d8889">aus der Jira-Historie (Changelog)</small></div><p style="font-size:12.5px;color:#d9cdcd;margin:4px 0 6px">Ein breiter werdendes Band = Stau. Review wächst seit KW 41.</p>${cfd()}</div>
+  <div class="grid2" style="margin-top:10px"><div class="card"><h2>Durchsatz</h2><svg viewBox="0 0 300 120" width="100%">${thr.map((v, i) => `<rect x="${12 + i * 36}" y="${100 - v * 12}" width="24" height="${v * 12}" rx="3" fill="#ff8997" opacity=".85"/><text x="${24 + i * 36}" y="114" text-anchor="middle">${36 + i}</text>`).join("")}</svg></div>
+  <div class="card"><h2>Burnup</h2><svg viewBox="0 0 300 120" width="100%"><polyline points="10,40 50,38 90,36 130,33 170,30 210,29 250,27 290,26" fill="none" stroke="#c9a87c" stroke-width="2" stroke-dasharray="4 3"/><polyline points="10,110 50,101 90,95 130,84 170,76 210,66 250,58 290,50" fill="none" stroke="#7fd6a4" stroke-width="3"/><text x="210" y="22">Umfang</text><text x="230" y="76">erledigt</text></svg></div></div></div>`;
 }
 
-function pageAgents(arg) {
-  if (!isDev()) return `<h1>Kein Zugriff</h1><p class="sub">Agents sind nur für Entwickler sichtbar. Als PM/PO steuerst du über Backlog, Klärung und Testen.</p>`;
-  const ts = tickets().filter((t) => t.started && t.flow !== "done");
-  const sel = byKey(arg && byKey(arg)?.started ? arg : ts.find((t) => t.key === S.agentSel)?.key || ts[0]?.key); if (!sel) return `<h1>Agents</h1><p class="sub">Keine laufenden Agenten.</p>`;
-  S.agentSel = sel.key;
-  const steps = sel.lane === "feature" ? ["classify", "grill", "implement", "review", "mr_open"] : sel.lane === "quick" ? ["classify", "implement", "review", "mr_open"] : ["classify", "implement", "review", "mr_open"];
-  const cur = steps.indexOf(STAGES[sel.flow]);
-  const tr = S.transcript[sel.key] || (S.transcript[sel.key] = [
-    { k: "me", t: `${sel.key} — ${sel.title}\nLane: ${LANE[sel.lane]} · Kev: ${sel.tier}` },
-    { k: "tool", t: "read checkout/Cart.ts · read checkout/Profile.ts" },
-    { k: "agent", t: sel.flow === "grill" ? "Ich kläre zuerst den Scope mit der PO (4 Fragen, 2 beantwortet)." : "Ursache gefunden: Beim Login wird der Gast-Warenkorb nicht übernommen. Ich ergänze das Mergen in mergeGuestCart() und einen Test." },
-    ...(["review", "mr", "blocked"].includes(sel.flow) ? [{ k: "tool", t: "submit_fix → 3f2a91c · request_review → Runde 1" }] : []),
-  ]);
-  return `<div class="row between wrap"><div><h1>Agents <span class="dev-tag">nur Entwickler</span></h1><p class="sub">Die Orchestrierung: jeder gestartete Ticket-Agent mit Chat, Review und MR.</p></div></div>
-  <div class="grid" style="grid-template-columns:260px 1fr">
-    <div class="list">${ts.map((t) => `<div class="card click" style="padding:10px;${t.key === sel.key ? "border-color:var(--accent)" : ""}" data-go="#/p/${S.project}/agents/${t.key}">
-      <div class="row between"><span class="mono">${t.key}</span><span class="chip">${STAGES[t.flow] || t.flow}</span></div><div class="small" style="margin-top:4px">${esc(t.title)}</div>
-      ${t.risks ? `<span class="chip warn" style="margin-top:6px">⚠ Decision needed</span>` : t.flow === "blocked" ? `<span class="chip bad" style="margin-top:6px">blocked</span>` : ""}</div>`).join("")}</div>
-    <div class="card">
-      <div class="row between wrap"><div><span class="mono">${sel.key}</span> <b>${esc(sel.title)}</b></div>
-        <div class="row"><span class="chip">${LANE[sel.lane]}</span><select style="width:auto"><option>${sel.model || "Sonnet"}</option><option>Opus</option></select></div></div>
-      <div class="stepper">${steps.map((s, i) => `<span class="${i < cur ? "done" : i === cur ? "cur" : ""}">${s}</span>`).join("")}</div>
-      ${sel.risks ? `<div class="riskbox"><b>⚠ Decision needed: offene Risiken nach Review</b><ul>${sel.risks.map((r) => `<li class="small">${esc(r)}</li>`).join("")}</ul><div class="small muted">MR ${sel.mr} ist ein Draft. Agent um Fix bitten oder Risiko akzeptieren.</div></div>` : ""}
-      ${sel.flow === "blocked" ? `<div class="riskbox" style="border-color:#6b2a33;background:#2a1418"><b>Blockiert</b><div class="small">${esc(sel.blockedWhy)}</div></div>` : ""}
-      <div class="chat" style="margin:12px 0">${tr.map((m) => `<div class="msg ${m.k === "me" ? "me" : m.k === "tool" ? "tool" : ""}" style="white-space:pre-wrap">${esc(m.t)}</div>`).join("")}</div>
-      <div class="row"><input type="text" id="agentMsg" placeholder="Nachricht an den ${sel.key}-Agenten…" /><button class="btn primary" data-act="agentSend" data-key="${sel.key}">Senden</button></div>
-      <div class="row wrap small" style="margin-top:10px">${sel.mr ? `<a href="#" onclick="return false">MR ${sel.mr} öffnen</a> ·` : ""} <a href="#" onclick="return false">Review-Session öffnen</a> · <a href="#" onclick="return false">Diff ansehen</a></div>
-    </div></div>`;
+function settings() {
+  const p = proj(), dis = isDev() ? "" : "disabled";
+  return `<div class="pad"><div class="grid2"><div class="card"><h2 style="margin-bottom:10px">Projekt</h2>
+    <label class="field"><span>Name</span><input value="${esc(p.name)}"></label><label class="field"><span>Jira-Projekt</span><input value="${p.key}" disabled></label>
+    <label class="field"><span>Label „Freigegeben für Agent“</span><input value="ready-for-agent"></label><label class="field"><span>Mitglieder & Rollen</span><textarea rows="3">${p.members}</textarea></label></div>
+    <div class="card"><h2 style="margin-bottom:10px">Entwicklung ${isDev() ? "" : `<span class="dev-mark">DEV</span>`}</h2>
+    <label class="field"><span>GitLab-Repository</span><input value="${p.repo}" ${dis}></label><div class="grid2"><label class="field"><span>Ziel-Branch</span><input value="${p.branch}" ${dis}></label><label class="field"><span>Branch-Schema</span><input value="${p.schema}" ${dis}></label></div>
+    ${isDev() ? `<label class="field"><span>Test-Befehl</span><input value="${p.test}"></label><label class="field"><span>Standard-Permissions neuer Agenten</span><select><option>Auto (Kev entscheidet)</option><option>Ask</option><option>YOLO</option></select></label><label class="field"><span>Reviewer-Modell · Review-Versuche</span><input value="Opus 5.5 · 2"></label>` : `<p style="font-size:12.5px;color:#9d8889">Nur Entwickler ändern Repo, Tests und Agent-Einstellungen.</p>`}</div></div>
+    <button class="primary" style="margin-top:10px" data-act="saved">Speichern</button></div>`;
 }
 
-function pageSettings() {
-  const p = proj();
-  return `<h1>Einstellungen · ${p.name}</h1><p class="sub">Projekt-Konfiguration. Ein Jira-Projekt kann nur einmal angelegt werden.</p>
-  <div class="grid g2" style="grid-template-columns:1fr 1fr">
-    <div class="card"><h2>Projekt</h2>
-      <label class="f"><span>Name</span><input type="text" value="${p.name}"></label>
-      <label class="f"><span>Jira-Projekt</span><input type="text" value="${p.key}" disabled></label>
-      <label class="f"><span>Label für „Freigegeben für Agent“</span><input type="text" value="${p.label}"></label>
-      <label class="f"><span>Mitglieder & Rollen</span><textarea>${p.members.join("\n")}</textarea></label>
-    </div>
-    <div class="card"><h2>Entwicklung ${isDev() ? "" : `<span class="dev-tag">nur Entwickler können ändern</span>`}</h2>
-      <label class="f"><span>GitLab-Repository</span><input type="text" value="${p.repo}" ${isDev() ? "" : "disabled"}></label>
-      <label class="f"><span>Ziel-Branch</span><input type="text" value="${p.branch}" ${isDev() ? "" : "disabled"}></label>
-      <label class="f"><span>Branch-Schema</span><input type="text" value="${p.schema}" ${isDev() ? "" : "disabled"}></label>
-      ${isDev() ? `<label class="f"><span>Test-Befehl</span><input type="text" value="${p.test}"></label>
-      <label class="f"><span>Modelle (Kev-Tier → Modell)</span><input type="text" value="simple/moderate → Sonnet · complex → Opus · Reviewer → Opus"></label>
-      <label class="f"><span>Agenten laufen auf</span><select><option>Entwickler-Rechner (Max, Sara)</option><option>Server-Worker (später)</option></select></label>` : ""}
-    </div></div><button class="btn primary">Speichern</button>`;
+function portfolio() {
+  return `<div class="stream-head"><div><h2>Projekte</h2><small>${PROJECTS.length} Projekte · Jira Cloud</small></div><button class="secondary" data-act="newProject">+ Neues Projekt</button></div>
+    ${stats(TICKETS)}
+    <div class="log-head" style="display:grid;grid-template-columns:1.4fr 70px 70px 70px 70px 1fr;margin-top:0"><span>Projekt</span><span>Offen</span><span>In Arbeit</span><span>Dich</span><span>Erledigt</span><span>Fortschritt</span></div>
+    ${PROJECTS.map((p) => { const ts = ofProject(p.key), c = (f) => ts.filter(f).length, done = c((t) => t.flow === "done"); return `<div class="prow" data-act="project" data-v="${p.key}">
+      <div><b>${esc(p.name)}</b><small>${p.key} · ${p.repo.split("/").slice(1).join("/")}</small></div>
+      <span class="num">${c((t) => ["backlog", "ready"].includes(t.flow))}</span><span class="num">${c((t) => active(t) || t.flow === "grill")}</span>
+      <span class="num" style="color:var(--bad)">${c(needsYou)}</span><span class="num" style="color:var(--ready)">${done}</span>
+      <div><div class="bar"><i style="width:${Math.round(done / ts.length * 100)}%"></i></div><small>${Math.round(done / ts.length * 100)}% · ${isDev() ? `${c(active)} Agenten aktiv` : p.health === "ok" ? "im Plan" : "Engpass Review"}</small></div></div>`; }).join("")}`;
 }
 
-function pageClients() {
-  const mini = `<div style="padding:10px"><b style="font:700 13px var(--title)">Webshop Relaunch</b><div class="grid g3" style="gap:6px;margin-top:8px"><div class="card" style="padding:8px"><b>2</b><div class="small muted">Braucht dich</div></div><div class="card" style="padding:8px"><b>5</b><div class="small muted">In Arbeit</div></div><div class="card" style="padding:8px"><b>3</b><div class="small muted">Erledigt</div></div></div></div>`;
-  return `<h1>Zugriffswege & Architektur</h1><p class="sub">Eine API, viele Clients – wie bei Durable Pi. Die Tauri-App ist ein Client unter mehreren.</p>
-  <div class="grid g2" style="grid-template-columns:1fr 1fr">
-    <div class="win"><div class="chrome"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i><span style="margin-left:8px">Flow Dashboard — Tauri-App (macOS)</span></div>${mini}<div class="small muted" style="padding:0 10px 10px">Native Mitteilungen, Dock-Badge, Menüleiste, startet optional den lokalen Worker.</div></div>
-    <div class="win"><div class="chrome"><i style="background:#555"></i><i style="background:#555"></i><i style="background:#555"></i><span class="url">https://flow.team.local/p/SHOP</span></div>${mini}<div class="small muted" style="padding:0 10px 10px">Web-UI im Browser – identisch, ohne Installation.</div></div>
-    <div class="card"><div class="phone">${mini}</div><p class="small muted" style="text-align:center">Handy: dieselbe Web-UI, responsiv (oben rechts 📱 probieren). Später als PWA installierbar.</p></div>
-    <div class="win"><div class="chrome"><span>Terminal — flow-tui</span></div><div class="tui">$ flow status SHOP
- Webshop Relaunch                       63% ██████░░░░
- BRAUCHT DICH
-  SHOP-151  Klärung: 2/4 Fragen offen      → flow clarify SHOP-151
-  SHOP-141  Bereit zum Testen              → flow test SHOP-141
- AGENTS (dev)
-  SHOP-149  implement  sonnet   ▸ läuft 12 min
-  SHOP-145  mr_open    ⚠ 1 Risiko · MR !3312 (draft)
+// ---------- dev inspector panels
+function session(t) {
+  const perm = S.perm[t.key] || "auto"; const win = 1000000; const pct = t.tokens / win * 100;
+  const HINT = { ask: "Jeder Aufruf, der etwas ändert, wartet auf dich – außer eine Regel erlaubt ihn.", auto: "Kev lässt lokale, umkehrbare Shell-Befehle laufen. Destruktives und alles mit Wirkung außerhalb dieses Rechners (push, deploy, POST, Tickets) wartet auf dich.", yolo: "Nichts fragt. Jeder Agent dieser Session führt jeden Befehl aus." };
+  return `<section class="insp-sec"><h1>${t.key} · ${esc(t.title)} <button class="ghost">✎</button></h1>
+      <div class="path">📁 …/jira-flow/.data/worktrees/${t.key}</div>
+      <div class="row"><span class="status-pill ${active(t) ? "working" : ""}"><i></i>${active(t) ? "Working" : "Idle"}</span><span style="color:#d9cdcd">🖥 local · MacBook Max</span></div></section>
+    <section class="insp-sec"><div class="slabel">Agent</div>
+      <button class="model-btn" data-act="model"><span class="aimg">A\\</span><div>Claude ${t.model || "Sonnet 5.5"} · Abo<small>S+ / claude-code · Kev-Tier ${t.tier}</small></div>▾</button>
+      <div class="row"><span>Thinking</span><select style="border:0;background:none;padding:0"><option>high</option><option>medium</option><option>low</option></select></div>
+      <div class="row perm"><span>Permissions</span><div class="seg">${["ask", "auto", "yolo"].map((m) => `<button class="${m} ${perm === m ? "on" : ""}" data-act="perm" data-v="${m}">${m === "yolo" ? "YOLO" : m[0].toUpperCase() + m.slice(1)}</button>`).join("")}</div></div>
+      <p class="phint ${perm}">${HINT[perm]}</p></section>
+    <section class="insp-sec"><div class="slabel">Context <a href="#" data-act="noop">ⓘ Details</a></div>
+      <div class="ctx-num"><span id="ctxnum">${k(t.tokens)}</span><small>of 1.00M tokens · <span id="ctxpct">${pct.toFixed(0)}</span>%</small></div>
+      <div class="ctxbar"><div class="fill" id="ctxfill" style="width:${pct}%"></div>
+        <div class="mk auto" id="mkA" style="left:${S.compact / 10}%"></div><div class="lab auto" id="labA" style="left:${S.compact / 10}%">Auto-compact at ${S.compact}.0k</div>
+        <div class="mk res" id="mkR" style="left:${S.compact / 10 + 5}%"></div><div class="lab res" id="labR" style="left:${S.compact / 10 + 5}%">Reserve at ${S.compact + 50}.0k</div></div>
+      <input type="range" class="ctxrange" min="50" max="800" step="10" value="${S.compact}" data-act="compact" title="Auto-Compaction-Schwelle ziehen">
+      <p class="phint">Kompaktiert im Hintergrund ab <b id="cphA">${S.compact}.0k</b> und wartet bei <b id="cphR">${S.compact + 50}.0k</b>. Gilt für alle Agenten dieser Session.</p></section>
+    <section class="insp-sec"><div class="slabel">Stats</div><div class="metrics"><div><span id="stattok">${k(t.tokens)}</span><small>total tokens</small></div><div><span id="statcost">$${t.cost.toFixed(4)}</span><small>API equivalent</small></div><div><span>14</span><small>tools</small></div></div></section>`;
+}
+function stateP(t) {
+  const doc = { key: t.key, stage: STAGE[t.flow], lane: t.lane, plan: { review: true, steps: steps(t) }, review: t.round ? { round: t.round, verdict: t.risks ? "pass_with_risks" : "pass", risks: (t.risks || []).map(([l, s]) => ({ location: l, statement: s })) } : null, report: { branch: `feature/${t.key}`, mrUrl: t.mr ? `https://gitlab.example.com/shop/storefront/-/merge_requests/${t.mr.slice(1)}` : null } };
+  return `<div class="pad"><div class="slabel">App State · flow.tickets["${t.key}"] <span class="tagx">rev 41</span></div><p class="phint" style="margin:0 0 8px">Der durable Zustand dieses Tickets. Änderungen gelten ab dem nächsten Schritt des Agenten.</p>
+    <textarea class="json" spellcheck="false">${esc(JSON.stringify(doc, null, 2))}</textarea><div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px"><button class="secondary">Verwerfen</button><button class="primary" data-act="saved">Speichern</button></div></div>`;
+}
+function tasksP(t) {
+  const rows = [
+    ...(active(t) ? [["tool · bash", "npm run test -- cart", "running"], ["run", "Agent-Turn #22", "running"]] : []),
+    ...(t.round ? [[`flow.review #${t.round}`, "unabhängiges Review", t.flow === "review" ? "running" : "done"]] : []),
+    ["compaction", `Auto-Compaction ab ${S.compact}k`, "idle"], ["kickoff", `ticket:${t.key}:brief`, "done"],
+  ];
+  return rows.map(([n, d, s]) => `<div class="list-row"><span class="${s === "running" ? "spin" : "dot " + (s === "done" ? "ok" : "")}"></span><div class="grow"><code>${n}</code><small>${d}</small></div><span class="tagx">${s}</span>${s === "running" ? `<button class="secondary" style="padding:2px 8px" data-act="noop">Abbrechen</button>` : ""}</div>`).join("") + `<p class="phint" style="padding:10px 18px">Durable Tasks überleben Neustarts; „Abbrechen“ beendet sie sauber.</p>`;
+}
+function toolsP() {
+  const tools = [["read", "safe"], ["write", "interrupt"], ["edit", "interrupt"], ["bash", "interrupt"], ["update_ticket", "safe"], ["confirm_scope", "safe"], ["submit_fix", "safe"], ["request_review", "safe"], ["open_mr", "safe"], ["answer_question", "safe"]];
+  return `<div class="list-row" style="background:#1c1516"><div class="grow"><b>Read-only</b><small>Blockiert write, edit und verändernde Shell-Befehle</small></div><span class="sw" data-act="toggleSw"></span></div>` +
+    tools.map(([n, r]) => `<div class="list-row"><code class="grow">${n}</code><span class="tagx">${r === "safe" ? "replay safe" : "interrupt on crash"}</span><span class="sw on" data-act="toggleSw"></span></div>`).join("");
+}
+function extendP() {
+  const ex = [["coding-tools", "read · write · edit · bash", true], ["ticket-agent", "Lane-Playbook, Ticket-Tools, Flow-Guard", true], ["jev-damage-control", "Kev beurteilt jeden bash-Befehl vor der Ausführung", false], ["system-prompts", "Checkliste eingebauter Prompts", false], ["flow-reviewer", "nur in Review-Sessions", false]];
+  return ex.map(([n, d, on]) => `<div class="list-row"><div class="grow"><code>${n}</code><small>${d}</small></div><span class="sw ${on ? "on" : ""}" data-act="toggleSw"></span></div>`).join("") + `<p class="phint" style="padding:10px 18px">Gilt ab dem nächsten Request des Agenten – ohne Neustart.</p>`;
+}
+
+// ======================================================================= right: ticket / agent / assistant
+function side() {
+  let head = "", body = "";
+  if (S.draft) [head, body] = assistant();
+  else if (!S.sel) [head, body] = desk();
+  else {
+    const t = byKey(S.sel);
+    if (!isDev() || !t.started) S.ctab = "ticket";
+    const tabs = [["ticket", "Ticket"], ...(isDev() && t.started ? [["main", "Main"], ...(t.round ? [["review", `Review #${t.round}`]] : [])] : [])];
+    head = `<div class="ctabs">${tabs.map(([id, l]) => `<button class="ctab ${S.ctab === id ? "on" : ""}" data-ctab="${id}">${id === "main" && active(t) ? `<span class="dot live"></span>` : ""}${l}</button>`).join("")}</div>
+      ${isDev() && t.started ? `<span class="cost hide-m" id="sidecost">$${t.cost.toFixed(4)} / ${k(t.tokens)}</span><button class="model-chip hide-m"><span class="aimg" style="width:18px;height:18px;display:inline-grid;margin-right:5px">A\\</span>${t.model || "Sonnet 5.5"}</button>` : `<span class="prio ${t.prio}">${t.prio}</span>`}`;
+    body = card(t) + (S.ctab === "ticket" ? ticketBody(t) : agentBody(t, S.ctab));
+  }
+  return `<div class="col side ${S.mpanel === "side" ? "mshow" : ""}"><div class="col-head">${head}</div>${body}</div>`;
+}
+
+function card(t) {
+  const st = steps(t), idx = stepIndex(t), [s, sc] = STATUS[t.flow] || ["Im Backlog", ""];
+  const tone = t.flow === "done" || (["mr", "test"].includes(t.flow) && !t.risks) ? "ok" : needsYou(t) || t.flow === "blocked" ? "warn" : "";
+  const sum = { grill: "Der Agent klärt den Scope mit dir, bevor er entwickelt.", implement: "Der Agent entwickelt gerade.", review: `Unabhängiges Review läuft (Runde ${t.round || 1}).`, mr: t.risks ? `Review bestanden mit ${t.risks.length} offenem Risiko – MR ${t.mr} ist ein Draft und wartet auf eine Entscheidung.` : `MR ${t.mr} wartet auf Code-Review durch einen Entwickler.`, test: `Gemerged und auf der Dev-Stage. Bitte testen.`, rework: "Der Agent arbeitet dein Finding ab. Danach folgt ein neuer MR.", done: "Erledigt.", blocked: t.why, ready: "Freigegeben – startet, sobald ein Worker frei ist.", backlog: t.kev === "vague" ? "Kev: zu vage für einen direkten Start – beginnt mit einer Klärung." : "Kev: startklar. Zum Starten freigeben." }[t.flow];
+  return `<div class="icard ${tone}"><div class="itop"><span style="color:${tone === "ok" ? "var(--ready)" : "var(--bad)"}">⎇</span><strong>${t.key}</strong><span class="lchip">${LANE[t.lane]}</span><span class="ititle">${esc(t.title)}</span>${t.started || t.flow === "ready" ? `<span class="status ${sc}"><i></i>${s}</span>` : ""}</div>
+    ${t.started ? `<ol class="steps">${st.map((n, i) => `<li class="${i < idx ? "done" : i === idx ? "cur" : ""}"><i></i>${n}</li>`).join("")}</ol>` : ""}
+    <p class="isum">${esc(sum)}</p>
+    ${t.risks && isDev() ? `<div class="risk"><b>⚠ Decision needed</b>${t.risks.map(([l, s]) => `<div><code>${l}</code> — ${esc(s)}</div>`).join("")}</div>` : ""}</div>`;
+}
+
+function ticketBody(t) {
+  // what a PM/PO does here, without touching the agent
+  if (t.flow === "grill" && !isDev()) return grill(t);
+  let action = "";
+  if (t.flow === "test") action = S.finding === t.key ? findingForm(t) : `<div class="card" style="margin-bottom:12px"><h2>Bereit zum Testen</h2><p style="font-size:13.5px;color:#d9cdcd;margin:6px 0 10px">Auf der Dev-Stage: <a href="#" data-act="noop">dev.shop.example.com</a> · MR ${t.mr} gemerged</p>
+      <div style="display:flex;gap:8px"><button class="secondary ok" data-act="testOk" data-key="${t.key}">✓ Funktioniert</button><button class="secondary warn" data-act="finding" data-key="${t.key}">Finding melden</button></div></div>`;
+  const tl = [["Von Kev eingeordnet", `${LANE[t.lane]} · ${t.tier.toLowerCase()} · ${t.kev === "vague" ? "zu vage" : "startklar"}`], ...(t.ready ? [["Für Agent freigegeben", "Lena Weber"]] : []), ...(t.started ? [["Agent gestartet", t.model || ""]] : []), ...(t.flow === "grill" && isDev() ? [["Klärung mit der PO", "2 von 4 Fragen beantwortet"]] : []), ...(t.round ? [["Unabhängig geprüft", t.risks ? "bestanden mit offenem Risiko" : "bestanden"]] : []), ...(t.mr ? [[`Merge Request ${t.mr}`, t.flow === "done" || t.flow === "test" ? "gemerged" : t.risks ? "Draft" : "offen"]] : []), ...(t.flow === "rework" ? [["Finding gemeldet", "Agent arbeitet nach"]] : [])];
+  return `<div class="chat">${action}
+    <div class="slabel">Verlauf</div><div class="timeline">${tl.map(([a, b], i) => `<div class="${i === tl.length - 1 && t.flow !== "done" ? "now" : ""}">${a}<small>${esc(b)}</small></div>`).join("")}</div>
+    <div class="slabel" style="margin-top:14px">Aktionen</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <label style="font-size:13px;color:#d9cdcd">Priorität <select data-act="prioSel" data-key="${t.key}">${PRIOS.map((p) => `<option ${p === t.prio ? "selected" : ""}>${p}</option>`).join("")}</select></label>
+      ${t.started ? "" : `<span class="rel" style="font-size:13px" data-act="release" data-key="${t.key}"><span class="sw ${t.ready ? "on" : ""}"></span>Für Agent freigeben</span>`}
+      ${isDev() && !t.started ? `<button class="secondary" data-act="start" data-key="${t.key}">▶ Agent jetzt starten</button>` : ""}
+      <button class="ghost" data-act="noop">In Jira öffnen ↗</button></div></div>`;
+}
+
+function grill(t) {
+  const ans = S.grill[t.key] || (S.grill[t.key] = []); const done = ans.length === GRILL.length; const q = GRILL[ans.length];
+  return `<div class="chat">${GRILL.map((g, i) => i > ans.length ? "" : `<div class="entry"><div class="mlabel">AGENT <span>Frage ${i + 1}/${GRILL.length}</span></div><div class="md">${g.q}</div>${i === ans.length ? `<div class="rec"><b>Empfehlung:</b> ${g.rec}</div>` : ""}</div>${ans[i] ? `<div class="entry pi-user"><div class="mlabel">DU</div><div class="umsg">${esc(ans[i])}</div></div>` : ""}`).join("")}
+    ${done ? `<div class="entry"><div class="mlabel">AGENT</div><div class="md">Alles geklärt. Bitte bestätige den Scope:</div><div class="card" style="margin-top:8px"><ol style="margin:0;padding-left:18px;font-size:13.5px">${ans.map((a, i) => `<li><b>AC-${i + 1}</b> ${esc(a)}</li>`).join("")}</ol><button class="primary" style="margin-top:10px" data-act="grillOk" data-key="${t.key}">Scope bestätigen – Agent darf loslegen</button></div></div>` : ""}</div>
+    ${done ? "" : `<div class="composer-region"><div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px"><button class="secondary ok" data-act="grillAns" data-key="${t.key}" data-v="${esc(q.rec)}">Empfehlung übernehmen</button><button class="secondary" data-act="grillAns" data-key="${t.key}" data-v="${esc(q.alt)}">${q.alt}</button></div>
+      <div class="composer"><textarea id="grillOwn" placeholder="Oder eigene Antwort…"></textarea><div class="ctool"><span style="font-size:12px;color:#9d8889">Klärung · ${ans.length}/${GRILL.length}</span><button class="send" data-act="grillOwn" data-key="${t.key}">↑</button></div></div></div>`}`;
+}
+
+function findingForm(t) {
+  return `<div class="card" style="margin-bottom:12px;border-color:#6b5222"><h2>Finding zu ${t.key}</h2>
+    <label class="field" style="margin-top:8px"><span>Was hast du gemacht?</span><textarea rows="2">1. Suche nach „Müsli“ auf der Dev-Stage</textarea></label>
+    <div class="grid2"><label class="field"><span>Erwartet</span><textarea rows="2">„Bio-Müsli Classic“ erscheint</textarea></label><label class="field"><span>Tatsächlich</span><textarea rows="2" id="fActual">Keine Treffer; „Muesli“ geht</textarea></label></div>
+    <div style="display:flex;gap:8px;align-items:center"><button class="primary" data-act="findingSend" data-key="${t.key}">Finding senden</button><button class="ghost" data-act="findingCancel">Abbrechen</button><span style="font-size:12px;color:#9d8889;margin-left:auto">📎 Screenshot anhängen</span></div>
+    <p class="phint">Der bisherige Agent (sonst ein neuer) arbeitet nach und öffnet einen neuen MR.</p></div>`;
+}
+
+function agentBody(t, agent) {
+  const items = transcript(t, agent);
+  const html = items.map((it, i) => {
+    if (it.k === "brief") return `<div class="entry"><div class="mlabel brief-label">⎇ ${it.label || "TICKET BRIEF"} <span>#${it.n}</span></div><div class="brief"><p>${esc(it.text)}</p><details><summary>▸ Full brief</summary><p style="margin-top:8px;font-size:12px">Jira description (the spec): …</p></details></div></div>`;
+    if (it.k === "agent") return `<div class="entry ${it.isNew ? "new" : ""}"><div class="mlabel">AGENT <span>#${it.n}</span></div>${it.thinking ? `<details class="thinking"><summary>▸ Thinking</summary><div style="font-size:13px;color:#d9cdcd;padding:6px 0 0 10px;border-left:1px solid #5a3a3d;margin-top:4px">${esc(it.thinking)}</div></details>` : ""}${it.text ? `<div class="md">${esc(it.text).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>").replace(/`(.+?)`/g, "<code>$1</code>")}</div>` : ""}</div>`;
+    if (it.k === "user") return `<div class="entry pi-user ${it.isNew ? "new" : ""}"><div class="mlabel">DU</div><div class="umsg">${esc(it.text)}</div></div>`;
+    if (it.live) return `<div class="live-tool"><span class="spin"></span><b>${it.name}</b><code>${esc(it.arg)}</code><span style="color:var(--accent)">running</span></div>`;
+    return `<details class="tool ${it.isNew ? "entry new" : ""}"><summary><span style="color:var(--ready)">✓</span><b>${it.name}</b><code>${esc(it.arg)}</code><span class="tstat">Done</span></summary><pre>${esc(it.out || "")}</pre></details>`;
+  }).join("");
+  const working = agent === "main" && active(t);
+  return `<div class="chat" id="chat">${html}${working ? `<div class="typing"><i></i><i></i><i></i></div>` : ""}</div>
+    ${agent === "main" ? `<div class="composer-region"><div class="composer"><textarea id="agentMsg" placeholder="Talk to the ${t.key} agent…"></textarea><div class="ctool"><select><option>Follow-up</option><option>Steer</option></select><span style="display:flex;gap:8px"><button class="interrupt" data-act="noop">■ Interrupt</button><button class="send" data-act="agentSend" data-key="${t.key}">↑</button></span></div></div>
+      <div class="footnote"><span><span class="dot live" style="width:5px;height:5px"></span> Schließen unterbricht den Agenten nie.</span><span class="hide-m">Enter senden · Shift+Enter Zeile</span></div></div>` : `<div class="composer-region"><p class="phint">Review-Sessions sind nur lesbar. Der Reviewer sieht nie die Begründungen des Coders.</p></div>`}`;
+}
+
+function desk() {
+  return [`<div class="ctabs"><button class="ctab on">💬 Flow desk</button></div>`,
+    `<div class="chat"><div class="empty"><div class="orb">${LOGO.replace('class="brandmark"', 'style="width:40px;height:22px"')}<i></i></div><span class="eyebrow">Flow desk</span><h2>Der Poller schläft nie.</h2>
+    <p>Kev ordnet jedes Ticket mit dem Label ein. ${isDev() ? "Starte eins, und ein durable Agent arbeitet es ab – mit Review und MR." : "Gib Tickets frei, kläre Features und teste Ergebnisse – die Agenten erledigen den Rest."}</p>
+    <div class="starters"><button data-act="ask"><b>⌕ Was braucht mich?</b><span>${ofProject().filter(needsYou).length} Tickets warten</span></button><button data-act="newTicket"><b>✎ Ticket formulieren</b><span>Assistent + Kev-Check</span></button></div></div></div>
+    <div class="composer-region"><div class="composer"><textarea placeholder="Frag den Flow Desk nach der Queue…"></textarea><div class="ctool"><span></span><button class="send">↑</button></div></div></div>`];
+}
+
+function assistant() {
+  const d = S.draft, n = d.answers.length, score = d.idea ? [38, 60, 78, 93][n] : 0, ready = score > 85;
+  const acs = [d.idea ? "Ein eingeloggter Kunde kann im Checkout eine Lieferadresse speichern." : null, d.answers[1] && (d.answers[1].includes("5") ? "Bis zu 5 Adressen, eine davon Standard." : "Beliebig viele Adressen."), d.answers[0] && (d.answers[0].startsWith("Nur") ? "Gäste sehen die Option nicht." : "Gäste bekommen einen Link per E-Mail."), d.answers[2] && (d.answers[2].startsWith("Nur") ? "Adressen außerhalb DE/AT/CH werden mit Hinweis abgelehnt." : "Alle Lieferländer sind erlaubt.")].filter(Boolean);
+  const q = DRAFT_Q[n];
+  return [`<div class="ctabs"><button class="ctab on">✎ Neues Ticket</button></div><button class="ghost" data-act="draftClose">✕</button>`,
+    `<div class="icard ${ready ? "ok" : "warn"}"><div class="itop"><strong>${d.created || "NEU"}</strong><span class="lchip">Story</span><span class="ititle">${d.idea ? "Lieferadressen im Checkout speichern" : "Entwurf"}</span><span class="status ${ready ? "ok" : "warn"}"><i></i>Kev ${score}%</span></div>
+      <ol style="margin:2px 0 8px;padding-left:18px;font-size:13px;color:#e9dede">${acs.map((a) => `<li>${a}</li>`).join("") || `<li style="color:#9d8889">Akzeptanzkriterien entstehen im Gespräch</li>`}</ol>
+      <div style="display:flex;gap:8px;align-items:center"><button class="primary" data-act="draftCreate" ${ready && !d.created ? "" : "disabled style='opacity:.45'"}>In Jira anlegen</button>${d.created ? `<span class="rel" style="font-size:13px" data-act="release" data-key="${d.created}"><span class="sw ${byKey(d.created).ready ? "on" : ""}"></span>Für Agent freigeben</span>` : `<span style="font-size:12px;color:#9d8889">${ready ? "Kev: startklar · Lane Ticket" : "Kev: noch zu vage"}</span>`}</div></div>
+    <div class="chat"><div class="entry"><div class="mlabel">ASSISTENT <span>ohne Code-Zugriff</span></div><div class="md">Beschreib in deinen Worten, was gebraucht wird. Ich formuliere daraus ein Ticket und frage nach, wo etwas fehlt.</div></div>
+      ${d.idea ? `<div class="entry pi-user"><div class="mlabel">DU</div><div class="umsg">${esc(d.idea)}</div></div>` : ""}
+      ${d.idea ? DRAFT_Q.map((g, i) => i > n ? "" : `<div class="entry"><div class="mlabel">ASSISTENT</div><div class="md">${g.q}</div>${i === n ? `<div class="rec"><b>Empfehlung:</b> ${g.rec}</div>` : ""}</div>${d.answers[i] ? `<div class="entry pi-user"><div class="mlabel">DU</div><div class="umsg">${esc(d.answers[i])}</div></div>` : ""}`).join("") : ""}
+      ${n === 3 ? `<div class="entry"><div class="mlabel">ASSISTENT</div><div class="md">Vollständig. Kev stuft es als <b>startklar</b> ein.</div></div>` : ""}</div>
+    <div class="composer-region">${d.idea && q ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px"><button class="secondary ok" data-act="draftAns" data-v="${esc(q.rec)}">Empfehlung übernehmen</button><button class="secondary" data-act="draftAns" data-v="${esc(q.alt)}">${q.alt}</button></div>` : ""}
+      <div class="composer"><textarea id="idea" placeholder="Was wird gebraucht?">${d.idea ? "" : "Kunden sollen im Checkout ihre Lieferadressen speichern können."}</textarea><div class="ctool"><span style="font-size:12px;color:#9d8889">Jira · ${S.project || "SHOP"}</span><button class="send" data-act="draftSend">↑</button></div></div></div>`];
+}
+
+// ======================================================================= modals
+function clientsModal() {
+  const mini = `<div style="padding:8px"><b>Webshop Relaunch</b><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-top:6px;font-family:var(--mono)"><div class="card" style="padding:5px">2<br><small style="color:#a99596">dich</small></div><div class="card" style="padding:5px">5<br><small style="color:#a99596">Arbeit</small></div><div class="card" style="padding:5px">3<br><small style="color:#a99596">done</small></div></div></div>`;
+  return `<div class="shade" data-act="close"><div class="modal wide" data-stop><header><div><span class="eyebrow">Eine API · viele Clients</span><h2>Zugriffswege & Architektur</h2></div><button class="icon-btn" data-act="close">✕</button></header>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px">
+      <div class="win"><div class="chrome"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i>Tauri-App</div>${mini}<p class="phint" style="padding:0 8px 8px">Mitteilungen, Dock-Badge, Menüleiste, startet optional den lokalen Worker.</p></div>
+      <div class="win"><div class="chrome">🔒 flow.team.local</div>${mini}<p class="phint" style="padding:0 8px 8px">Web-UI im Browser, ohne Installation.</p></div>
+      <div class="win"><div class="chrome">📱 Handy</div>${mini}<p class="phint" style="padding:0 8px 8px">Dieselbe Web-UI, responsiv; später als PWA. (📱 oben probieren)</p></div>
+      <div class="win"><div class="chrome">⌨ flow-tui</div><div class="tui">$ flow status SHOP
+ 63% ██████░░░░
+ SHOP-151 Klärung 2/4
+ SHOP-141 testen
+ SHOP-149 implement ▸
 $ flow ready SHOP-153
- ✓ SHOP-153 für Agent freigegeben (Jira-Label gesetzt)</div></div>
-  </div>
-  <h2 style="margin-top:24px">Lokal wie auf einem Server (Pilot)</h2>
-  <p class="sub">Ohne eigenen Server: der Flow-Server läuft in einem Container auf deinem Mac (Podman oder Docker Compose) und verhält sich wie später auf einer VM. Die Agenten laufen auf Entwickler-Rechnern – im Pilot auf deinem Mac außerhalb des Containers, mit deinem eigenen Claude-Abo.</p>
-  <div class="arch">
-    <div class="box"><h4>Clients</h4><div class="small">Tauri-App · Browser · Handy · Terminal</div><div class="small muted" style="margin-top:6px">Login (Einladungs-Account) → Rolle PM/PO oder Dev</div></div>
-    <div class="box container"><h4>📦 Container „flow-server“</h4><div class="small">Projekte, Benutzer, Rollen (Rechte serverseitig) · Poller + Kev pro Projekt · Lanes, Review-Policy · PM-API (Jira mit persönlichem Token) · Reporting aus Jira-Changelog · SQLite auf Volume</div><div class="small muted" style="margin-top:6px">Später 1:1 auf einer VM</div></div>
-    <div class="box"><h4>💻 Worker (Entwickler-Rechner)</h4><div class="small">dpi-backend mit den Ticket-Agenten, Worktrees, git/glab, eigenes Claude-Abo des Entwicklers · meldet sich beim Flow-Server an und holt Aufträge</div><div class="small muted" style="margin-top:6px">Später zusätzlich: Server-Worker</div></div>
-  </div>
-  <div class="arch" style="margin-top:14px">
-    <div class="box"><h4>Jira Cloud</h4><div class="small">Quelle der Wahrheit: Tickets, Priorität, Rangfolge, Label, Status, Historie</div></div>
-    <div class="box"><h4>GitLab</h4><div class="small">MRs, Draft/Ready, Notizen</div></div>
-    <div class="box"><h4>Kev</h4><div class="small">lokal neben dem Flow-Server (eigener Container oder Host)</div></div>
-  </div>`;
+ ✓ freigegeben</div></div></div>
+    <h2 style="margin:16px 0 4px">Lokal wie auf einem Server (Pilot)</h2><p class="phint" style="margin-bottom:10px">Der Flow-Server läuft als Container (Podman/Docker Compose) auf deinem Mac und verhält sich wie später auf einer VM. Agenten laufen auf Entwickler-Rechnern mit dem eigenen Claude-Abo.</p>
+    <div class="arch"><div class="box"><h4>Clients</h4>Tauri · Browser · Handy · Terminal<br><span style="color:#9d8889">Login → Rolle PM/PO oder Dev, Rechte serverseitig</span></div>
+      <div class="box c"><h4>📦 flow-server (Container)</h4>Projekte, Benutzer, Rollen · Poller + Kev je Projekt · Lanes, Review-Policy · Jira mit persönlichem Token · Reports aus Changelog</div>
+      <div class="box"><h4>💻 Worker (Entwickler-Rechner)</h4>dpi-backend mit den Ticket-Agenten, Worktrees, git/glab, eigenes Claude-Abo · holt Aufträge vom Server<br><span style="color:#9d8889">später auch Server-Worker</span></div></div></div></div>`;
 }
-
-// ---------------------------------------------------------------- drawer & modals
-function ticketDrawer(key) {
-  const t = byKey(key);
-  const tl = [["Entdeckt", "Kev: " + (t.kev === "ready" ? "startklar" : "zu vage") + ` · ${LANE[t.lane]}`], ...(t.ready ? [["Für Agent freigegeben", "von Lena Weber"]] : []), ...(t.started ? [["Agent gestartet", t.model ? `Modell ${t.model}` : ""]] : []), ...(["review", "mr", "test", "done"].includes(t.flow) ? [["Unabhängig geprüft", t.risks ? "bestanden mit 1 offenem Risiko" : "bestanden"]] : []), ...(t.mr ? [["Merge Request " + t.mr, t.flow === "done" ? "gemerged" : "offen"]] : [])];
-  return `<div class="shade" data-act="close"><div class="drawer" data-stop>
-    <button class="x" data-act="close">×</button>
-    <div class="mono muted">${t.key} · ${t.type}</div><h1 style="margin:6px 0">${esc(t.title)}</h1>
-    <div class="row wrap">${chip(t.flow)} ${kevChip(t)} <span class="prio ${t.prio}">${t.prio}</span></div>
-    <p>${esc(t.desc || "Beschreibung aus Jira …")}</p>
-    <h2>Verlauf</h2><div class="timeline">${tl.map(([a, b], i) => `<div class="${i === tl.length - 1 ? "now" : ""}"><b>${a}</b><div class="small muted">${b}</div></div>`).join("")}</div>
-    <h2 style="margin-top:14px">Aktionen</h2><div class="row wrap">
-      ${t.started ? "" : `<span class="toggle ${t.ready ? "on" : ""}" data-act="ready" data-key="${t.key}"><i></i><span class="small">${t.ready ? "Freigegeben" : "Für Agent freigeben"}</span></span>`}
-      ${t.flow === "grill" ? `<a class="btn small" href="#/p/${S.project}/clarify/${t.key}" data-act="close">Fragen beantworten</a>` : ""}
-      ${t.flow === "test" ? `<button class="btn small warn" data-act="finding" data-key="${t.key}">Finding melden</button>` : ""}
-      <a class="btn small" href="#" onclick="return false">In Jira öffnen ↗</a></div>
-    ${isDev() ? `<div class="devbox"><span class="dev-tag">nur Entwickler</span><div class="small" style="margin-top:8px">Lane <b>${t.lane}</b> · Tier <b>${t.tier}</b>${t.model ? ` · Modell <b>${t.model}</b>` : ""}${t.mr ? ` · MR <b>${t.mr}</b>` : ""}</div>
-      ${t.risks ? `<div class="riskbox small">⚠ ${esc(t.risks[0])}</div>` : ""}
-      <div class="row wrap" style="margin-top:8px">${t.started ? `<a class="btn small" href="#/p/${S.project}/agents/${t.key}" data-act="close">Agent öffnen</a>` : `<button class="btn small" data-act="startAgent" data-key="${t.key}">Agent jetzt starten</button>`}<button class="btn small">Lane ändern</button></div></div>` : ""}
-  </div></div>`;
-}
-
-function findingModal(key) {
-  const t = byKey(key);
-  return `<div class="shade center" data-act="close"><div class="modal" data-stop>
-    <button class="x" data-act="close">×</button><h1>Finding melden</h1><p class="sub"><span class="mono">${t.key}</span> · ${esc(t.title)}</p>
-    <label class="f"><span>Was hast du gemacht?</span><textarea id="fSteps">1. Suche nach „Müsli“ auf der Dev-Stage\n2. Ergebnisliste ansehen</textarea></label>
-    <div class="grid g2" style="grid-template-columns:1fr 1fr"><label class="f"><span>Erwartet</span><textarea>Artikel „Bio-Müsli Classic“ erscheint</textarea></label><label class="f"><span>Tatsächlich</span><textarea id="fActual">Keine Treffer; mit „Muesli“ geht es</textarea></label></div>
-    <label class="f"><span>Screenshot</span><div class="card small muted" style="text-align:center;border-style:dashed">📎 Bild hierher ziehen</div></label>
-    <label class="f"><span>Wie schlimm?</span><select><option>Funktion fehlt / falsch</option><option>Schönheitsfehler</option><option>Blockiert den Release</option></select></label>
-    <p class="small muted">Danach: Der bisherige Agent (falls noch vorhanden, sonst ein neuer) bekommt dein Finding, arbeitet nach und öffnet einen neuen MR. Das Ticket erscheint wieder unter „Testen“, sobald es auf der Dev-Stage ist.</p>
-    <div class="row"><button class="btn primary" data-act="findingSend" data-key="${key}">Finding senden</button><button class="btn" data-act="close">Abbrechen</button></div>
-  </div></div>`;
-}
-
 function newProjectModal() {
-  return `<div class="shade center" data-act="close"><div class="modal" data-stop>
-    <button class="x" data-act="close">×</button><h1>Neues Projekt</h1><p class="sub">Jeder darf Projekte anlegen. Ein Jira-Projekt gibt es nur einmal.</p>
-    <label class="f"><span>Jira-Projekt (Schlüssel)</span><input type="text" id="npKey" placeholder="z. B. CRM oder SHOP" /></label><div id="npCheck" class="small" style="margin:-6px 0 12px"></div>
-    <label class="f"><span>Name</span><input type="text" id="npName" placeholder="CRM Integration" /></label>
-    <label class="f"><span>GitLab-Repository</span><input type="text" placeholder="gitlab.example.com/gruppe/projekt" /></label>
-    <div class="grid g2" style="grid-template-columns:1fr 1fr"><label class="f"><span>Ziel-Branch</span><input type="text" value="develop"/></label><label class="f"><span>Branch-Schema</span><input type="text" value="feature/{key}"/></label></div>
-    <label class="f"><span>Mitglieder einladen</span><input type="text" placeholder="E-Mail-Adressen, Rolle wählbar" /></label>
-    <div class="row"><button class="btn primary" data-act="npCreate">Projekt anlegen</button><button class="btn" data-act="close">Abbrechen</button></div>
-  </div></div>`;
+  return `<div class="shade" data-act="close"><div class="modal" data-stop><header><div><span class="eyebrow">Projekt</span><h2>Neues Projekt</h2></div><button class="icon-btn" data-act="close">✕</button></header>
+    <label class="field"><span>Jira-Projekt (Schlüssel)</span><input id="npKey" placeholder="z. B. CRM"></label><div id="npCheck" style="font-size:12.5px;margin:-4px 0 8px"></div>
+    <label class="field"><span>Name</span><input id="npName" placeholder="CRM Integration"></label><label class="field"><span>GitLab-Repository</span><input placeholder="gitlab.example.com/gruppe/projekt"></label>
+    <div class="grid2"><label class="field"><span>Ziel-Branch</span><input value="develop"></label><label class="field"><span>Branch-Schema</span><input value="feature/{key}"></label></div>
+    <label class="field"><span>Mitglieder einladen</span><input placeholder="E-Mail, Rolle wählbar"></label><button class="primary" data-act="npCreate">Projekt anlegen</button></div></div>`;
+}
+function projMenu() {
+  return `<div class="shade" data-act="close" style="align-items:flex-start;justify-content:flex-start;padding:60px 0 0 70px;background:#0005;backdrop-filter:none"><div class="modal" data-stop style="width:280px;padding:8px">
+    <button class="trow" style="width:100%" data-act="portfolio">▦ Alle Projekte</button>${PROJECTS.map((p) => `<button class="trow ${S.project === p.key ? "on" : ""}" style="width:100%" data-act="project" data-v="${p.key}"><span class="dot ${p.health === "ok" ? "ok" : "warn"}"></span><span class="name" style="text-align:left">${esc(p.name)}</span><span class="tag">${p.key}</span></button>`).join("")}</div></div>`;
 }
 
-// ---------------------------------------------------------------- render + events
+// ======================================================================= render & events
 function render() {
   document.body.classList.toggle("mobile", S.device === "mobile");
-  const r = route(); let html;
-  if (r.page === "login") html = pageLogin();
-  else if (r.page === "projects") html = shell(pageProjects(), r);
-  else if (r.page === "clients") html = shell(pageClients(), r);
-  else {
-    const pages = { overview: pageOverview, backlog: pageBacklog, board: pageBoard, new: pageNew, clarify: () => pageClarify(r.arg), testing: pageTesting, reports: pageReports, agents: () => pageAgents(r.arg), settings: pageSettings };
-    html = shell((pages[r.tab] || pageOverview)(), r);
-  }
-  document.getElementById("app").innerHTML = html;
+  const shell = document.getElementById("shell");
+  const chat = document.getElementById("chat"); const stick = !chat || chat.scrollHeight - chat.scrollTop - chat.clientHeight < 40;
+  // The clock re-renders while you work: keep what you typed, which tool cards are open, and an open mobile overlay.
+  const typed = {}; shell.querySelectorAll("textarea[id], input[id]").forEach((el) => (typed[el.id] = el.value));
+  const focus = document.activeElement?.id; const openCards = [...shell.querySelectorAll("#chat details")].map((d) => d.open);
+  const mov = document.getElementById("mOv");
+  shell.innerHTML = topBar() + `<div class="workspace">${tree()}${mid()}${side()}</div>` +
+    `<div class="mnav"><button class="${S.mpanel === "tree" ? "on" : ""}" data-mp="tree">⌗<span>Projekte</span></button><button class="${S.mpanel === "mid" ? "on" : ""}" data-mp="mid">☰<span>Feed</span></button><button class="${S.mpanel === "side" ? "on" : ""}" data-mp="side">💬<span>${S.sel || "Desk"}</span></button></div>`;
+  for (const [id, val] of Object.entries(typed)) { const el = document.getElementById(id); if (el) el.value = val; }
+  if (focus) document.getElementById(focus)?.focus();
+  shell.querySelectorAll("#chat details").forEach((d, i) => { if (openCards[i]) d.open = true; });
+  if (mov) shell.appendChild(mov);
+  const c = document.getElementById("chat"); if (c && stick) c.scrollTop = c.scrollHeight;
+  TICKETS.forEach((t) => { t.isNew = false; t.chipNew = false; });
+  S.transcripts && Object.values(S.transcripts).forEach((l) => l.forEach((i) => (i.isNew = false)));
   wireDnD();
 }
+function overlay(html) { const o = document.getElementById("overlay"); if (S.device === "mobile") { const d = document.createElement("div"); d.id = "mOv"; d.innerHTML = html; document.getElementById("shell").appendChild(d); } else o.innerHTML = html; }
+function closeOverlay() { document.getElementById("overlay").innerHTML = ""; document.getElementById("mOv")?.remove(); }
 
-function overlay(html) {
-  if (S.device !== "mobile") { document.getElementById("overlay").innerHTML = html; return; }
-  // In the phone frame the overlay lives inside the frame, at its top.
-  document.getElementById("frame").scrollTop = 0;
-  const d = document.createElement("div"); d.id = "mOverlay"; d.innerHTML = html; document.getElementById("app").appendChild(d);
-}
-function closeOverlay() { document.getElementById("overlay").innerHTML = ""; document.getElementById("mOverlay")?.remove(); }
+function select(key) { S.sel = key; S.draft = null; S.finding = null; const t = byKey(key); S.ctab = isDev() && t.started ? "main" : "ticket"; if (S.device === "mobile") S.mpanel = "side"; render(); }
 
 function wireDnD() {
-  const list = document.getElementById("backlog"); if (!list) return; let dragKey = null;
-  list.querySelectorAll(".bl").forEach((row) => {
-    row.addEventListener("dragstart", () => { dragKey = row.dataset.key; row.classList.add("drag"); });
-    row.addEventListener("dragend", () => row.classList.remove("drag"));
-    row.addEventListener("dragover", (e) => { e.preventDefault(); row.classList.add("over"); });
-    row.addEventListener("dragleave", () => row.classList.remove("over"));
-    row.addEventListener("drop", (e) => {
-      e.preventDefault(); row.classList.remove("over"); if (!dragKey || dragKey === row.dataset.key) return;
-      const order = tickets().filter((t) => t.flow !== "done").map((t) => t.key).filter((k) => k !== dragKey);
-      order.splice(order.indexOf(row.dataset.key), 0, dragKey); order.forEach((k, i) => (byKey(k).rank = i));
-      render(); toast(`${dragKey} verschoben – Rangfolge in Jira aktualisiert`);
-    });
+  const rows = document.querySelectorAll("#feedrows .log-row"); let drag = null;
+  rows.forEach((r) => {
+    r.addEventListener("dragstart", () => { drag = r.dataset.key; r.classList.add("drag"); });
+    r.addEventListener("dragend", () => r.classList.remove("drag"));
+    r.addEventListener("dragover", (e) => { e.preventDefault(); r.classList.add("over"); });
+    r.addEventListener("dragleave", () => r.classList.remove("over"));
+    r.addEventListener("drop", (e) => { e.preventDefault(); r.classList.remove("over"); if (!drag || drag === r.dataset.key) return;
+      const order = ofProject().map((t) => t.key).filter((x) => x !== drag); order.splice(order.indexOf(r.dataset.key), 0, drag); order.forEach((x, i) => (byKey(x).rank = i));
+      render(); toast(`${drag} verschoben – Rangfolge in Jira aktualisiert`); });
   });
 }
 
 document.addEventListener("click", (e) => {
-  const stop = e.target.closest("[data-stop]"); const el = e.target.closest("[data-act],[data-go],[data-ticket]");
-  if (!el) return; if (stop && el.matches(".shade")) return;
-  if (el.dataset.ticket) { overlay(ticketDrawer(el.dataset.ticket)); return; }
-  if (el.dataset.go) { location.hash = el.dataset.go; return; }
-  const a = el.dataset.act, k = el.dataset.key, v = el.dataset.v;
-  const acts = {
-    login: () => { S.user = v; S.role = USERS[v].role; location.hash = "#/projects"; render(); },
-    logout: () => { S.user = null; location.hash = ""; render(); },
-    role: () => { S.role = v; S.user = v === "dev" ? "max" : "lena"; render(); toast(v === "dev" ? "Ansicht: Entwickler – Agents-Tab und Dev-Details sichtbar" : "Ansicht: PM/PO – keine Agent-Werkzeuge"); },
-    device: () => { S.device = v; closeOverlay(); render(); },
+  const inPanel = e.target.closest("[data-stop]");
+  const el = e.target.closest("[data-act],[data-sel],[data-mid],[data-ctab],[data-mp]");
+  if (!el) return;
+  if (inPanel && el.matches(".shade")) return;
+  if (el.dataset.sel && !e.target.closest("[data-act]")) return select(el.dataset.sel);
+  if (el.dataset.mid) { S.mid = el.dataset.mid; return render(); }
+  if (el.dataset.ctab) { S.ctab = el.dataset.ctab; if (S.device === "mobile") S.mpanel = "side"; return render(); }
+  if (el.dataset.mp) { S.mpanel = el.dataset.mp; return render(); }
+  const a = el.dataset.act, key = el.dataset.key, v = el.dataset.v, t = key && byKey(key);
+  const A = {
+    home: () => { S.project = null; S.sel = null; S.mid = "feed"; render(); },
+    portfolio: () => { closeOverlay(); S.project = null; S.sel = null; S.mid = "feed"; S.mpanel = "mid"; render(); },
+    project: () => { closeOverlay(); S.project = v; S.open[v] = true; S.sel = null; S.mid = "feed"; S.draft = null; S.mpanel = "mid"; render(); },
+    toggle: () => { e.stopPropagation(); S.open[v] = !S.open[v]; render(); },
+    projMenu: () => overlay(projMenu()),
+    role: () => { S.role = v; render(); toast(v === "dev" ? "Entwickler: Agent-Chat, Session/State/Tasks/Tools/Extend sichtbar" : "PM/PO: steuern ohne Agent-Werkzeuge"); },
+    device: () => { S.device = v; S.mpanel = S.sel ? "side" : "mid"; closeOverlay(); render(); },
+    clients: () => overlay(clientsModal()),
     close: () => closeOverlay(),
-    ready: () => { const t = byKey(k); t.ready = !t.ready; t.flow = t.ready ? "ready" : "backlog"; closeOverlay(); render(); toast(t.ready ? `${k} für Agent freigegeben (Jira-Label gesetzt)` : `${k} zurück ins Backlog`); },
     newProject: () => overlay(newProjectModal()),
-    npCreate: () => { const key = (document.getElementById("npKey").value || "CRM").toUpperCase(); if (PROJECTS.some((p) => p.key === key)) { document.getElementById("npCheck").innerHTML = `<span style="color:var(--warn)">${key} gibt es schon – <a href="#/p/${key}/overview">dort öffnen</a></span>`; return; }
-      PROJECTS.push({ key, name: document.getElementById("npName").value || "CRM Integration", repo: "gitlab.example.com/crm/core", branch: "develop", schema: "feature/{key}", label: "ready-for-agent", test: "", members: [USERS[S.user].name], health: "ok" });
-      TICKETS.push(T(key + "-1", "Erstes Ticket aus Jira", "Task", "Medium", "backlog", { lane: "ticket", tier: "SIMPLE", kev: "ready", rank: 0 })); closeOverlay(); location.hash = `#/p/${key}/overview`; toast(`Projekt ${key} angelegt – Poller läuft`); },
-    startAgent: () => { const t = byKey(k); t.started = true; t.flow = t.lane === "feature" || t.kev === "vague" ? "grill" : "implement"; t.model = t.tier === "COMPLEX" ? "Opus" : "Sonnet"; closeOverlay(); render(); toast(`Agent für ${k} gestartet (${t.model})`); },
-    draftStart: () => { S.draft.idea = document.getElementById("idea").value; S.draft.step = 1; render(); },
+    npCreate: () => { const kk = (document.getElementById("npKey").value || "CRM").toUpperCase(); if (PROJECTS.some((p) => p.key === kk)) { document.getElementById("npCheck").innerHTML = `<span style="color:var(--warn)">${kk} gibt es schon – <a href="#" data-act="project" data-v="${kk}">öffnen</a></span>`; return; }
+      PROJECTS.push({ key: kk, name: document.getElementById("npName").value || "CRM Integration", repo: "gitlab.example.com/crm/core", branch: "develop", schema: "feature/{key}", test: "", health: "ok", members: "Lena Weber · PO" });
+      TICKETS.push(T(kk + "-1", "Erstes Ticket aus Jira", "Task", "Medium", "backlog", { lane: "ticket", tier: "SIMPLE", kev: "ready", rank: 0, found: "jetzt" })); closeOverlay(); S.project = kk; S.open[kk] = true; S.sel = null; render(); toast(`Projekt ${kk} angelegt – Poller läuft`); },
+    release: () => { e.stopPropagation(); t.ready = !t.ready; t.flow = t.ready ? "ready" : "backlog"; render(); toast(t.ready ? `${key} für Agent freigegeben (Jira-Label gesetzt)` : `${key} zurück ins Backlog`); },
+    prio: () => { e.stopPropagation(); t.prio = PRIOS[(PRIOS.indexOf(t.prio) + 1) % PRIOS.length]; render(); toast(`${key}: Priorität ${t.prio} (in Jira gespeichert)`); },
+    start: () => { t.started = true; t.flow = t.lane === "feature" || t.kev === "vague" ? "grill" : "implement"; t.model = t.tier === "COMPLEX" ? "Opus 5.5" : "Sonnet 5.5"; t.tokens = 1200; t.cost = 0.01; S.ctab = "main"; render(); toast(`Agent für ${key} gestartet (${t.model})`); },
+    perm: () => { S.perm[S.sel] = v; render(); toast(`Permissions: ${v === "yolo" ? "YOLO" : v}`); },
+    toggleSw: () => el.classList.toggle("on"),
+    saved: () => toast("Gespeichert"),
+    model: () => toast("Modell-Auswahl wie im Durable-Pi-Hub"),
+    noop: () => e.preventDefault(),
+    newTicket: () => { S.draft = { idea: "", answers: [], created: null }; S.sel = null; if (S.device === "mobile") S.mpanel = "side"; render(); },
+    draftClose: () => { S.draft = null; render(); },
+    draftSend: () => { const inp = document.getElementById("idea"); if (!S.draft.idea) { S.draft.idea = inp.value || "Lieferadressen speichern"; inp.value = ""; render(); } },
     draftAns: () => { S.draft.answers.push(v); render(); },
-    draftCreate: () => { const key = `${S.project}-${160 + TICKETS.length}`; TICKETS.push(T(key, "Lieferadressen im Checkout speichern", "Story", "Medium", "backlog", { lane: "ticket", tier: "MODERATE", kev: "ready", rank: -1 })); S.draft.created = key; render(); toast(`${key} in Jira angelegt`); },
-    grillAns: () => { S.grill[k].push(v); render(); },
-    grillOwn: () => { const own = prompt("Deine Antwort:"); if (own) { S.grill[k].push(own); render(); } },
-    grillConfirm: () => { byKey(k).flow = "implement"; render(); toast(`Scope für ${k} bestätigt – der Agent entwickelt jetzt`); location.hash = `#/p/${S.project}/overview`; },
-    testOk: () => { byKey(k).flow = "done"; render(); toast(`${k} erledigt – in Jira auf Done gesetzt`); },
-    finding: () => { closeOverlay(); overlay(findingModal(k)); },
-    findingSend: () => { const t = byKey(k); t.flow = "rework"; t.finding = "Finding: " + (document.getElementById("fActual").value || ""); ACTIVITY.unshift({ at: "jetzt", text: `Finding zu ${k} – Agent arbeitet nach, neuer MR folgt`, kind: "agent" }); closeOverlay(); render(); toast(`Finding gesendet – Agent ${k} arbeitet nach, neuer MR folgt`); },
-    agentSend: () => { const inp = document.getElementById("agentMsg"); if (!inp.value) return; S.transcript[k].push({ k: "me", t: inp.value }, { k: "agent", t: "Verstanden – ich passe das an und reiche es danach erneut zum Review ein." }); render(); },
+    draftCreate: () => { const kk = `${S.project || "SHOP"}-${162 + TICKETS.length}`; TICKETS.push(T(kk, "Lieferadressen im Checkout speichern", "Story", "Medium", "backlog", { lane: "ticket", tier: "MODERATE", kev: "ready", rank: -1, found: "jetzt", isNew: true })); S.draft.created = kk; render(); toast(`${kk} in Jira angelegt`); },
+    grillAns: () => { S.grill[key].push(v); render(); },
+    grillOwn: () => { const inp = document.getElementById("grillOwn"); const val = inp.value.trim(); if (val) { inp.value = ""; S.grill[key].push(val); render(); } },
+    grillOk: () => { t.flow = "implement"; render(); toast(`Scope für ${key} bestätigt – der Agent entwickelt jetzt`); },
+    testOk: () => { t.flow = "done"; render(); toast(`${key} erledigt – in Jira auf Done`); },
+    finding: () => { S.finding = key; render(); },
+    findingCancel: () => { S.finding = null; render(); },
+    findingSend: () => { t.flow = "rework"; S.finding = null; render(); toast(`Finding gesendet – Agent ${key} arbeitet nach, neuer MR folgt`); },
+    agentSend: () => { const inp = document.getElementById("agentMsg"); if (!inp.value.trim()) return; const l = transcript(t, "main"); l.push({ k: "user", text: inp.value, isNew: true }); inp.value = ""; setTimeout(() => { l.push({ k: "agent", n: 40 + l.length, text: "Verstanden – ich passe das an und reiche es danach erneut zum Review ein.", isNew: true }); if (S.sel === key) render(); }, 1200); render(); },
+    ask: () => { const ts = ofProject().filter(needsYou); if (ts[0]) select(ts[0].key); },
   };
-  acts[a]?.();
+  A[a]?.();
 });
-
-document.addEventListener("change", (e) => {
-  const el = e.target;
-  if (el.dataset.act === "switch") location.hash = `#/p/${el.value}/overview`;
-  if (el.dataset.act === "prio") { byKey(el.dataset.key).prio = el.value; toast(`Priorität von ${el.dataset.key}: ${el.value} (in Jira gespeichert)`); }
+document.addEventListener("change", (e) => { const el = e.target; if (el.dataset.act === "prioSel") { byKey(el.dataset.key).prio = el.value; render(); toast(`Priorität ${el.value} (in Jira gespeichert)`); } });
+// The auto-compaction slider updates its marks in place, so dragging is not interrupted by a re-render.
+document.addEventListener("input", (e) => {
+  if (e.target.dataset.act !== "compact") return;
+  S.compact = +e.target.value; const a = S.compact / 10;
+  const set = (id, f) => { const el = document.getElementById(id); if (el) f(el); };
+  set("mkA", (el) => (el.style.left = a + "%")); set("mkR", (el) => (el.style.left = a + 5 + "%"));
+  set("labA", (el) => { el.style.left = a + "%"; el.textContent = `Auto-compact at ${S.compact}.0k`; });
+  set("labR", (el) => { el.style.left = a + 5 + "%"; el.textContent = `Reserve at ${S.compact + 50}.0k`; });
+  set("cphA", (el) => (el.textContent = S.compact + ".0k")); set("cphR", (el) => (el.textContent = S.compact + 50 + ".0k"));
 });
-// closing overlays: a click on the dark backdrop (not inside the panel)
 document.addEventListener("mousedown", (e) => { if (e.target.classList?.contains("shade")) closeOverlay(); });
 
-window.addEventListener("hashchange", () => { closeOverlay(); render(); });
+// ======================================================================= the clock: polling, arrivals, live agent
+setInterval(() => {
+  // poll ring: count down; on zero a poll happens and maybe a new ticket arrives
+  S.poll.left = S.poll.left <= 1 ? S.poll.span : S.poll.left - 1;
+  const R = 2 * Math.PI * 7, rf = document.getElementById("ringfill"), ps = document.getElementById("pollsec");
+  if (rf) rf.setAttribute("stroke-dashoffset", R * (S.poll.left / S.poll.span)); if (ps) ps.textContent = S.poll.left + "s";
+  if (S.poll.left === S.poll.span && S.arrivals < ARRIVALS.length) {
+    const a = ARRIVALS[S.arrivals++]; const now = new Date().toTimeString().slice(0, 8);
+    TICKETS.push(T(a.key, a.title, a.type, a.prio, "backlog", { lane: a.lane, tier: a.tier, kev: "pending", result: a.kev, rank: -S.arrivals, found: now, isNew: true }));
+    render();
+    setTimeout(() => { const t = byKey(a.key); t.kev = t.result; t.chipNew = true; render(); toast(`Neu aus Jira: ${a.key} – Kev: ${t.kev === "ready" ? "startklar" : "zu vage"}`); }, 1800);
+  }
+  // live agent on SHOP-149
+  if (S.sel === "SHOP-149" && S.ctab === "main") S.live++;
+  const t = byKey("SHOP-149"); const l = transcript(t, "main");
+  for (const s of LIVE) if (S.sel === "SHOP-149" && S.ctab === "main" && s.at === S.live) {
+    if (s.add) l.push({ ...s.add, isNew: true });
+    if (s.done) { const last = l[l.length - 1]; last.live = false; last.out = s.out; last.isNew = true; }
+    if (s.flow) { t.flow = s.flow; t.round = 1; }
+    t.tokens += 6400; t.cost += 0.21;
+    render();
+  }
+  if (active(t)) { // tick counters without a full render
+    t.tokens += 180; t.cost += 0.004;
+    const set = (id, txt) => { const el = document.getElementById(id); if (el) el.textContent = txt; };
+    if (S.sel === "SHOP-149") { set("sidecost", `$${t.cost.toFixed(4)} / ${k(t.tokens)}`); set("ctxnum", k(t.tokens)); set("stattok", k(t.tokens)); set("statcost", "$" + t.cost.toFixed(4)); set("ctxpct", (t.tokens / 10000).toFixed(0)); const f = document.getElementById("ctxfill"); if (f) f.style.width = t.tokens / 10000 + "%"; }
+  }
+}, 1000);
+
 render();
 </script>
 </body>
