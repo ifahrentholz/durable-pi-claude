@@ -339,8 +339,8 @@ const TICKETS = [
 TICKETS.forEach((t, i) => { t.rank = i; if (t.started) t.worker = t.key === "PORTAL-88" ? "sara" : "max"; });
 // Workers: where a ticket's agent session and worktree live. A ticket stays on its worker.
 const WORKERS = [
-  { id: "max", name: "MacBook Max", short: "MM", online: true, slots: 3, owner: "Max" },
-  { id: "sara", name: "MacBook Sara", short: "MS", online: false, slots: 2, owner: "Sara", since: "10:12" },
+  { id: "max", name: "MacBook Max", short: "MM", online: true, slots: 3, owner: "Max", ownerName: "Max Krüger" },
+  { id: "sara", name: "MacBook Sara", short: "MS", online: false, slots: 2, owner: "Sara", ownerName: "Sara Yilmaz", since: "10:12" },
   { id: "server-1", name: "server-1", short: "S1", online: false, slots: 6, later: true },
 ];
 // ~50 tickets that arrive over the next minutes, 1–3 per poll, across all projects.
@@ -746,7 +746,7 @@ function jiraDetails(t) {
   const j = jiraOf(t), added = t.started ? [] : (S.refine[t.key]?.answers || []);
   const acs = [...(j.acs || []), ...(t.scoped ? (t.acsAdded || []) : [])];
   return `<details class="jira" id="jd" ${S.jiraOpen[t.key] ? "open" : ""}><summary>Ticket-Inhalt in Jira</summary>
-    <dl class="kv"><dt>Typ · Prio</dt><dd>${t.type} · ${t.prio}</dd><dt>Reporter</dt><dd>${esc(j.reporter)}</dd><dt>Labels</dt><dd>${j.labels.join(", ")}</dd><dt>Angelegt</dt><dd>${j.created}</dd></dl>
+    <dl class="kv"><dt>Typ · Prio</dt><dd>${t.type} · ${t.prio}</dd><dt>Zugewiesen</dt><dd title="Wer den Agenten betreibt, ist in Jira zugewiesen">${t.started && worker(t) ? `${worker(t).ownerName || worker(t).name} · Agent` : "–"}</dd><dt>Reporter</dt><dd>${esc(j.reporter)}</dd><dt>Labels</dt><dd>${j.labels.join(", ")}</dd><dt>Angelegt</dt><dd>${j.created}</dd></dl>
     <div class="desc">${esc(j.desc)}</div>
     <div style="font-size:12.5px;color:var(--secondary);margin-top:8px">Akzeptanzkriterien${added.length && !t.scoped ? `<span class="plus">+${added.length} NEU</span>` : ""}</div>
     <ol>${acs.map((a) => `<li>${esc(a)}</li>`).join("")}${!t.scoped ? added.map((a) => `<li class="add">${esc(a)}</li>`).join("") : ""}${!acs.length && !added.length ? `<li style="color:#9d8889">keine</li>` : ""}</ol></details>`;
@@ -772,7 +772,7 @@ function ticketBody(t) {
   if (t.flow === "test") action = S.finding === t.key ? findingForm(t) : `<div class="card" style="margin-bottom:12px"><h2>Bereit zum Testen</h2><p style="font-size:13.5px;color:#d9cdcd;margin:6px 0 10px">Auf der Dev-Stage: <a href="#" data-act="noop">dev.shop.example.com</a> · MR ${t.mr} gemerged</p>
       <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="secondary ok" data-act="testOk" data-key="${t.key}">✓ Als erledigt markieren</button><button class="secondary warn" data-act="finding" data-key="${t.key}">Finding melden</button></div>
       <p class="phint">Erledigt setzt das Jira-Ticket auf Done und kommentiert, wer es markiert hat.</p></div>`;
-  const tl = [["Von Kev eingeordnet", `${LANE[t.lane]} · ${t.tier.toLowerCase()} · ${t.kev === "vague" ? "zu vage" : "startklar"}`], ...(t.ready ? [["Für Agent freigegeben", "Lena Weber"]] : []), ...(t.started ? [["Agent gestartet", `${t.model || ""}${isDev() && worker(t) ? ` · auf ${worker(t).name}` : ""}`]] : []), ...(t.flow === "grill" && isDev() ? [["Klärung mit der PO", "2 von 4 Fragen beantwortet"]] : []), ...(t.round ? [["Unabhängig geprüft", t.risks ? "bestanden mit offenem Risiko" : "bestanden"]] : []), ...(t.mr ? [[`Merge Request ${t.mr}`, t.flow === "done" || t.flow === "test" ? "gemerged" : t.risks ? "Draft" : "offen"]] : []), ...(["pipeline", "test", "done"].includes(t.flow) ? [["Pipeline auf develop", t.flow === "pipeline" ? "läuft" : "grün"]] : []), ...(t.flow === "rework" ? [["Finding gemeldet", "Agent arbeitet nach"]] : []), ...(t.approval ? [["Wartet auf Freigabe", `${t.approval.tool}: ${t.approval.cmd}`]] : []), ...(t.flow === "done" && t.doneBy ? [["Als erledigt markiert", `${t.doneBy} · Jira: Done + Kommentar`]] : [])];
+  const tl = [["Von Kev eingeordnet", `${LANE[t.lane]} · ${t.tier.toLowerCase()} · ${t.kev === "vague" ? "zu vage" : "startklar"}`], ...(t.ready ? [["Für Agent freigegeben", "Lena Weber"]] : []), ...(t.started ? [["Agent gestartet", `${t.model || ""}${isDev() && worker(t) ? ` · auf ${worker(t).name}` : ""}${worker(t) ? ` · Jira: ${worker(t).ownerName || worker(t).name} zugewiesen` : ""}`]] : []), ...(t.flow === "grill" && isDev() ? [["Klärung mit der PO", "2 von 4 Fragen beantwortet"]] : []), ...(t.round ? [["Unabhängig geprüft", t.risks ? "bestanden mit offenem Risiko" : "bestanden"]] : []), ...(t.mr ? [[`Merge Request ${t.mr}`, t.flow === "done" || t.flow === "test" ? "gemerged" : t.risks ? "Draft" : "offen"]] : []), ...(["pipeline", "test", "done"].includes(t.flow) ? [["Pipeline auf develop", t.flow === "pipeline" ? "läuft" : "grün"]] : []), ...(t.flow === "rework" ? [["Finding gemeldet", "Agent arbeitet nach"]] : []), ...(t.approval ? [["Wartet auf Freigabe", `${t.approval.tool}: ${t.approval.cmd}`]] : []), ...(t.flow === "done" && t.doneBy ? [["Als erledigt markiert", `${t.doneBy} · Jira: Done + Kommentar`]] : [])];
   return `<div class="chat">${action}
     <div class="slabel">Verlauf</div><div class="timeline">${tl.map(([a, b], i) => `<div class="${i === tl.length - 1 && t.flow !== "done" ? "now" : ""}">${a}<small>${esc(b)}</small></div>`).join("")}</div>
     <div class="slabel" style="margin-top:14px">Aktionen</div>

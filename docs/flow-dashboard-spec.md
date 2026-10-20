@@ -22,7 +22,7 @@ Nicht im Pilot: die Shop-/Incident-Demo (bleibt, wie sie ist), SSO, Server-Worke
 
 1. **Jira ist die Quelle der Wahrheit** für Tickets, Priorität, Rangfolge, Labels, Status und Historie. Was ein
    Mensch im Dashboard am Ticket ändert, geht direkt nach Jira. Der Flow-Server hält den Flow-Zustand (Stage,
-   Zuweisung, Reviews, Freigaben), die Worker halten den Ausführungszustand ihrer Agenten.
+   Zuweisung, Reviews, Freigaben) und eine laufend synchronisierte Kopie der Agenten-Daten (siehe 9.2).
 2. **Jira-Kommentare nur an zwei Stellen:** beim Öffnen eines MR (ein Satz zum Fix plus Link) und beim manuellen
    Erledigen (wer es erledigt hat). Risiken stehen im MR. Beschreibung und Akzeptanzkriterien ändert nur ein Mensch
    ausdrücklich („Ticket schärfen“). Status-Übergänge sind keine Kommentare (siehe 9.4).
@@ -285,23 +285,34 @@ API/Bedrock oder eigene Plätze im Team-Plan).
 ### 9.2 Server und Worker
 - **Worker holen sich Aufträge** (Pull, nur ausgehende Verbindungen, funktioniert hinter NAT): Long-Poll oder
   WebSocket zum Server, Auftrag per Lease übernehmen, Ereignisse (Stage, Tool-Ergebnisse, Freigaben, Usage) melden.
-- **Zwei Datenbanken mit klarer Rolle:** Die Server-DB ist die Wahrheit für den Flow (Ticket, Stage, Lauf, Worker,
-  Reviews, Freigaben). Transkripte und durable Tasks liegen in der pi-durable-DB des Workers, weil Durable Pi sie
-  lokal ausführt; der Server bekommt Zusammenfassungen und Ereignisse, und der Client liest Transkripte über den
-  Server vom Worker.
+- **Agenten-Daten werden auf den Server repliziert:** Der Worker führt jeden Agenten auf seiner lokalen
+  pi-durable-DB aus (das bleibt der schreibende Speicher: jeder Schritt ist eine lokale, atomare Transaktion und läuft
+  auch ohne Netz weiter). Jede abgeschlossene Transaktion (Commit mit fortlaufender Nummer) schickt er sofort an den
+  Server; nach einer Unterbrechung holt er ab der letzten bestätigten Nummer nach. Der Server hält damit eine
+  vollständige, nahezu aktuelle Kopie: Transkripte, Tasks, Dokumente, Usage. Clients lesen alles vom Server, auch wenn
+  der Worker offline ist. Technisch: `subscribeCommits` der Harness bzw. eine replizierende `Storage`-Hülle.
+- **Warum keine gemeinsame DB:** Ein entfernter Speicher hieße einen Netzwerk-Roundtrip pro Agenten-Schritt; bei
+  Netzaussetzern (Laptop) bliebe der Agent stehen – genau das soll Durable Pi verhindern.
+- **Flow-Zustand:** Die Server-DB ist die Wahrheit für Ticket, Stage, Lauf, Worker, Reviews und Freigaben.
 - **Ticket-Tools auf dem Worker:** `submit_fix`, `open_mr` nutzen git/glab des Workers; `update_ticket` usw. melden
   den Stage-Wechsel an den Server; Jira-Kommentare und Status-Übergänge schreibt der Server.
-- **Ausfall:** Fällt ein Worker mitten in einem Schritt aus, bleibt der Flow-Zustand auf dem Server, der
-  Ausführungszustand auf der Platte des Workers. Kommt er zurück, setzt Durable Pi exakt dort fort und gleicht mit
-  dem Server ab. Das Ticket zeigt so lange „pausiert“.
+- **Ausfall:** Fällt ein Worker aus, zeigt das Ticket „pausiert“. Kommt er zurück, setzt Durable Pi exakt dort fort
+  und gleicht ab.
+- **Worker endgültig weg:** Ein Entwickler kann den Lauf einem anderen Worker geben. Der bekommt die Replik vom
+  Server (in eine frische lokale DB eingespielt) und den Branch aus GitLab – deshalb pusht `submit_fix` den Branch
+  (ohne MR). Was nach dem letzten Push im Worktree geändert wurde, ist verloren; der Agent bekommt beim Fortsetzen den
+  Hinweis „Worktree auf Commit <sha> wiederhergestellt, spätere Änderungen fehlen – prüfe git status und mach sie
+  neu“.
 
 ### 9.3 Nie zwei Agenten an einem Ticket
 - Start ist eine **atomare Übernahme in der Server-DB**: ein Lauf je Ticket (eindeutige Bedingung), angelegt in
   einer Transaktion; ein zweiter Start, ein Doppelklick oder ein zweiter Client bekommt den bestehenden Lauf zurück.
   Jeder Start trägt eine Idempotenz-ID.
 - Worker übernehmen Aufträge nur per **Lease mit Heartbeat**. Läuft die Lease ab, wird der Auftrag **nicht**
-  automatisch neu vergeben – sein Zustand liegt auf dem alten Worker; das Ticket wird „pausiert“, ein Entwickler
-  entscheidet. So arbeitet nie ein zweiter Agent parallel.
+  automatisch neu vergeben; das Ticket wird „pausiert“, ein Entwickler entscheidet.
+- **Fencing:** Jede Lease trägt eine fortlaufende Epoche. Gibt ein Entwickler den Lauf einem anderen Worker, steigt
+  die Epoche; der Server lehnt danach Commits und Ereignisse mit alter Epoche ab, und ein zurückkehrender alter
+  Worker stoppt seinen Agenten, statt weiterzuarbeiten.
 - Jede Änderung geht sofort über den Realtime-Stream an alle verbundenen Clients.
 
 ### 9.4 Jira
@@ -316,6 +327,10 @@ API/Bedrock oder eigene Plätze im Team-Plan).
   MR, Testen und Erledigt nach `statusMap` (Default: über `statusCategory` erkannt). Das sind Übergänge, keine
   Kommentare.
 - **Board:** Spalten aus der Jira-Board-Konfiguration.
+- **Zuweisung:** Ein Ticket mit laufendem Agenten ist in Jira immer der Person zugewiesen, deren Agent es bearbeitet:
+  dem Besitzer des Workers, bei einem Server-Worker der Person, die den Agenten gestartet hat. Der Server setzt das
+  beim Start (Jira braucht dafür die `accountId` der Person, einmal pro Benutzer über die E-Mail ermittelt; der
+  Token braucht das Recht „Assign Issues“). Nach dem Erledigen bleibt die Zuweisung.
 
 ### 9.5 Änderungen in Jira, während ein Agent läuft
 Der Poller vergleicht jedes laufende Ticket mit dem letzten Stand:
@@ -326,7 +341,8 @@ Der Poller vergleicht jedes laufende Ticket mit dem letzten Stand:
 | Ticket auf Done oder geschlossen | Lauf wird abgebrochen, Ticket „in Jira erledigt“; Branch bleibt, Worktree wird nach 7 Tagen aufgeräumt |
 | Beschreibung oder Akzeptanzkriterien geändert | Agent bekommt die Änderung als nächste Nachricht; liegt schon ein MR vor, wird das Ticket zur Nacharbeit markiert |
 | Priorität oder Rang geändert | nur Reihenfolge in Warteschlange und Feed |
-| einer Person zugewiesen | Agent pausiert: „von <Name> übernommen“ |
+| Zuweisung an eine andere Person geändert | Agent pausiert; Karte „<Name> übernimmt?“ – bestätigen gibt den Lauf an einen Worker dieser Person (oder beendet ihn), ablehnen stellt die Zuweisung in Jira wieder her |
+| Zuweisung entfernt | Server stellt sie wieder her (laufender Agent = zugewiesene Person) |
 | Kommentar | ignoriert (der Kanal ist die Session); Ausnahme `/approve` bei Auto-Merge |
 
 ### 9.6 Kev
@@ -345,24 +361,13 @@ braucht Kev eine GPU (CUDA) oder läuft auf einem Mac im Netz.
 
 ## 10. Offen
 
-**Bei deinen Antworten nachgehakt (bitte bestätigen):**
-- **Jira-Status-Übergänge** (9.4): Du hast gefragt, ob wir eine Zuordnung brauchen. Ja – sobald das Board die
-  Spalten aus Jira übernimmt, stünde sonst jedes Agenten-Ticket bis zum Erledigen in „To Do“. Vorschlag: automatische
-  Zuordnung über `statusCategory`, je Projekt überschreibbar.
-- **„Jeder darf alles“** (4): widerspricht „nur Entwickler ändern den Permission-Modus“ und der Grundidee, dass PMs
-  Agenten nicht steuern. Umgesetzt als: Projekt-Verwaltung offen für alle, Agent-Werkzeuge nur Entwickler.
-- **Persönlicher Jira-Token** (9.4): reicht für Phase 1, aber alles erscheint in Jira als dieser eine Mensch, und
-  verlässt er das Projekt oder läuft der Token ab, steht das Projekt. Daher nennen Texte den Auslöser; vor dem
-  Teamstart ein Service-Account.
-- **Pull und Datenbank** (9.2): Der Server kann nicht die DB der Agenten-Ausführung sein – Durable Pi führt lokal auf
-  SQLite aus. Die Aufteilung oben erfüllt dein Ziel (Zustand bleibt erhalten, Worker setzt fort), solange die Platte
-  des Workers erhalten bleibt. Ist ein Worker endgültig weg, sind nicht gepushte Commits verloren. **Vorschlag:**
-  `submit_fix` pusht den Branch (ohne MR), damit Arbeit einen Worker-Verlust übersteht und neu vergeben werden kann.
-- **Nur nach Priorität** (9.7): Bei gleicher Priorität entscheidet die Rangfolge, die man im Feed per Ziehen setzt –
-  sonst wäre das Ziehen wirkungslos.
-- **Lane für jeder** (7.2): nur vor dem Start. Danach sind Playbook und Stepper des Agenten festgelegt; ein Wechsel
-  hieße Neustart.
-- **„Gesperrte Tools“** (7.9): gemeint war „nicht abschaltbar“ (immer an), nicht „nicht nutzbar“.
+**Bestätigt nach Nachfrage:** Jira-Status-Übergänge (9.4) · Projekt-Verwaltung für alle, Agent-Werkzeuge nur
+Entwickler (4) · persönlicher Jira-Token für Phase 1, Service-Account vor dem Teamstart · Priorität, bei Gleichstand
+Rangfolge (9.7) · Lane nur vor dem Start · Flow-Tools nicht abschaltbar · Agenten-Daten auf den Server replizieren
+(9.2).
+
+**Noch zu bestätigen:** `submit_fix` pusht den Branch (ohne MR), damit ein Lauf einen endgültigen Worker-Verlust
+übersteht (9.2). Heute pusht erst `open_mr`.
 
 **Während Phase 0/1:** Mitteilungen im Detail (Kanäle, wer bekommt was) · mehrere Repos je Projekt in der UI ·
 Report-Details (Status → Band, Zeitraum, Caching, Jira-Rate-Limits) · Verhalten, wenn GitLab oder Jira nicht
