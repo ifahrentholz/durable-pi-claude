@@ -45,7 +45,9 @@ body.mobile .shell { width: 390px; height: 820px; margin: 22px auto; border: 10p
 .ring { transform: rotate(-90deg); } .ring .track { stroke: #3b3031; } .ring .fill { stroke: var(--ready); stroke-linecap: round; transition: stroke-dashoffset 1s linear; }
 .dot { width: 7px; height: 7px; border-radius: 50%; background: #756062; display: inline-block; flex-shrink: 0; }
 .dot.live { background: var(--accent); box-shadow: 0 0 9px #ff899766; animation: pulse 1.6s infinite; }
-.dot.ok { background: var(--ready); } .dot.warn { background: var(--warn); } .dot.bad { background: var(--bad); animation: pulse 1.2s infinite; }
+/* One colour language for every dot: pink pulsing = an agent works, yellow = waits for a person,
+   red = blocked or paused, green = finished, grey = quiet. */
+.dot.ok { background: var(--ready); } .dot.warn { background: var(--warn); } .dot.bad { background: #ff3b4e; box-shadow: 0 0 0 2px #ff3b4e55; } /* static + ring: a state, not activity */ .dot.idle { background: #6f5a5c; }
 .seg { display: inline-flex; border: 1px solid #453032; border-radius: 8px; overflow: hidden; }
 .seg button { padding: 4px 10px; font-size: 13px; color: #d9cdcd; } .seg button + button { border-left: 1px solid #453032; }
 .seg button.on { background: #2b1f20; color: #f2eeee; }
@@ -72,7 +74,13 @@ body.mobile .shell { width: 390px; height: 820px; margin: 22px auto; border: 10p
 .trow:hover { background: #ffffff08; } .trow.on { background: #2b1f20; border-color: #4a3537; }
 .trow .name { overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0; }
 .trow .tag { font: 11px var(--mono); color: var(--secondary); border: 1px solid #403536; border-radius: 4px; padding: 0 4px; }
-.trow .n { font: 11.5px var(--mono); background: #4a2028; color: #ffd0d6; border-radius: 4px; padding: 0 5px; }
+.trow .n { font: 11.5px var(--mono); background: #c93a50; color: #fff; border-radius: 4px; padding: 0 5px; }
+.trow .act { font: 11.5px var(--mono); color: var(--accent); } .trow .wk { font: 10.5px var(--mono); color: #9d8889; border: 1px solid #3b2c2e; border-radius: 3px; padding: 0 3px; }
+.trow.off { opacity: .55; } .tgroup { padding: 10px 14px 3px; font-size: 11px; letter-spacing: 1.2px; text-transform: uppercase; color: #9d8889; display: flex; justify-content: space-between; }
+.newtag { font: 600 10px var(--mono); color: #2a1013; background: var(--accent); border-radius: 3px; padding: 0 4px; margin-right: 6px; }
+.treemode { display: flex; gap: 0; margin: 4px 10px 2px; } .treemode .seg { width: 100%; } .treemode .seg button { flex: 1; }
+.mlist button { width: 100%; justify-content: flex-start; text-align: left; padding: 10px; border-radius: 7px; gap: 12px; } .mlist button:hover:not(:disabled), .mlist button.on { background: #402b2d; }
+.mlist button:disabled { opacity: .4; cursor: not-allowed; } .mlist small { display: block; color: #b9a5a6; font-size: 12.5px; }
 .trow.l1 { padding-left: 24px; } .trow.l2 { padding-left: 40px; font-size: 13px; color: #d9cdcd; }
 .chev { width: 12px; color: #9d8889; font-size: 10px; display: inline-block; transition: transform .15s; } .chev.open { transform: rotate(90deg); }
 .worker { padding: 6px 14px; display: flex; gap: 8px; align-items: center; font-size: 13px; color: #d9cdcd; }
@@ -94,12 +102,15 @@ body.mobile .shell { width: 390px; height: 820px; margin: 22px auto; border: 10p
 .stats span { font: 500 17px var(--mono); } .stats small { font-size: 12px; color: #a99596; }
 .stats .s-ready span { color: var(--secondary); } .stats .s-clar span { color: var(--warn); } .stats .s-wait span { color: var(--bad); } .stats .s-done span { color: var(--ready); }
 .pinned { display: flex; align-items: center; gap: 9px; margin: 8px 10px 0; padding: 7px 10px; border: 1px solid #8a3c48; border-radius: 8px; background: #3a1a20; cursor: pointer; }
-.pinned.ok { border-color: #3f6f55; background: #1a3326; } .pinned.warn { border-color: #6b5222; background: #2e2414; } .pinned.sel { outline: 1px solid #ffffff3a; }
+.pinned.ok { border-color: #3f6f55; background: #1a3326; } .pinned.warn { border-color: #6b5222; background: #2e2414; }
+.pinned.bad { border-color: var(--bad); background: #4a1a22; box-shadow: 0 0 14px #ff6b7d33; } .pinned.idle { border-color: #3b2c2e; background: #1e1718; } .pinned.sel { outline: 1px solid #ffffff3a; }
 .pinned strong { font-family: var(--mono); font-size: 13.5px; } .pinned .t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .status { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; white-space: nowrap; padding: 2px 9px; border-radius: 999px; background: #4a2028; color: #ffd0d6; }
-.status i { width: 6px; height: 6px; border-radius: 50%; background: var(--bad); animation: pulse 1.2s infinite; }
+.status i { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); animation: pulse 1.2s infinite; }
+.status.bad { background: #5a1a24; color: #ffc2ca; } .status.bad i { background: var(--bad); }
+.status.idle { background: #352728; color: #e9dede; } .status.idle i { background: #8d7b7c; animation: none; }
 .status.ok { background: #1f4733; color: #c9f5da; } .status.ok i { background: var(--ready); animation: none; }
-.status.warn { background: #4a3517; color: #ffe1b3; } .status.warn i { background: var(--warn); }
+.status.warn { background: #4a3517; color: #ffe1b3; } .status.warn i { background: var(--warn); animation: none; }
 .open-agent { color: #ffd0d6; white-space: nowrap; font-size: 13px; } .ok .open-agent { color: #c9f5da; }
 .log-head, .log-row { display: grid; grid-template-columns: 14px 62px 74px 1fr 128px 74px; gap: 9px; align-items: center; }
 .log-head { padding: 9px 14px 5px; font-size: 11.5px; letter-spacing: .8px; text-transform: uppercase; color: #9d8889; border-bottom: 1px solid #2a2021; margin-top: 8px; }
@@ -154,6 +165,7 @@ svg text { fill: #9d8889; font: 10.5px var(--font, "DM Sans"); }
 .icard { margin: 10px 12px 0; border: 1px solid #6b3a41; border-radius: 9px; background: linear-gradient(180deg, #3a1d22aa, #24161800); padding: 4px 12px 10px; }
 .icard.ok { border-color: #3f6f55; background: linear-gradient(180deg, #1c3a2b99, #16201b00); }
 .icard.warn { border-color: #6b5222; background: linear-gradient(180deg, #3a2c17aa, #22191300); }
+.icard.bad { border-color: var(--bad); background: linear-gradient(180deg, #4a1a22cc, #22151700); }
 .itop { display: flex; align-items: center; gap: 9px; padding: 8px 0 6px; }
 .itop strong { font-family: var(--mono); } .itop .ititle { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #e9dede; }
 .lchip { font: 10.5px var(--mono); text-transform: uppercase; letter-spacing: .5px; border: 1px solid #4a3537; border-radius: 99px; padding: 1px 6px; color: var(--secondary); }
@@ -280,6 +292,7 @@ const PROJECTS = [
   { key: "PORTAL", name: "Kundenportal", repo: "gitlab.example.com/portal/web", branch: "main", schema: "feature/{key}", test: "npm test", health: "warn", members: "Tom Becker · PM\nMax Krüger · Dev" },
   { key: "APP", name: "Mobile App", repo: "gitlab.example.com/app/client", branch: "develop", schema: "feat/{key_lower}", test: "", health: "ok", members: "Lena Weber · PO\nJonas Hahn · Dev" },
 ];
+const PRIOS_ALL = ["Highest", "High", "Medium", "Low", "Lowest"];
 const T = (key, title, type, prio, flow, x = {}) => ({ key, title, type, prio, flow, ready: !["backlog"].includes(flow), found: x.found || "09:14:13", ...x });
 const TICKETS = [
   T("SHOP-149", "Warenkorb verliert Artikel nach dem Login", "Bug", "Highest", "implement", { lane: "ticket", tier: "MODERATE", kev: "ready", model: "Sonnet 5.5", started: true, tokens: 84200, cost: 1.92, found: "08:02:40" }),
@@ -306,12 +319,30 @@ const TICKETS = [
   T("APP-39", "Absturz beim Öffnen alter Bestellungen", "Bug", "Highest", "done", { lane: "ticket", tier: "MODERATE", kev: "ready", started: true, mr: "!88" }),
   T("APP-43", "Biometrischer Login", "Story", "Medium", "backlog", { lane: "feature", tier: "COMPLEX", kev: "vague" }),
 ];
-TICKETS.forEach((t, i) => (t.rank = i));
-const ARRIVALS = [
-  { key: "SHOP-159", title: "Produktvergleich zeigt mobil nur 2 Spalten", type: "Bug", prio: "Medium", lane: "quick", tier: "SIMPLE", kev: "ready" },
-  { key: "SHOP-160", title: "Treuepunkte im Kundenkonto anzeigen", type: "Story", prio: "High", lane: "feature", tier: "COMPLEX", kev: "vague" },
-  { key: "SHOP-161", title: "Wie lange dauert ein Retourenprozess?", type: "Task", prio: "Low", lane: "question", tier: "SIMPLE", kev: "ready" },
+TICKETS.forEach((t, i) => { t.rank = i; if (t.started) t.worker = t.key === "PORTAL-88" ? "sara" : "max"; });
+// Workers: where a ticket's agent session and worktree live. A ticket stays on its worker.
+const WORKERS = [
+  { id: "max", name: "MacBook Max", short: "MM", online: true, slots: 3, owner: "Max" },
+  { id: "sara", name: "MacBook Sara", short: "MS", online: false, slots: 2, owner: "Sara", since: "10:12" },
+  { id: "server-1", name: "server-1", short: "S1", online: false, slots: 6, later: true },
 ];
+// ~50 tickets that arrive over the next minutes, 1–3 per poll, across all projects.
+const POOL = {
+  SHOP: [["Produktvergleich zeigt mobil nur 2 Spalten", "Bug", "quick"], ["Treuepunkte im Kundenkonto anzeigen", "Story", "feature"], ["Wie lange dauert ein Retourenprozess?", "Task", "question"], ["Filter „Sale“ zeigt reguläre Preise", "Bug", "ticket"], ["Größentabelle als Overlay", "Story", "ticket"], ["Warenkorb-Badge zählt Gutscheine mit", "Bug", "quick"], ["Express-Versand für Pakete über 30 kg sperren", "Story", "ticket"], ["Bewertungen nach Hilfreich sortieren", "Story", "ticket"], ["Footer-Links öffnen im selben Tab", "Bug", "quick"], ["Abo-Bestellungen mit Pausenfunktion", "Story", "feature"], ["Produktbilder zoomen auf Touch-Geräten", "Bug", "ticket"], ["Rechnungsadresse übernimmt Firmenname nicht", "Bug", "ticket"], ["Welche Zahlarten nutzen Firmenkunden?", "Task", "question"], ["Merkzettel nach Login zusammenführen", "Story", "ticket"], ["Lagerbestand „nur noch 3“ anzeigen", "Story", "quick"], ["Checkout: Telefonnummer optional machen", "Task", "quick"], ["Produktvideos auf der Detailseite", "Story", "feature"], ["Suchvorschläge mit Kategorien", "Story", "ticket"], ["Preisalarm per E-Mail", "Story", "feature"], ["Breadcrumb verliert Filter", "Bug", "ticket"]],
+  PORTAL: [["Vertragsdokumente durchsuchen", "Story", "feature"], ["Session läuft nach 5 Minuten ab", "Bug", "ticket"], ["E-Mail-Adresse ändern mit Bestätigung", "Story", "ticket"], ["Tabelle Rechnungen exportieren (CSV)", "Story", "quick"], ["Login mit Passkey", "Story", "feature"], ["Falsches Datum in der Zahlungshistorie", "Bug", "quick"], ["Wie viele Kunden nutzen das Portal mobil?", "Task", "question"], ["Benachrichtigungseinstellungen speichern nicht", "Bug", "ticket"], ["Adressänderung an CRM übertragen", "Story", "ticket"], ["Barrierefreiheit: Fokus im Menü", "Bug", "quick"], ["Zählerstand per Foto melden", "Story", "feature"], ["Kündigungsbutton nach Gesetz", "Story", "ticket"], ["Lange Namen brechen das Layout", "Bug", "quick"], ["Portal-Startseite personalisieren", "Story", "feature"], ["Passwort-Regeln verständlich anzeigen", "Task", "quick"]],
+  APP: [["Offline-Modus für Bestellhistorie", "Story", "feature"], ["App stürzt bei Dark Mode ab (Android 14)", "Bug", "ticket"], ["Deep Link zu Produkten", "Story", "ticket"], ["Push-Opt-in nach erstem Kauf", "Story", "quick"], ["Wie hoch ist die Crash-Rate pro Version?", "Task", "question"], ["Barcode-Scanner im Laden", "Story", "feature"], ["Schriftgröße folgt Systemeinstellung", "Bug", "quick"], ["Widget „Bestellstatus“", "Story", "feature"], ["Login bleibt nach Update nicht erhalten", "Bug", "ticket"], ["Ladeanimation ruckelt auf iPhone SE", "Bug", "quick"], ["Favoriten zwischen Geräten synchronisieren", "Story", "ticket"], ["Rabattcode aus der Zwischenablage erkennen", "Story", "ticket"], ["Bewertungsdialog nach 3. Kauf", "Task", "quick"], ["App-Icon für Weihnachten", "Task", "quick"], ["Sprachsuche", "Story", "feature"]],
+};
+// One queue per project (50 in total). Every poll brings one ticket to the project you look at, the rest elsewhere.
+const NEXT = { SHOP: 162, PORTAL: 89, APP: 44 };
+const QUEUE = {}; let qi = 0;
+for (const pk of Object.keys(POOL)) QUEUE[pk] = POOL[pk].map(([title, type, lane]) => ({ key: `${pk}-${NEXT[pk]++}`, title, type, lane, prio: PRIOS_ALL[(qi++ * 3) % 5], tier: lane === "feature" ? "COMPLEX" : lane === "ticket" ? "MODERATE" : "SIMPLE", kev: lane === "feature" || qi % 9 === 4 ? "vague" : "ready" }));
+const left = () => Object.values(QUEUE).reduce((n, q) => n + q.length, 0);
+function nextArrival(i) {
+  const here = S.project && QUEUE[S.project]?.length ? S.project : null;
+  const others = Object.keys(QUEUE).filter((pk) => QUEUE[pk].length && pk !== here);
+  const pk = i === 0 && here ? here : others[(S.arrivals + i) % Math.max(others.length, 1)] || here;
+  return pk ? QUEUE[pk].shift() : null;
+}
 const GRILL = [
   { q: "Wer darf Gutscheine einlösen – nur eingeloggte Kunden oder auch Gäste?", rec: "Auch Gäste. Sonst brechen Neukunden im Checkout ab, und genau die bekommen die meisten Gutscheine.", alt: "Nur eingeloggte Kunden" },
   { q: "Dürfen mehrere Gutscheine kombiniert werden?", rec: "Nein, ein Gutschein pro Bestellung. Kombinationen machen Rabattlogik und Retouren deutlich komplexer.", alt: "Ja, bis zu zwei" },
@@ -327,7 +358,7 @@ const DRAFT_Q = [
 // ======================================================================= state
 const S = {
   role: "pm", device: "desktop", project: "SHOP", sel: null, mid: "feed", ctab: "ticket", mpanel: "mid",
-  open: { SHOP: true }, poll: { left: 14, span: 15 }, arrivals: 0, grill: {}, draft: null, finding: null,
+  open: { SHOP: true }, focus: true, treeMode: "projects", poll: { left: 9, span: 10 }, arrivals: 0, grill: {}, draft: null, finding: null,
   perm: { SHOP: "auto" }, compact: 200, live: 0, typing: false, transcripts: {},
 };
 const isDev = () => S.role === "dev";
@@ -346,10 +377,20 @@ const CHIP = {
   test: () => ["Testen", "test"], rework: () => ["Nacharbeit", "progress"], done: () => ["Erledigt", "done"], blocked: () => ["Hilfe nötig", "blocked"],
 };
 const STAGE = { implement: "implement", grill: "grill", review: "review", mr: "mr_open", test: "merged", rework: "implement", done: "merged", blocked: "blocked" };
-const STATUS = { ready: ["Freigegeben", "ok"], implement: ["Agent arbeitet", ""], grill: ["Wartet auf dich", "warn"], review: ["Review läuft", ""], mr: ["MR offen", "ok"], test: ["Bitte testen", "warn"], rework: ["Nacharbeit", ""], blocked: ["Hilfe nötig", "warn"], done: ["Erledigt", "ok"] };
+const STATUS = { ready: ["Freigegeben", "idle"], implement: ["Agent arbeitet", ""], grill: ["Wartet auf Klärung", "warn"], review: ["Review läuft", ""], mr: ["MR wartet auf Review", "warn"], test: ["Bitte testen", "warn"], rework: ["Nacharbeit", ""], blocked: ["Hilfe nötig", "bad"], done: ["Erledigt", "ok"] };
+const worker = (t) => WORKERS.find((w) => w.id === t.worker);
+const paused = (t) => t.started && t.worker && !worker(t).online && !["done", "test", "mr"].includes(t.flow);
+const statusOf = (t) => (paused(t) ? ["Pausiert · Worker offline", "bad"] : STATUS[t.flow] || ["Im Backlog", "idle"]);
 const chipOf = (t) => CHIP[t.flow](t);
-const active = (t) => ["implement", "review", "rework"].includes(t.flow);
-const needsYou = (t) => (t.flow === "grill" && !isDev()) || t.flow === "test" || (isDev() && (t.flow === "blocked" || (t.flow === "mr" && t.risks)));
+const active = (t) => ["implement", "review", "rework"].includes(t.flow) && !paused(t);
+// "Braucht dich", per role: POs clarify, test and release new tickets; developers test, review MRs and unblock.
+const needsYou = (t) => isDev()
+  ? t.fresh || t.flow === "test" || t.flow === "mr" || t.flow === "blocked" || paused(t)
+  : t.fresh || t.flow === "grill" || t.flow === "test";
+const dotOf = (t) => (paused(t) || t.flow === "blocked" ? "bad" : active(t) ? "live" : ["grill", "test", "mr"].includes(t.flow) || t.fresh ? "warn" : t.flow === "done" ? "ok" : "idle");
+const DOT_TIP = { bad: "blockiert oder pausiert", live: "ein Agent arbeitet", warn: "wartet auf einen Menschen", ok: "fertig", idle: "ruhig" };
+// A project's dot is the most urgent state of its tickets.
+const projDot = (pk) => { const ds = ofProject(pk).map(dotOf); return ["bad", "warn", "live", "ok", "idle"].find((d) => ds.includes(d)) || "idle"; };
 const steps = (t) => {
   if (t.lane === "question") return ["Eingeordnet", "Beantwortet"];
   return ["Eingeordnet", ...(t.lane === "feature" ? ["Klärung"] : []), "Entwicklung", "Review", "MR", "Testen", "Erledigt"];
@@ -407,11 +448,11 @@ function topBar() {
   const u = USERS[S.role], R = 2 * Math.PI * 7;
   return `<div class="topbar">
     <div class="brand">${LOGO}<strong class="hide-m">Flow</strong><span class="brand-sep hide-m">/</span>
-      <span class="brand-scope" data-act="projMenu">${S.project ? esc(proj().name) : "Alle Projekte"} ▾</span></div>
+      <span class="brand-scope" data-act="projMenu" title="Fokus wählen">${S.project && S.focus ? esc(proj().name) : "Alle Projekte"} ▾</span></div>
     <div class="top-actions">
       <span class="pill hide-m" title="Nächster Jira-Poll"><svg class="ring" width="16" height="16" viewBox="0 0 18 18"><circle class="track" cx="9" cy="9" r="7" fill="none" stroke-width="2.4"/><circle id="ringfill" class="fill" cx="9" cy="9" r="7" fill="none" stroke-width="2.4" stroke-dasharray="${R}" stroke-dashoffset="${R * (S.poll.left / S.poll.span)}"/></svg>Polling · <b id="pollsec">${S.poll.left}s</b></span>
       <span class="pill hide-m">Kev <b>kev (local)</b></span>
-      <span class="pill hide-m"><span class="dot live"></span>Worker <b>1 of 1</b></span>
+      ${isDev() ? `<span class="pill hide-m" title="MacBook Sara ist offline"><span class="dot live"></span>Worker <b>1 of 2</b></span>` : ""}
       <div class="seg hide-m" title="Demo: Rolle"><button class="${!isDev() ? "on" : ""}" data-act="role" data-v="pm">PM/PO</button><button class="${isDev() ? "on" : ""}" data-act="role" data-v="dev">Entwickler</button></div>
       <div class="seg" title="Demo: Gerät"><button class="${S.device === "desktop" ? "on" : ""}" data-act="device" data-v="desktop">🖥</button><button class="${S.device === "mobile" ? "on" : ""}" data-act="device" data-v="mobile">📱</button></div>
       <button class="icon-btn hide-m" title="Zugriffswege & Architektur" data-act="clients">?</button>
@@ -421,26 +462,58 @@ function topBar() {
 }
 
 // ======================================================================= left: project tree
-function tree() {
-  const rows = [`<div class="section"><span class="eyebrow">⌗ Projekte</span><button class="ghost" data-act="newProject" title="Neues Projekt">＋</button></div>`,
-    `<div class="trow ${!S.project ? "on" : ""}" data-act="portfolio"><span class="chev"></span>▦ <span class="name">Alle Projekte</span></div>`];
-  for (const p of PROJECTS) {
-    const ts = ofProject(p.key), you = ts.filter(needsYou).length, open = S.open[p.key];
-    rows.push(`<div class="trow ${S.project === p.key && !S.sel ? "on" : ""}" data-act="project" data-v="${p.key}"><span class="chev ${open ? "open" : ""}" data-act="toggle" data-v="${p.key}">▶</span><span class="dot ${p.health === "ok" ? "ok" : "warn"}"></span><span class="name">${esc(p.name)}</span>${you ? `<span class="n">${you}</span>` : `<span class="tag">${p.key}</span>`}</div>`);
-    if (!open) continue;
-    for (const t of ts.filter((t) => t.started && t.flow !== "done")) {
-      const d = active(t) ? "live" : t.flow === "blocked" ? "bad" : needsYou(t) ? "warn" : "ok";
-      rows.push(`<div class="trow l1 ${S.sel === t.key ? "on" : ""}" data-sel="${t.key}" title="${esc(t.title)}"><span class="dot ${d}"></span><span class="name">${t.key} <span style="color:#9d8889">${esc(t.title)}</span></span></div>`);
-      if (isDev() && S.sel === t.key) {
-        rows.push(`<div class="trow l2 ${S.ctab === "main" ? "on" : ""}" data-ctab="main">💬 Main</div>`);
-        if (t.round) rows.push(`<div class="trow l2 ${S.ctab === "review" ? "on" : ""}" data-ctab="review">🔍 Review #${t.round}</div>`);
-      }
-    }
+function counters(pk) {
+  const ts = ofProject(pk), you = ts.filter(needsYou).length, act = ts.filter(active).length;
+  return `${act ? `<span class="act" title="${act} Agent${act === 1 ? "" : "en"} arbeiten">▸${act}</span>` : ""}${you ? `<span class="n" title="${you} brauchen dich">${you}</span>` : ""}`;
+}
+function ticketRow(t, cls = "l1") {
+  const w = worker(t);
+  const rows = [`<div class="trow ${cls} ${S.sel === t.key ? "on" : ""}" data-sel="${t.key}" title="${esc(t.title)} · ${DOT_TIP[dotOf(t)]}${isDev() && w ? ` · ${w.name}` : ""}">
+    <span class="dot ${dotOf(t)}"></span><span class="name">${t.key} <span style="color:#9d8889">${esc(t.title)}</span></span>${isDev() && w ? `<span class="wk">${w.short}</span>` : ""}</div>`];
+  if (isDev() && S.sel === t.key && t.started) {
+    rows.push(`<div class="trow l2 ${S.ctab === "main" ? "on" : ""}" data-ctab="main">💬 Main</div>`);
+    if (t.round) rows.push(`<div class="trow l2 ${S.ctab === "review" ? "on" : ""}" data-ctab="review">🔍 Review #${t.round} <span class="wk" title="Reviewer fest auf Opus">Opus</span></div>`);
   }
-  rows.push(`<div class="section" style="margin-top:12px"><span class="eyebrow">⚙ Worker</span></div>
-    <div class="worker"><span class="dot live"></span>local · MacBook Max<small>3 agents</small></div>
-    <div class="worker" style="opacity:.55"><span class="dot"></span>server-1<small>später</small></div>`);
-  return `<div class="col tree ${S.mpanel === "tree" ? "mshow" : ""}"><div class="col-body">${rows.join("")}</div></div>`;
+  return rows.join("");
+}
+function allTree() {
+  const rows = [`<div class="trow ${!S.project ? "on" : ""}" data-act="portfolio"><span class="chev"></span>▦ <span class="name">Alle Projekte</span></div>`];
+  for (const p of PROJECTS) {
+    const open = S.open[p.key], d = projDot(p.key);
+    rows.push(`<div class="trow ${S.project === p.key && !S.sel ? "on" : ""}" data-act="project" data-v="${p.key}" title="${p.key} · ${DOT_TIP[d]}"><span class="chev ${open ? "open" : ""}" data-act="toggle" data-v="${p.key}">▶</span><span class="dot ${d}"></span><span class="name">${esc(p.name)}</span>${counters(p.key)}</div>`);
+    if (open) rows.push(...ofProject(p.key).filter((t) => t.started && t.flow !== "done").map((t) => ticketRow(t)));
+  }
+  return rows.join("");
+}
+// Focus: only the chosen project's tickets, grouped by what they need.
+function focusTree() {
+  const ts = ofProject(), d = projDot(S.project);
+  const groups = [
+    ["Braucht dich", ts.filter(needsYou)],
+    ["Agents arbeiten", ts.filter((t) => active(t) && !needsYou(t))],
+    ["Läuft sonst", ts.filter((t) => t.started && !active(t) && !needsYou(t) && t.flow !== "done")],
+  ];
+  const done = ts.filter((t) => t.flow === "done").length;
+  return `<div class="trow ${!S.sel ? "on" : ""}" data-act="project" data-v="${S.project}" title="${DOT_TIP[d]}"><span class="dot ${d}"></span><span class="name"><b>${esc(proj().name)}</b></span>${counters(S.project)}</div>` +
+    groups.filter(([, l]) => l.length).map(([g, l]) => `<div class="tgroup"><span>${g}</span><span>${l.length}</span></div>${l.slice(0, 12).map((t) => ticketRow(t, "")).join("")}${l.length > 12 ? `<div class="trow" style="color:#9d8889" data-mid="feed">+ ${l.length - 12} weitere im Feed</div>` : ""}`).join("") +
+    `<div class="tgroup"><span>Erledigt</span><span>${done}</span></div>`;
+}
+// Developers: the same tickets, by the worker they run on (device → session → agents, as in the hub).
+function netTree() {
+  return WORKERS.map((w) => {
+    const ts = TICKETS.filter((t) => t.worker === w.id && t.flow !== "done" && (!S.focus || !S.project || t.key.startsWith(S.project + "-")));
+    const used = ts.filter(active).length;
+    return `<div class="trow ${w.online ? "" : "off"}" title="${w.online ? "online" : w.later ? "noch nicht verbunden" : `offline seit ${w.since}`}"><span class="chev open">▶</span><span class="dot ${w.online ? "live" : w.later ? "idle" : "bad"}"></span><span class="name">${w.name}</span><span class="wk">${w.later ? "später" : w.online ? `${used}/${w.slots}` : "offline"}</span></div>` +
+      (ts.length ? ts.map((t) => ticketRow(t)).join("") : `<div class="trow l1" style="color:#6f5a5c">keine Sessions</div>`);
+  }).join("");
+}
+function tree() {
+  const net = isDev() && S.treeMode === "net";
+  const title = net ? "⚙ Netzwerk" : S.project && S.focus ? "⌗ Fokus" : "⌗ Projekte";
+  const body = net ? netTree() : S.project && S.focus ? focusTree() : allTree();
+  return `<div class="col tree ${S.mpanel === "tree" ? "mshow" : ""}"><div class="col-body">
+    ${isDev() ? `<div class="treemode"><div class="seg"><button class="${!net ? "on" : ""}" data-act="treeMode" data-v="projects">Projekte</button><button class="${net ? "on" : ""}" data-act="treeMode" data-v="net">Netzwerk</button></div></div>` : ""}
+    <div class="section"><span class="eyebrow">${title}</span><button class="ghost" data-act="newProject" title="Neues Projekt">＋</button></div>${body}</div></div>`;
 }
 
 // ======================================================================= middle
@@ -471,17 +544,17 @@ function stats(ts) {
 
 function feed() {
   const ts = ofProject(); const running = ts.filter((t) => t.started && t.flow !== "done");
-  const tone = (t) => (["mr", "test"].includes(t.flow) && !t.risks ? "ok" : needsYou(t) || t.flow === "blocked" ? "warn" : "");
+  const tone = (t) => ({ live: "", warn: "warn", bad: "bad", ok: "ok", idle: "idle" })[dotOf(t)];
   return `<div class="stream-head"><div><h2>Ticket feed</h2><small>Jira · label = ready-for-agent · ${proj().key}</small></div><span class="pill" style="border:0"><span class="dot live"></span>Live</span></div>
     ${stats(ts)}
-    ${running.map((t) => { const [st, sc] = STATUS[t.flow]; return `<div class="pinned ${tone(t)} ${S.sel === t.key ? "sel" : ""} ${t.isNew ? "new" : ""}" data-sel="${t.key}">
-      ${active(t) ? `<span class="spin"></span>` : `<span class="dot ${t.flow === "blocked" ? "bad" : needsYou(t) ? "warn" : "ok"}"></span>`}<strong>${t.key}</strong><span class="t">${esc(t.title)}</span>
+    ${running.map((t) => { const [st, sc] = statusOf(t); return `<div class="pinned ${tone(t)} ${S.sel === t.key ? "sel" : ""} ${t.isNew ? "new" : ""}" data-sel="${t.key}">
+      ${active(t) ? `<span class="spin"></span>` : `<span class="dot ${dotOf(t)}"></span>`}<strong>${t.key}</strong><span class="t">${esc(t.title)}</span>
       <span class="status ${sc}"><i></i>${st}</span><span class="open-agent hide-m">${isDev() ? "Agent ↗" : "Öffnen ↗"}</span></div>`; }).join("")}
     <div class="log-head"><span class="mh"></span><span>Gefunden</span><span class="mh">Prio</span><span>Ticket</span><span style="text-align:right">Kev / Status</span><span class="mh" style="text-align:right">Agent</span></div>
     <div id="feedrows">${ts.map((t) => { const [c, cls] = chipOf(t); return `<div class="log-row ${S.sel === t.key ? "sel" : ""} ${t.isNew ? "new" : ""}" draggable="true" data-key="${t.key}" data-sel="${t.key}">
       <span class="grip mh" title="Ziehen = Rangfolge in Jira">⋮⋮</span><span style="color:#9d8889">${t.found}</span>
       <button class="prio ${t.prio} mh" data-act="prio" data-key="${t.key}" title="Klick = Priorität ändern">${t.prio}</button>
-      <span class="t"><b>${t.key}</b> — ${esc(t.title)} <span class="lane">· ${LANE[t.lane]}</span></span>
+      <span class="t">${t.fresh ? `<span class="newtag">NEU</span>` : ""}<b>${t.key}</b> — ${esc(t.title)} <span class="lane">· ${LANE[t.lane]}</span></span>
       <span class="chip ${cls} ${t.chipNew ? "new" : ""}">${c}</span>
       <span class="mh">${t.started ? `<span class="rel">${active(t) ? `<span class="dot live"></span>läuft` : "–"}</span>` : t.kev === "pending" ? "" : `<span class="rel" data-act="release" data-key="${t.key}" title="Für Agent freigeben (Jira-Label)"><span class="sw ${t.ready ? "on" : ""}"></span></span>`}</span>
     </div>`; }).join("")}</div>`;
@@ -529,7 +602,7 @@ function portfolio() {
       <div><b>${esc(p.name)}</b><small>${p.key} · ${p.repo.split("/").slice(1).join("/")}</small></div>
       <span class="num">${c((t) => ["backlog", "ready"].includes(t.flow))}</span><span class="num">${c((t) => active(t) || t.flow === "grill")}</span>
       <span class="num" style="color:var(--bad)">${c(needsYou)}</span><span class="num" style="color:var(--ready)">${done}</span>
-      <div><div class="bar"><i style="width:${Math.round(done / ts.length * 100)}%"></i></div><small>${Math.round(done / ts.length * 100)}% · ${isDev() ? `${c(active)} Agenten aktiv` : p.health === "ok" ? "im Plan" : "Engpass Review"}</small></div></div>`; }).join("")}`;
+      <div><div class="bar"><i style="width:${Math.round(done / ts.length * 100)}%"></i></div><small title="${DOT_TIP[projDot(p.key)]}"><span class="dot ${projDot(p.key)}" style="width:6px;height:6px"></span> ${Math.round(done / ts.length * 100)}% erledigt${c(active) ? ` · ▸${c(active)} aktiv` : ""}</small></div></div>`; }).join("")}`;
 }
 
 // ---------- dev inspector panels
@@ -538,7 +611,7 @@ function session(t) {
   const HINT = { ask: "Jeder Aufruf, der etwas ändert, wartet auf dich – außer eine Regel erlaubt ihn.", auto: "Kev lässt lokale, umkehrbare Shell-Befehle laufen. Destruktives und alles mit Wirkung außerhalb dieses Rechners (push, deploy, POST, Tickets) wartet auf dich.", yolo: "Nichts fragt. Jeder Agent dieser Session führt jeden Befehl aus." };
   return `<section class="insp-sec"><h1>${t.key} · ${esc(t.title)} <button class="ghost">✎</button></h1>
       <div class="path">📁 …/jira-flow/.data/worktrees/${t.key}</div>
-      <div class="row"><span class="status-pill ${active(t) ? "working" : ""}"><i></i>${active(t) ? "Working" : "Idle"}</span><span style="color:#d9cdcd">🖥 local · MacBook Max</span></div></section>
+      <div class="row"><span class="status-pill ${active(t) ? "working" : ""}"><i></i>${paused(t) ? "Paused" : active(t) ? "Working" : "Idle"}</span><span style="color:${worker(t)?.online ? "#d9cdcd" : "var(--bad)"}" title="Worktree und Session liegen auf diesem Worker">🖥 ${worker(t)?.name || "–"}${worker(t)?.online ? "" : " · offline"}</span></div></section>
     <section class="insp-sec"><div class="slabel">Agent</div>
       <button class="model-btn" data-act="model"><span class="aimg">A\\</span><div>Claude ${t.model || "Sonnet 5.5"} · Abo<small>S+ / claude-code · Kev-Tier ${t.tier}</small></div>▾</button>
       <div class="row"><span>Thinking</span><select style="border:0;background:none;padding:0"><option>high</option><option>medium</option><option>low</option></select></div>
@@ -586,19 +659,19 @@ function side() {
     if (!isDev() || !t.started) S.ctab = "ticket";
     const tabs = [["ticket", "Ticket"], ...(isDev() && t.started ? [["main", "Main"], ...(t.round ? [["review", `Review #${t.round}`]] : [])] : [])];
     head = `<div class="ctabs">${tabs.map(([id, l]) => `<button class="ctab ${S.ctab === id ? "on" : ""}" data-ctab="${id}">${id === "main" && active(t) ? `<span class="dot live"></span>` : ""}${l}</button>`).join("")}</div>
-      ${isDev() && t.started ? `<span class="cost hide-m" id="sidecost">$${t.cost.toFixed(4)} / ${k(t.tokens)}</span><button class="model-chip hide-m"><span class="aimg" style="width:18px;height:18px;display:inline-grid;margin-right:5px">A\\</span>${t.model || "Sonnet 5.5"}</button>` : `<span class="prio ${t.prio}">${t.prio}</span>`}`;
+      ${isDev() && t.started ? `<span class="cost hide-m" id="sidecost">$${t.cost.toFixed(4)} / ${k(t.tokens)}</span><button class="model-chip hide-m" data-act="model" title="${S.ctab === "review" ? "Reviewer fest auf Opus" : "Modell wechseln"}"><span class="aimg" style="width:18px;height:18px;display:inline-grid;margin-right:5px">A\\</span>${S.ctab === "review" ? "Opus 5.5 🔒" : (t.model || "Sonnet 5.5") + " ▾"}</button>` : `<span class="prio ${t.prio}">${t.prio}</span>`}`;
     body = card(t) + (S.ctab === "ticket" ? ticketBody(t) : agentBody(t, S.ctab));
   }
   return `<div class="col side ${S.mpanel === "side" ? "mshow" : ""}"><div class="col-head">${head}</div>${body}</div>`;
 }
 
 function card(t) {
-  const st = steps(t), idx = stepIndex(t), [s, sc] = STATUS[t.flow] || ["Im Backlog", ""];
-  const tone = t.flow === "done" || (["mr", "test"].includes(t.flow) && !t.risks) ? "ok" : needsYou(t) || t.flow === "blocked" ? "warn" : "";
+  const st = steps(t), idx = stepIndex(t), [s, sc] = statusOf(t);
+  const tone = { live: "", warn: "warn", bad: "bad", ok: "ok", idle: "" }[dotOf(t)];
   const sum = { grill: "Der Agent klärt den Scope mit dir, bevor er entwickelt.", implement: "Der Agent entwickelt gerade.", review: `Unabhängiges Review läuft (Runde ${t.round || 1}).`, mr: t.risks ? `Review bestanden mit ${t.risks.length} offenem Risiko – MR ${t.mr} ist ein Draft und wartet auf eine Entscheidung.` : `MR ${t.mr} wartet auf Code-Review durch einen Entwickler.`, test: `Gemerged und auf der Dev-Stage. Bitte testen.`, rework: "Der Agent arbeitet dein Finding ab. Danach folgt ein neuer MR.", done: "Erledigt.", blocked: t.why, ready: "Freigegeben – startet, sobald ein Worker frei ist.", backlog: t.kev === "vague" ? "Kev: zu vage für einen direkten Start – beginnt mit einer Klärung." : "Kev: startklar. Zum Starten freigeben." }[t.flow];
   return `<div class="icard ${tone}"><div class="itop"><span style="color:${tone === "ok" ? "var(--ready)" : "var(--bad)"}">⎇</span><strong>${t.key}</strong><span class="lchip">${LANE[t.lane]}</span><span class="ititle">${esc(t.title)}</span>${t.started || t.flow === "ready" ? `<span class="status ${sc}"><i></i>${s}</span>` : ""}</div>
     ${t.started ? `<ol class="steps">${st.map((n, i) => `<li class="${i < idx ? "done" : i === idx ? "cur" : ""}"><i></i>${n}</li>`).join("")}</ol>` : ""}
-    <p class="isum">${esc(sum)}</p>
+    <p class="isum">${esc(paused(t) ? `Pausiert – der Rechner von ${worker(t).owner} ist seit ${worker(t).since} offline. Der Agent macht weiter, sobald er wieder online ist.` : sum)}</p>
     ${t.risks && isDev() ? `<div class="risk"><b>⚠ Decision needed</b>${t.risks.map(([l, s]) => `<div><code>${l}</code> — ${esc(s)}</div>`).join("")}</div>` : ""}</div>`;
 }
 
@@ -608,14 +681,14 @@ function ticketBody(t) {
   let action = "";
   if (t.flow === "test") action = S.finding === t.key ? findingForm(t) : `<div class="card" style="margin-bottom:12px"><h2>Bereit zum Testen</h2><p style="font-size:13.5px;color:#d9cdcd;margin:6px 0 10px">Auf der Dev-Stage: <a href="#" data-act="noop">dev.shop.example.com</a> · MR ${t.mr} gemerged</p>
       <div style="display:flex;gap:8px"><button class="secondary ok" data-act="testOk" data-key="${t.key}">✓ Funktioniert</button><button class="secondary warn" data-act="finding" data-key="${t.key}">Finding melden</button></div></div>`;
-  const tl = [["Von Kev eingeordnet", `${LANE[t.lane]} · ${t.tier.toLowerCase()} · ${t.kev === "vague" ? "zu vage" : "startklar"}`], ...(t.ready ? [["Für Agent freigegeben", "Lena Weber"]] : []), ...(t.started ? [["Agent gestartet", t.model || ""]] : []), ...(t.flow === "grill" && isDev() ? [["Klärung mit der PO", "2 von 4 Fragen beantwortet"]] : []), ...(t.round ? [["Unabhängig geprüft", t.risks ? "bestanden mit offenem Risiko" : "bestanden"]] : []), ...(t.mr ? [[`Merge Request ${t.mr}`, t.flow === "done" || t.flow === "test" ? "gemerged" : t.risks ? "Draft" : "offen"]] : []), ...(t.flow === "rework" ? [["Finding gemeldet", "Agent arbeitet nach"]] : [])];
+  const tl = [["Von Kev eingeordnet", `${LANE[t.lane]} · ${t.tier.toLowerCase()} · ${t.kev === "vague" ? "zu vage" : "startklar"}`], ...(t.ready ? [["Für Agent freigegeben", "Lena Weber"]] : []), ...(t.started ? [["Agent gestartet", `${t.model || ""}${isDev() && worker(t) ? ` · auf ${worker(t).name}` : ""}`]] : []), ...(t.flow === "grill" && isDev() ? [["Klärung mit der PO", "2 von 4 Fragen beantwortet"]] : []), ...(t.round ? [["Unabhängig geprüft", t.risks ? "bestanden mit offenem Risiko" : "bestanden"]] : []), ...(t.mr ? [[`Merge Request ${t.mr}`, t.flow === "done" || t.flow === "test" ? "gemerged" : t.risks ? "Draft" : "offen"]] : []), ...(t.flow === "rework" ? [["Finding gemeldet", "Agent arbeitet nach"]] : [])];
   return `<div class="chat">${action}
     <div class="slabel">Verlauf</div><div class="timeline">${tl.map(([a, b], i) => `<div class="${i === tl.length - 1 && t.flow !== "done" ? "now" : ""}">${a}<small>${esc(b)}</small></div>`).join("")}</div>
     <div class="slabel" style="margin-top:14px">Aktionen</div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
       <label style="font-size:13px;color:#d9cdcd">Priorität <select data-act="prioSel" data-key="${t.key}">${PRIOS.map((p) => `<option ${p === t.prio ? "selected" : ""}>${p}</option>`).join("")}</select></label>
       ${t.started ? "" : `<span class="rel" style="font-size:13px" data-act="release" data-key="${t.key}"><span class="sw ${t.ready ? "on" : ""}"></span>Für Agent freigeben</span>`}
-      ${isDev() && !t.started ? `<button class="secondary" data-act="start" data-key="${t.key}">▶ Agent jetzt starten</button>` : ""}
+      ${isDev() && !t.started ? `<button class="secondary" data-act="start" data-key="${t.key}">▶ Agent starten</button><select id="startWorker" title="Worker">${WORKERS.map((w) => `<option value="${w.id}" ${w.online ? "" : "disabled"}>auf ${w.name}${w.online ? "" : w.later ? " (später)" : " (offline)"}</option>`).join("")}</select>` : ""}
       <button class="ghost" data-act="noop">In Jira öffnen ↗</button></div></div>`;
 }
 
@@ -654,7 +727,7 @@ function desk() {
   return [`<div class="ctabs"><button class="ctab on">💬 Flow desk</button></div>`,
     `<div class="chat"><div class="empty"><div class="orb">${LOGO.replace('class="brandmark"', 'style="width:40px;height:22px"')}<i></i></div><span class="eyebrow">Flow desk</span><h2>Der Poller schläft nie.</h2>
     <p>Kev ordnet jedes Ticket mit dem Label ein. ${isDev() ? "Starte eins, und ein durable Agent arbeitet es ab – mit Review und MR." : "Gib Tickets frei, kläre Features und teste Ergebnisse – die Agenten erledigen den Rest."}</p>
-    <div class="starters"><button data-act="ask"><b>⌕ Was braucht mich?</b><span>${ofProject().filter(needsYou).length} Tickets warten</span></button><button data-act="newTicket"><b>✎ Ticket formulieren</b><span>Assistent + Kev-Check</span></button></div></div></div>
+    <div class="starters"><button data-act="ask"><b>⌕ Was braucht mich?</b><span>${(S.project ? ofProject() : TICKETS).filter(needsYou).length} Tickets warten</span></button><button data-act="newTicket"><b>✎ Ticket formulieren</b><span>Assistent + Kev-Check</span></button></div></div></div>
     <div class="composer-region"><div class="composer"><textarea placeholder="Frag den Flow Desk nach der Queue…"></textarea><div class="ctool"><span></span><button class="send">↑</button></div></div></div>`];
 }
 
@@ -702,8 +775,18 @@ function newProjectModal() {
     <label class="field"><span>Mitglieder einladen</span><input placeholder="E-Mail, Rolle wählbar"></label><button class="primary" data-act="npCreate">Projekt anlegen</button></div></div>`;
 }
 function projMenu() {
-  return `<div class="shade" data-act="close" style="align-items:flex-start;justify-content:flex-start;padding:60px 0 0 70px;background:#0005;backdrop-filter:none"><div class="modal" data-stop style="width:280px;padding:8px">
-    <button class="trow" style="width:100%" data-act="portfolio">▦ Alle Projekte</button>${PROJECTS.map((p) => `<button class="trow ${S.project === p.key ? "on" : ""}" style="width:100%" data-act="project" data-v="${p.key}"><span class="dot ${p.health === "ok" ? "ok" : "warn"}"></span><span class="name" style="text-align:left">${esc(p.name)}</span><span class="tag">${p.key}</span></button>`).join("")}</div></div>`;
+  return `<div class="shade" data-act="close" style="align-items:flex-start;justify-content:flex-start;padding:52px 0 0 60px;background:#0005;backdrop-filter:none"><div class="modal" data-stop style="width:300px;padding:8px">
+    <div class="tgroup" style="padding:4px 8px"><span>Fokus</span></div>
+    <button class="trow ${!S.focus || !S.project ? "on" : ""}" style="width:100%" data-act="portfolio">▦ <span class="name" style="text-align:left">Alle Projekte</span></button>
+    ${PROJECTS.map((p) => `<button class="trow ${S.focus && S.project === p.key ? "on" : ""}" style="width:100%" data-act="focus" data-v="${p.key}"><span class="dot ${projDot(p.key)}"></span><span class="name" style="text-align:left">${esc(p.name)}</span>${counters(p.key)}</button>`).join("")}</div></div>`;
+}
+function modelModal(t) {
+  const review = S.ctab === "review";
+  const M = [["Opus 5.5", "Stärkstes Modell – für komplexe oder unklare Arbeit", "S+"], ["Sonnet 5.5", "Schnell und stark bei klar umrissener Arbeit", "S"], ["Haiku 5", "Unter dem Minimum für Code-Agenten", "A", true]];
+  const rec = t.tier === "COMPLEX" ? "Opus 5.5" : "Sonnet 5.5";
+  return `<div class="shade" data-act="close"><div class="modal" data-stop><header><div><span class="eyebrow">${t.key} · ${review ? "Review" : "Main"}</span><h2>Modell</h2></div><button class="icon-btn" data-act="close">✕</button></header>
+    ${review ? `<p class="phint">Der Reviewer läuft immer auf <b>Opus 5.5</b>. Sein Review ist die einzige Prüfung im Flow – ein günstigeres Modell würde genau sie schwächen.</p>` : `<p class="phint" style="margin-bottom:8px">Kev-Tier <b>${t.tier.toLowerCase()}</b> → empfohlen <b>${rec}</b>. Ein Wechsel gilt ab dem nächsten Schritt des Agenten, ohne Neustart.</p>
+    <div class="mlist">${M.map(([n, d, tier, dis]) => `<button class="${(t.model || "Sonnet 5.5") === n ? "on" : ""}" data-act="pickModel" data-v="${n}" ${dis ? "disabled" : ""}><span class="aimg" style="width:28px;height:28px">A\\</span><div><b>Claude ${n}</b>${n === rec ? ` <span class="lchip">Kev</span>` : ""}<small>${tier} · claude-code · ${d}</small></div></button>`).join("")}</div>`}</div></div>`;
 }
 
 // ======================================================================= render & events
@@ -729,7 +812,7 @@ function render() {
 function overlay(html) { const o = document.getElementById("overlay"); if (S.device === "mobile") { const d = document.createElement("div"); d.id = "mOv"; d.innerHTML = html; document.getElementById("shell").appendChild(d); } else o.innerHTML = html; }
 function closeOverlay() { document.getElementById("overlay").innerHTML = ""; document.getElementById("mOv")?.remove(); }
 
-function select(key) { S.sel = key; S.draft = null; S.finding = null; const t = byKey(key); S.ctab = isDev() && t.started ? "main" : "ticket"; if (S.device === "mobile") S.mpanel = "side"; render(); }
+function select(key) { const tk = byKey(key); if (tk) tk.fresh = false; S.sel = key; S.draft = null; S.finding = null; const t = byKey(key); S.ctab = isDev() && t.started ? "main" : "ticket"; if (S.device === "mobile") S.mpanel = "side"; render(); }
 
 function wireDnD() {
   const rows = document.querySelectorAll("#feedrows .log-row"); let drag = null;
@@ -755,9 +838,12 @@ document.addEventListener("click", (e) => {
   if (el.dataset.mp) { S.mpanel = el.dataset.mp; return render(); }
   const a = el.dataset.act, key = el.dataset.key, v = el.dataset.v, t = key && byKey(key);
   const A = {
-    home: () => { S.project = null; S.sel = null; S.mid = "feed"; render(); },
-    portfolio: () => { closeOverlay(); S.project = null; S.sel = null; S.mid = "feed"; S.mpanel = "mid"; render(); },
+    home: () => { S.project = null; S.focus = false; S.sel = null; S.mid = "feed"; render(); },
+    portfolio: () => { closeOverlay(); S.project = null; S.focus = false; S.sel = null; S.mid = "feed"; S.mpanel = "mid"; render(); },
     project: () => { closeOverlay(); S.project = v; S.open[v] = true; S.sel = null; S.mid = "feed"; S.draft = null; S.mpanel = "mid"; render(); },
+    focus: () => { closeOverlay(); S.project = v; S.focus = true; S.open[v] = true; S.sel = null; S.mid = "feed"; S.draft = null; S.mpanel = "mid"; render(); },
+    treeMode: () => { S.treeMode = v; render(); },
+    pickModel: () => { const tk = byKey(S.sel); tk.model = v; closeOverlay(); render(); toast(`${tk.key}: Claude ${v} – gilt ab dem nächsten Schritt`); },
     toggle: () => { e.stopPropagation(); S.open[v] = !S.open[v]; render(); },
     projMenu: () => overlay(projMenu()),
     role: () => { S.role = v; render(); toast(v === "dev" ? "Entwickler: Agent-Chat, Session/State/Tasks/Tools/Extend sichtbar" : "PM/PO: steuern ohne Agent-Werkzeuge"); },
@@ -766,15 +852,15 @@ document.addEventListener("click", (e) => {
     close: () => closeOverlay(),
     newProject: () => overlay(newProjectModal()),
     npCreate: () => { const kk = (document.getElementById("npKey").value || "CRM").toUpperCase(); if (PROJECTS.some((p) => p.key === kk)) { document.getElementById("npCheck").innerHTML = `<span style="color:var(--warn)">${kk} gibt es schon – <a href="#" data-act="project" data-v="${kk}">öffnen</a></span>`; return; }
-      PROJECTS.push({ key: kk, name: document.getElementById("npName").value || "CRM Integration", repo: "gitlab.example.com/crm/core", branch: "develop", schema: "feature/{key}", test: "", health: "ok", members: "Lena Weber · PO" });
+      S.focus = true; PROJECTS.push({ key: kk, name: document.getElementById("npName").value || "CRM Integration", repo: "gitlab.example.com/crm/core", branch: "develop", schema: "feature/{key}", test: "", health: "ok", members: "Lena Weber · PO" });
       TICKETS.push(T(kk + "-1", "Erstes Ticket aus Jira", "Task", "Medium", "backlog", { lane: "ticket", tier: "SIMPLE", kev: "ready", rank: 0, found: "jetzt" })); closeOverlay(); S.project = kk; S.open[kk] = true; S.sel = null; render(); toast(`Projekt ${kk} angelegt – Poller läuft`); },
-    release: () => { e.stopPropagation(); t.ready = !t.ready; t.flow = t.ready ? "ready" : "backlog"; render(); toast(t.ready ? `${key} für Agent freigegeben (Jira-Label gesetzt)` : `${key} zurück ins Backlog`); },
+    release: () => { e.stopPropagation(); t.fresh = false; t.ready = !t.ready; t.flow = t.ready ? "ready" : "backlog"; render(); toast(t.ready ? `${key} für Agent freigegeben (Jira-Label gesetzt)` : `${key} zurück ins Backlog`); },
     prio: () => { e.stopPropagation(); t.prio = PRIOS[(PRIOS.indexOf(t.prio) + 1) % PRIOS.length]; render(); toast(`${key}: Priorität ${t.prio} (in Jira gespeichert)`); },
-    start: () => { t.started = true; t.flow = t.lane === "feature" || t.kev === "vague" ? "grill" : "implement"; t.model = t.tier === "COMPLEX" ? "Opus 5.5" : "Sonnet 5.5"; t.tokens = 1200; t.cost = 0.01; S.ctab = "main"; render(); toast(`Agent für ${key} gestartet (${t.model})`); },
+    start: () => { t.worker = document.getElementById("startWorker")?.value || "max"; t.started = true; t.fresh = false; t.flow = t.lane === "feature" || t.kev === "vague" ? "grill" : "implement"; t.model = t.tier === "COMPLEX" ? "Opus 5.5" : "Sonnet 5.5"; t.tokens = 1200; t.cost = 0.01; S.ctab = "main"; render(); toast(`Agent für ${key} gestartet (${t.model})`); },
     perm: () => { S.perm[S.sel] = v; render(); toast(`Permissions: ${v === "yolo" ? "YOLO" : v}`); },
     toggleSw: () => el.classList.toggle("on"),
     saved: () => toast("Gespeichert"),
-    model: () => toast("Modell-Auswahl wie im Durable-Pi-Hub"),
+    model: () => { const tk = byKey(S.sel); if (tk) overlay(modelModal(tk)); },
     noop: () => e.preventDefault(),
     newTicket: () => { S.draft = { idea: "", answers: [], created: null }; S.sel = null; if (S.device === "mobile") S.mpanel = "side"; render(); },
     draftClose: () => { S.draft = null; render(); },
@@ -789,7 +875,7 @@ document.addEventListener("click", (e) => {
     findingCancel: () => { S.finding = null; render(); },
     findingSend: () => { t.flow = "rework"; S.finding = null; render(); toast(`Finding gesendet – Agent ${key} arbeitet nach, neuer MR folgt`); },
     agentSend: () => { const inp = document.getElementById("agentMsg"); if (!inp.value.trim()) return; const l = transcript(t, "main"); l.push({ k: "user", text: inp.value, isNew: true }); inp.value = ""; setTimeout(() => { l.push({ k: "agent", n: 40 + l.length, text: "Verstanden – ich passe das an und reiche es danach erneut zum Review ein.", isNew: true }); if (S.sel === key) render(); }, 1200); render(); },
-    ask: () => { const ts = ofProject().filter(needsYou); if (ts[0]) select(ts[0].key); },
+    ask: () => { const ts = (S.project ? ofProject() : TICKETS).filter(needsYou); if (ts[0]) { if (!S.project) { S.project = ts[0].key.split("-")[0]; S.focus = true; } select(ts[0].key); } },
   };
   A[a]?.();
 });
@@ -812,11 +898,16 @@ setInterval(() => {
   S.poll.left = S.poll.left <= 1 ? S.poll.span : S.poll.left - 1;
   const R = 2 * Math.PI * 7, rf = document.getElementById("ringfill"), ps = document.getElementById("pollsec");
   if (rf) rf.setAttribute("stroke-dashoffset", R * (S.poll.left / S.poll.span)); if (ps) ps.textContent = S.poll.left + "s";
-  if (S.poll.left === S.poll.span && S.arrivals < ARRIVALS.length) {
-    const a = ARRIVALS[S.arrivals++]; const now = new Date().toTimeString().slice(0, 8);
-    TICKETS.push(T(a.key, a.title, a.type, a.prio, "backlog", { lane: a.lane, tier: a.tier, kev: "pending", result: a.kev, rank: -S.arrivals, found: now, isNew: true }));
+  if (S.poll.left === S.poll.span && left()) {
+    const n = [2, 1, 3, 1, 2, 2, 1][S.arrivals % 7]; const now = new Date().toTimeString().slice(0, 8); const mine = [];
+    for (let i = 0; i < n && left(); i++) {
+      const a = nextArrival(i); if (!a) break; S.arrivals++;
+      TICKETS.push(T(a.key, a.title, a.type, a.prio, "backlog", { lane: a.lane, tier: a.tier, kev: "pending", result: a.kev, rank: -S.arrivals, found: now, isNew: true, fresh: true }));
+      if (a.key.startsWith(S.project + "-")) mine.push(a.key);
+      setTimeout(() => { const t = byKey(a.key); t.kev = t.result; t.chipNew = true; render(); }, 1400 + i * 700);
+    }
     render();
-    setTimeout(() => { const t = byKey(a.key); t.kev = t.result; t.chipNew = true; render(); toast(`Neu aus Jira: ${a.key} – Kev: ${t.kev === "ready" ? "startklar" : "zu vage"}`); }, 1800);
+    if (mine.length) toast(`Neu aus Jira: ${mine.join(", ")} – Kev ordnet ein …`);
   }
   // live agent on SHOP-149
   if (S.sel === "SHOP-149" && S.ctab === "main") S.live++;
