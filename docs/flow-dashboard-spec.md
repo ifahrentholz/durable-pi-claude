@@ -127,7 +127,7 @@ Ein Projektpunkt zeigt den dringendsten Zustand seiner Tickets: Rot > Gelb > Ros
 ### 6.3 Lanes (wie Jira Flow auf `main`)
 
 question → beantwortet · quick → implement → review → MR · ticket → implement → review → MR · feature → Klärung →
-implement → review → MR. Nach dem MR: Gemerged · Pipeline → Testen → Erledigt (siehe 7.6).
+implement → review → MR. Nach dem MR: Gemerged · Pipeline → Testen → Erledigt (siehe 7.7).
 
 ## 7. Funktionen
 
@@ -163,7 +163,21 @@ nach der anderen mit Empfehlung; „Scope bestätigen“ beendet die Klärung (`
 Beschreibung in eigenen Worten → Rückfragen → Entwurf mit Akzeptanzkriterien und Kev-Bewertung → „In Jira anlegen“,
 optional gleich freigeben.
 
-### 7.6 Nach dem MR: Pipeline, Testen, Erledigt
+### 7.6 Flow Desk
+Ein Chat rechts, wenn kein Ticket gewählt ist (wie der Tab „Flow desk“ im heutigen Jira Flow). Er beantwortet Fragen,
+die das Dashboard nicht auf einen Blick zeigt, z. B. „Welche Tickets hängen seit drei Tagen im Review?“, „Was hat
+Max' Agent diese Woche erledigt?“, „Warum ist SHOP-150 blockiert?“, „Was hat SHOP gekostet, und wofür?“.
+- **Umfang:** folgt dem Fokus – ein Projekt oder alle Projekte.
+- **Werkzeuge nur lesend**, über die Server-API: Tickets suchen und filtern, Ticket-Details mit Verlauf, Läufe und
+  Status, Reviews und Risiken, Kosten, Report-Kennzahlen, Worker-Status. Kein Code-Zugriff, keine Jira-Schreibzugriffe.
+- **Antworten mit Aktionen zum Anklicken:** Ticket-Keys springen ins Ticket; schlägt der Desk etwas vor („die drei
+  kleinen Bugs freigeben?“), erscheinen Knöpfe, und erst der Klick des Menschen führt es aus – mit denselben Rechten
+  wie im Dashboard. Der Desk selbst ändert nichts.
+- **Verlauf** je Benutzer und Fokus, durable wie jede Conversation.
+- **Läuft** wie die übrigen PM-Funktionen über das Abo des Benutzers auf seinem Worker (9.1); ohne eigenen Worker
+  online zeigt er das statt einer Antwort. Seine Kosten erscheinen in den Kosten des Projekts.
+
+### 7.7 Nach dem MR: Pipeline, Testen, Erledigt
 - **Watcher:** Der Flow-Server beobachtet den MR (Polling; Webhook, sobald der Server für GitLab erreichbar ist).
   Ist er gemerged, wartet der Ticket-Status auf die Pipeline des Merge-Commits auf dem Ziel-Branch
   („Gemerged · Pipeline läuft“). Ist sie grün, geht das Ticket auf **Testen**; ist sie rot, auf **Pipeline rot**
@@ -175,18 +189,18 @@ optional gleich freigeben.
   Screenshot geht als Bild an den Agenten, der neue MR verweist auf das Finding. Das Ticket bleibt bis zum nächsten
   Testen in „Nacharbeit“.
 
-### 7.7 Kosten
+### 7.8 Kosten
 Überall als **API-Äquivalent** (was es über die API kosten würde; das Abo selbst kostet nichts zusätzlich), für alle
 sichtbar: je Ticket auf der Karte (Main, Review, Tokens), auf den angehefteten Tickets im Feed, je Projekt in der
 Projektübersicht und in den Reports (Summe, Ø pro erledigtem Ticket, diese Woche, Anteil Reviews, Ø je Lane,
 Modell-Anteile). Quelle: die Usage-Daten der Agenten, gemeldet von den Workern.
 
-### 7.8 Reports (Kanban)
+### 7.9 Reports (Kanban)
 Fortschritt, Durchsatz je Woche, Durchlaufzeit (Median), Anteil der Agenten, Cumulative Flow, Burnup – berechnet aus
 der Jira-Historie über die offizielle REST-API (die Chart-Endpunkte `greenhopper/rapid/charts` sind intern und nicht
 unterstützt).
 
-### 7.9 Agent-Werkzeuge (Entwickler)
+### 7.10 Agent-Werkzeuge (Entwickler)
 - Chat mit Main (Follow-up/Steer, Interrupt), Review #n nur lesend; Ticket-Brief, Thinking, Tool-Karten live.
 - Modell-Wähler am Chat-Chip und im Session-Tab: Kev-Empfehlung, kein Modell unter Sonnet für Code-Agenten,
   Reviewer fest auf Opus; gilt ab dem nächsten Schritt.
@@ -202,7 +216,7 @@ unterstützt).
   `open_mr` sind im Tools-Tab gesperrt (immer an, nicht abschaltbar), sonst bricht der Ablauf. Abschaltbar sind die
   Coding-Tools und Extensions.
 
-### 7.10 Worker
+### 7.11 Worker
 Verbinden wie im Durable-Pi-Netz: dieser Rechner · Team-Rechner (SSH) · Server/VM · laufendes dpi-backend (URL);
 Slots, Projekte, automatischer Dispatch ja/nein, Befehl. Offline-Worker pausiert seine Tickets. Kein Umzug
 laufender Tickets im Pilot.
@@ -442,7 +456,8 @@ gleichzeitig.
   merged. YOLO nur durch Entwickler und je Session.
 - **Kev irrt.** Jeder kann Art (Lane) vor dem Start korrigieren, Schärfen ist jederzeit möglich; Reports zeigen, wie
   oft Kevs Einschätzung korrigiert wurde.
-- **Flow Desk** (Chat über die Warteschlange) hat den kleinsten Nutzen und kostet Modell-Aufrufe: nicht in Phase 1.
+- **Flow Desk doppelt das Dashboard.** Er bekommt deshalb nur Fragen, die das UI nicht direkt beantwortet
+  (Zeiträume, Personen, Ursachen, Kosten-Aufschlüsselung), und schlägt Aktionen nur als Knöpfe vor.
 - **Doppelte Wahrheit mit Jira:** ausgeschlossen durch Grundsatz 1; das Board ist Jiras Board plus Agent-Status.
 
 ## 15. Offen
@@ -462,5 +477,5 @@ erreichbar sind.
 **Nächster Schritt:** technisches Design für Phase 0 – Datenmodell, Client-API und Worker-Protokoll (Lease, Epoche,
 Replikation) – und der Umsetzungsplan mit Phasen und Abnahmekriterien.
 
-**Später:** Flow Desk · Funktionsumfang auf dem Handy und PWA · SSO · Server-Worker im Betrieb · Anbindung der
+**Später:** Funktionsumfang auf dem Handy und PWA · SSO · Server-Worker im Betrieb · Anbindung der
 Shop-/Incident-Demo · Auto-Merge im Dashboard (Freigabe-Karte), solange es aus ist, nicht sichtbar.
