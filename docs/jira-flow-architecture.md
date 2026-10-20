@@ -1,5 +1,9 @@
 # Jira-Flow — Architektur-Skizze (nur Konzept, keine Implementierung)
 
+> **Überholt in mehreren Punkten.** Erste Skizze vor der Umsetzung. Inzwischen gilt u. a.: Jira bekommt nur einen
+> Kommentar (beim MR), ein Mensch merged (Auto-Merge optional), unabhängiges Review mit Risiko-Policy. Ist-Stand:
+> README von `apps/proactive-dpi-demo/apps/jira-flow-be`; Dashboard: `docs/flow-dashboard-spec.md`.
+
 Ziel: Jira-Tickets mit einem Stichwort werden von einer Durable-Pi-Agentenflotte
 abgearbeitet. Einstieg entweder per Chat-Ticket (Radar-Klassifikation) oder per
 Jira-Polling. Review-/MR-Links und Status fließen zurück ins Ticket.
