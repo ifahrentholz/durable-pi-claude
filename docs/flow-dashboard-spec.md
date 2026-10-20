@@ -30,8 +30,9 @@ Nicht im Pilot: die Shop-/Incident-Demo (bleibt, wie sie ist), SSO, Server-Worke
 4. **Ein Ticket hat höchstens einen aktiven Agenten-Lauf**, und er bleibt auf seinem Worker (siehe 9.3).
 5. **Claude-Zugangsdaten verlassen den Worker nicht.** Jeder Worker läuft mit dem Abo seines Besitzers; der
    Flow-Server speichert keine Claude-Credentials.
-6. **Jira- und GitLab-Zugriffe sind getrennt:** Jira spricht nur der Flow-Server (Token je Projekt), git und GitLab
-   nur der Worker (mit `git`/`glab` seines Besitzers).
+6. **Jira- und GitLab-Zugriffe sind getrennt:** Jira spricht nur der Flow-Server (Token je Projekt). Schreibend auf
+   git und GitLab (Push, MR) greift nur der Worker zu, mit `git`/`glab` seines Besitzers. Der Server liest GitLab
+   (MR-Status, Pipelines) mit einem Token nur mit Leserecht (`read_api`) je Projekt.
 7. **Eine Farbsprache**, überall gleich (siehe 6.2).
 
 ## 3. Architektur
@@ -131,7 +132,7 @@ implement → review → MR. Nach dem MR: Gemerged · Pipeline → Testen → Er
 ## 7. Funktionen
 
 ### 7.1 Projekte
-- Anlegen: Jira-Projekt-Key (Duplikatprüfung), Name, Jira-Token, GitLab-Repo, Ziel-Branch, Branch-Schema,
+- Anlegen: Jira-Projekt-Key (Duplikatprüfung), Name, Jira-Token, GitLab-Repo mit Lese-Token, Ziel-Branch, Branch-Schema,
   Start der Agenten (manuell | automatisch), Mitglieder.
 - Einstellungen: Name, Label für „freigegeben“, Mitglieder und Rollen; nur Entwickler: Repo, Branch, Schema,
   Test-Befehl, Standard-Permissions, Reviewer-Modell und Review-Versuche.
@@ -233,7 +234,7 @@ jira:
     done: auto                         # Done
 repos:
   - id: storefront
-    gitlab: { host: gitlab.example.com, path: shop/storefront }
+    gitlab: { host: gitlab.example.com, path: shop/storefront, readToken: <verschlüsselt> }   # read_api, für den Watcher
     defaultBranch: develop
     branchTemplate: feature/{key}
     testCommand: npm run test
@@ -248,7 +249,7 @@ agents:
   permissionMode: auto                 # Default neuer Agenten; ändern nur Entwickler
   compaction: { autoAt: 200000, reserve: 50000 }
   extensions: [coding-tools, ticket-agent]
-review: { model: opus-5-5, maxAttempts: 2, quickLane: true }
+review: { model: opus-5-5, maxAttempts: 2, quickLane: true, wipLimit: 3 }   # wipLimit: Dispatch pausiert bei mehr offenen MRs
 merge: { auto: false, approvalMode: both }
 lifecycle: { doneBy: human, doneComment: true }
 members: [ { user: lena@…, role: pm }, { user: max@…, role: dev } ]
@@ -260,7 +261,8 @@ id: mac-max
 name: MacBook Max
 kind: local                            # local | ssh | exe-dev | url
 owner: max@…
-slots: 3
+slots: 2                               # konservativ wegen der Abo-Limits
+judge: server                          # server | <eigene Kev-URL>
 projects: all                          # oder [SHOP, APP]
 dispatch: { acceptAuto: true }         # nimmt automatisch verteilte Tickets an
 ```
@@ -350,7 +352,12 @@ Kev läuft auf dem Host, nicht im Container: Docker und Podman starten auf dem M
 Zugriff auf Metal/MLX, worauf Kev auf Apple Silicon läuft (Podman bietet experimentell nur eine Vulkan-GPU an, die Kev
 nicht nutzt); Kev fiele auf die CPU zurück und wäre um ein Vielfaches langsamer. Der Container erreicht
 Kev über `host.containers.internal` (Podman) bzw. `host.docker.internal` (Docker). Auf einem späteren Linux-Server
-braucht Kev eine GPU (CUDA) oder läuft auf einem Mac im Netz.
+braucht Kev eine GPU (CUDA) oder läuft auf einem Mac im Netz; ob das kleine Kev-0.8B auf der CPU für die geringe Menge
+(nur neue Tickets, Tool-Urteile) reicht, wird gemessen.
+
+**Kev für die Worker:** Der Auto-Modus der Tool-Freigaben fragt den Kev, der beim Worker eingetragen ist; ohne Kev
+fragt er jedes Mal einen Menschen. Default: Worker nutzen den Kev des Flow-Servers über einen authentifizierten
+Endpunkt (`/v1/judge`); ein Worker mit eigenem Kev darf ihn stattdessen eintragen.
 
 ### 9.7 Dispatch
 - Je Projekt `manual` (Default) oder `auto`; je Worker „nimmt automatisch verteilte Tickets an“ ja/nein.
@@ -359,19 +366,101 @@ braucht Kev eine GPU (CUDA) oder läuft auf einem Mac im Netz.
 - Kapazität: Slots je Worker. Ein Ticket in der Klärung belegt keinen Slot.
 - Automatisch nur Tickets, die Kev als startklar einstuft (oder die geschärft sind).
 
-## 10. Offen
+## 11. Bedienbarkeit
+
+Was das Mockup noch nicht zeigt, aber zum Produkt gehört:
+
+- **Erster Start:** Konto aus der Einladung → Jira-Token prüfen (zeigt den erkannten Jira-Benutzer) → erstes Projekt
+  per Assistent (Jira-Projekt wählen, Board wird erkannt, Repo und Lese-Token, Test-Abruf: „12 Tickets mit Label
+  gefunden“) → Entwickler: Worker verbinden. Ohne Projekt zeigt die App diesen Weg statt leerer Spalten.
+- **Profil:** Sprache (de/en), Mitteilungen, Jira-Token und -Konto, für Entwickler eigene Worker.
+- **Mitteilungen:** Glocke in der Kopfzeile mit Liste (gelesen/ungelesen), dieselben Ereignisse als native
+  Mitteilung in der Tauri-App. Default: PO – Klärung wartet, bereit zum Testen; Entwickler – Tool-Freigabe, Risiko,
+  Hilfe nötig, Pipeline rot, Worker offline.
+- **Fehlerzustände sichtbar statt still:** Jira-Token ungültig oder abgelaufen (Projekt zeigt „Jira getrennt“, Poller
+  pausiert), Kev nicht erreichbar (Einordnung per Heuristik, mit Hinweis), GitLab nicht erreichbar, Worker offline,
+  Abo-Limit erreicht (siehe 14).
+- **Sprache für Nicht-Techniker:** In der PM-Ansicht heißen Begriffe so, wie ein PM sie versteht: „Kev“ →
+  „Einschätzung“, „Lane“ → „Art“, „MR“ → „Änderung zur Prüfung“; Fachbegriffe haben einen Tooltip. Die Entwickler-
+  Ansicht behält die technischen Begriffe.
+- **Tastatur:** Pfeile im Feed, Enter öffnet, `/` sucht, `g p` Projekte, `n` neues Ticket.
+- **Barrierefreiheit:** Status nie nur über Farbe (immer Text oder Form), `prefers-reduced-motion` schaltet Bewegung ab.
+
+## 12. Betrieb auf einem externen Server
+
+Der Container läuft unverändert auf einer VM, sobald diese Bedingungen erfüllt sind:
+
+| Thema | Anforderung |
+|---|---|
+| Erreichbarkeit | HTTPS-Adresse, die alle Worker und Clients erreichen (Internet oder VPN); TLS über einen Reverse-Proxy (z. B. Caddy); Realtime über WebSocket/SSE durch den Proxy |
+| Ausgehend | Jira Cloud; GitLab (`gitlab.diva-e.com` ist öffentlich aufgelöst – ob es nur aus dem Firmennetz erreichbar ist, vor der Wahl des Servers prüfen); Kev |
+| Daten | SQLite (WAL) auf einem Volume reicht für das Pilot-Team; laufendes Backup (z. B. Litestream oder nächtlicher Snapshot); Postgres erst bei mehreren Server-Instanzen |
+| Speicher | Die replizierten Transkripte wachsen mit (Tool-Ausgaben); Aufbewahrung je Projekt einstellbar, Default 90 Tage nach Erledigt |
+| Geheimnisse | Jira- und GitLab-Tokens verschlüsselt mit einem Server-Schlüssel aus der Umgebung; nie in Logs |
+| Anmeldung | Web: Session-Cookie; Tauri und Terminal: persönliche API-Tokens, im OS-Schlüsselbund; Worker: einmaliger Join-Token → widerrufbarer Worker-Schlüssel |
+| Updates | versioniertes Container-Image, DB-Migrationen beim Start, Worker melden ihre Version, der Server lehnt inkompatible ab |
+| Betrieb | Health-Endpunkt, strukturierte Logs, Metriken (Poll-Dauer, Warteschlange, Fehler je Integration) |
+| **Datenschutz** | **Transkripte enthalten Kundencode und Ticket-Inhalte.** Der Server muss dort stehen, wo Kundencode liegen darf (Verträge/NDA, DSGVO) – in der Regel diva-e-Infrastruktur in der EU. Vor dem ersten externen Hosting klären. |
+
+Grenzen für den Pilot: bis 10 Benutzer, 10 Projekte, 10 Worker, 30 parallele Agenten; UI-Aktualisierung unter einer
+Sekunde. Jira: je Projekt ein Poll mit `updated >= letzter Poll`; Changelog für Reports zwischengespeichert, um unter
+den Jira-Rate-Limits zu bleiben.
+
+## 13. Der Tauri-Client
+
+- **Dünner Client:** Das Fenster lädt die Web-UI vom Server (eine Oberfläche für alle Clients). Beim ersten Start:
+  Server-Adresse und Anmeldung; der API-Token liegt im Schlüsselbund. Server-Inhalte dürfen nur die freigegebenen
+  App-Funktionen aufrufen (Tauri-Capabilities mit erlaubter Server-Domain).
+- **Was der Browser nicht kann:** native Mitteilungen (ein Klick öffnet das Ticket), Dock-Badge mit „Braucht dich“,
+  Menüleiste, Deep-Links (`flow://ticket/SHOP-149`), Autostart.
+- **Optional lokaler Worker** (nur Entwickler): startet und stoppt `dpi-backend` und den Flow-Agenten wie heute
+  `apps/dpi-desktop` den Stack.
+- **Plattformen:** macOS zuerst. Die Mitteilungen laufen heute über eine macOS-Bibliothek; für Windows/Linux kommt das
+  Tauri-Notification-Plugin.
+- **Verteilung:** Die heutige App ist nur ad-hoc signiert – auf fremden Macs blockiert Gatekeeper sie. Für das Team
+  braucht es eine Apple Developer ID mit Notarisierung, für Windows optional Code-Signing. Updates über das
+  Tauri-Updater-Plugin mit signiertem Feed vom Server.
+- **Offline:** Banner „Server nicht erreichbar“, letzte Ansicht bleibt lesbar, Aktionen gesperrt.
+
+## 14. Mehrwert und Risiken
+
+**Mehrwert:** PMs bringen kleine und klare Tickets ohne Entwickler-Zeit bis zur prüfbaren Änderung; Qualität ist
+eingebaut statt erhofft (Einschätzung durch Kev, Schärfen, Klärung, unabhängiges Review mit Risiko-Policy, Mensch
+merged, Mensch testet); alle sehen Stand, Engpässe und Kosten an einem Ort; Entwickler steuern viele Agenten
+gleichzeitig.
+
+**Risiken und wie das Produkt darauf antwortet:**
+- **Der Engpass wandert zum Code-Review.** Agenten erzeugen MRs schneller, als Menschen sie prüfen. Darum ein
+  **WIP-Limit**: automatischer Dispatch pausiert, solange mehr als `review.wipLimit` (Default 3) MRs eines Projekts
+  auf Code-Review warten; die Reports zeigen das Alter der Review-Warteschlange.
+- **Abo-Limits der Entwickler.** Parallele Agenten verbrauchen das 5-Stunden-Kontingent eines Max-Abos schnell.
+  Erkennt ein Worker ein Rate-Limit, meldet er „limitiert bis HH:MM“; der Dispatch überspringt ihn, das Ticket zeigt
+  den Grund. Slots je Worker konservativ (Default 2).
+- **Tickets sind nicht vertrauenswürdige Eingaben.** Wer das Freigabe-Label setzen kann, startet einen Agenten mit
+  Shell-Zugriff. Absicherung: Freigabe ist eine bewusste menschliche Handlung (Jira-Rechte auf das Label prüfen),
+  Default-Permission Auto (Kev urteilt), Flow-Guard (kein Push/Merge per Shell), Reviewer nur lesend, ein Mensch
+  merged. YOLO nur durch Entwickler und je Session.
+- **Kev irrt.** Jeder kann Art (Lane) vor dem Start korrigieren, Schärfen ist jederzeit möglich; Reports zeigen, wie
+  oft Kevs Einschätzung korrigiert wurde.
+- **Flow Desk** (Chat über die Warteschlange) hat den kleinsten Nutzen und kostet Modell-Aufrufe: nicht in Phase 1.
+- **Doppelte Wahrheit mit Jira:** ausgeschlossen durch Grundsatz 1; das Board ist Jiras Board plus Agent-Status.
+
+## 15. Offen
 
 **Bestätigt nach Nachfrage:** Jira-Status-Übergänge (9.4) · Projekt-Verwaltung für alle, Agent-Werkzeuge nur
 Entwickler (4) · persönlicher Jira-Token für Phase 1, Service-Account vor dem Teamstart · Priorität, bei Gleichstand
 Rangfolge (9.7) · Lane nur vor dem Start · Flow-Tools nicht abschaltbar · Agenten-Daten auf den Server replizieren
 (9.2).
 
-**Noch zu bestätigen:** `submit_fix` pusht den Branch (ohne MR), damit ein Lauf einen endgültigen Worker-Verlust
-übersteht (9.2). Heute pusht erst `open_mr`.
+Ebenfalls bestätigt: `submit_fix` pusht den Branch (ohne MR), damit ein Lauf einen endgültigen Worker-Verlust
+übersteht (9.2).
 
 **Während Phase 0/1:** Mitteilungen im Detail (Kanäle, wer bekommt was) · mehrere Repos je Projekt in der UI ·
 Report-Details (Status → Band, Zeitraum, Caching, Jira-Rate-Limits) · Verhalten, wenn GitLab oder Jira nicht
 erreichbar sind.
 
-**Später:** Funktionsumfang auf dem Handy und PWA · SSO · Server-Worker im Betrieb · Anbindung der
+**Nächster Schritt:** technisches Design für Phase 0 – Datenmodell, Client-API und Worker-Protokoll (Lease, Epoche,
+Replikation) – und der Umsetzungsplan mit Phasen und Abnahmekriterien.
+
+**Später:** Flow Desk · Funktionsumfang auf dem Handy und PWA · SSO · Server-Worker im Betrieb · Anbindung der
 Shop-/Incident-Demo · Auto-Merge im Dashboard (Freigabe-Karte), solange es aus ist, nicht sichtbar.
