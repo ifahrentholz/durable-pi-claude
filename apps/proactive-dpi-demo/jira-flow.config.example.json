@@ -1,0 +1,39 @@
+{
+  "pollIntervalSec": 30,
+  "label": "ready-for-agent",
+  "maxConcurrent": 3,
+  "model": "claude-opus-5-5",
+  "branchTemplate": "feature/{key}",
+  "approvalMode": "both",
+  "provider": "claude-code",
+  "thinking": "high",
+  "port": 4791,
+  "models": {
+    "tiers": {
+      "simple": "claude-sonnet-5-5",
+      "moderate": "claude-sonnet-5-5",
+      "complex": "claude-opus-5-5"
+    },
+    "floor": "claude-sonnet-5-5",
+    "ceiling": "claude-opus-5-5",
+    "fallback": "claude-opus-5-5"
+  },
+  "projects": {
+    "PROJ": {
+      "gitlab": {
+        "host": "gitlab.example.com",
+        "repo": "group/project"
+      },
+      "defaultBranch": "main",
+      "branchTemplate": "feature/{key}",
+      "testCommand": "npm test"
+    },
+    "OPS": {
+      "gitlab": {
+        "host": "gitlab.example.com",
+        "repo": "group/other-project"
+      },
+      "defaultBranch": "develop"
+    }
+  }
+}

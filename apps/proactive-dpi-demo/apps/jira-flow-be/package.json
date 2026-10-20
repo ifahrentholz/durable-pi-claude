@@ -1,0 +1,5 @@
+{
+  "name": "jira-flow-be",
+  "private": true,
+  "type": "module"
+}

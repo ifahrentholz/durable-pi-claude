@@ -21,6 +21,9 @@ mod test 'just/test'
 # Proactive DPI demo: just proactive <command>
 mod proactive 'just/proactive'
 
+# Jira Flow: poll Jira, work tickets with durable agents: just jiraflow <command>
+mod jiraflow 'just/jiraflow'
+
 # Local decision model for damage control: Kev or Ollama (this fork)
 mod judge 'just/judge'
 

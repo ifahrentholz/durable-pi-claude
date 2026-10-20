@@ -9,6 +9,8 @@
     "reset": "tsx scripts/reset.ts",
     "logs": "tsx apps/proactive-dpi-logs/src/main.ts",
     "be": "tsx apps/proactive-dpi-be/src/main.ts",
+    "jf": "tsx apps/jira-flow-be/src/main.ts",
+    "jf:build": "vue-tsc --noEmit -p apps/jira-flow-fe/tsconfig.json && tsc --noEmit -p apps/jira-flow-be/tsconfig.json && vite build --config apps/jira-flow-fe/vite.config.ts",
     "dev": "tsx scripts/demo.ts --dev",
     "start": "tsx scripts/demo.ts",
     "build": "vue-tsc --noEmit -p apps/proactive-dpi-fe/tsconfig.json && tsc --noEmit -p apps/proactive-dpi-be/tsconfig.json && tsc --noEmit -p apps/proactive-dpi-logs/tsconfig.json && vite build --config apps/proactive-dpi-fe/vite.config.ts"

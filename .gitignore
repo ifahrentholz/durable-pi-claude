@@ -34,3 +34,6 @@ tmp/
 # desktop app (Tauri) build output
 apps/dpi-desktop/src-tauri/target/
 apps/dpi-desktop/src-tauri/gen/
+
+# this machine's Jira Flow project map (template: apps/proactive-dpi-demo/jira-flow.config.example.json)
+apps/proactive-dpi-demo/jira-flow.config.json
