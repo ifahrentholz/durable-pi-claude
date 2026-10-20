@@ -1,0 +1,672 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Flow Dashboard – klickbares Mockup</title>
+<!--
+  Klickbares Mockup des Flow Dashboards (Pilot, Branch pilot/flow-dashboard). Eine Datei, keine Abhängigkeiten,
+  alle Daten sind Beispiele und leben nur im Browser. Oben rechts: Rolle (PM/PO ↔ Entwickler) und Gerät
+  (Desktop ↔ Handy) umschalten; "Zugriffswege" zeigt Web, Tauri, Handy und Terminal nebeneinander.
+-->
+<style>
+  :root {
+    --bg: #151010; --surface: #1e1718; --surface2: #261d1e; --line: #332829; --text: #f2eeee; --muted: #b9a7a0;
+    --accent: #ff8997; --secondary: #c9a87c; --ready: #7fd6a4; --warn: #f2b25c; --bad: #ff6b7d; --info: #8ab4ff;
+    --font: "DM Sans", system-ui, -apple-system, sans-serif; --title: "Manrope", var(--font); --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: #0d0909; color: var(--text); font: 14px/1.45 var(--font); }
+  button, input, select, textarea { font: inherit; color: inherit; }
+  a { color: var(--accent); }
+  #frame { min-height: 100vh; background: var(--bg); margin: 0 auto; position: relative; overflow: hidden; }
+  body.mobile #frame { width: 390px; min-height: 0; height: 820px; margin: 24px auto; border-radius: 42px; border: 10px solid #2b2223; box-shadow: 0 20px 60px #000a; overflow-y: auto; }
+  body.mobile #frame::-webkit-scrollbar { display: none; }
+
+  /* top bar */
+  .topbar { display: flex; align-items: center; gap: 14px; padding: 10px 20px; border-bottom: 1px solid var(--line); background: #1a1314; position: sticky; top: 0; z-index: 5; }
+  .brand { display: flex; align-items: center; gap: 8px; font: 700 15px var(--title); white-space: nowrap; cursor: pointer; }
+  .brand i { width: 22px; height: 22px; border-radius: 6px; background: linear-gradient(135deg, var(--accent), #c25b7a); display: inline-block; }
+  .switcher { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 5px 10px; width: auto; max-width: 260px; }
+  .spacer { flex: 1; }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+  .seg button { background: none; border: 0; padding: 5px 10px; cursor: pointer; color: var(--muted); }
+  .seg button.on { background: var(--surface2); color: var(--text); }
+  .who { display: flex; align-items: center; gap: 8px; color: var(--muted); white-space: nowrap; }
+  .avatar { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 12px; background: var(--surface2); color: var(--secondary); }
+  .demo-bar { display: flex; gap: 10px; align-items: center; padding: 6px 20px; background: #241a12; color: var(--secondary); font-size: 12px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  .demo-bar b { color: var(--text); }
+
+  /* nav */
+  .nav { display: flex; gap: 4px; padding: 8px 20px 0; border-bottom: 1px solid var(--line); overflow-x: auto; }
+  .nav a { padding: 8px 12px; border-radius: 8px 8px 0 0; color: var(--muted); text-decoration: none; white-space: nowrap; border-bottom: 2px solid transparent; }
+  .nav a.on { color: var(--text); border-bottom-color: var(--accent); }
+  .nav a .count { background: var(--accent); color: #2a1013; border-radius: 999px; padding: 0 6px; font-size: 11px; margin-left: 4px; font-weight: 700; }
+  body.mobile .topbar { padding: 34px 14px 10px; gap: 8px; }
+  body.mobile .topbar .hide-m { display: none; }
+  body.mobile .nav { position: sticky; bottom: 0; }
+  body.mobile .demo-bar { display: none; }
+
+  main { padding: 20px; max-width: 1280px; margin: 0 auto; }
+  body.mobile main { padding: 14px; }
+  h1 { font: 700 22px var(--title); margin: 0 0 4px; }
+  h2 { font: 700 16px var(--title); margin: 0 0 10px; }
+  .sub { color: var(--muted); margin: 0 0 18px; }
+  .grid { display: grid; gap: 14px; }
+  .g2 { grid-template-columns: 2fr 1fr; } .g3 { grid-template-columns: repeat(3, 1fr); } .g4 { grid-template-columns: repeat(4, 1fr); } .g5 { grid-template-columns: repeat(5, 1fr); }
+  body.mobile .g2, body.mobile .g3, body.mobile .g4 { grid-template-columns: 1fr; } body.mobile .g5 { grid-template-columns: repeat(2, 1fr); }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px; }
+  .card.click { cursor: pointer; transition: border-color .15s; } .card.click:hover { border-color: var(--accent); }
+  .kpi .n { font: 700 26px var(--title); } .kpi .l { color: var(--muted); font-size: 12px; }
+  .kpi.warn .n { color: var(--warn); } .kpi.ok .n { color: var(--ready); } .kpi.bad .n { color: var(--bad); }
+  .row { display: flex; align-items: center; gap: 10px; } .wrap { flex-wrap: wrap; } .between { justify-content: space-between; }
+  .muted { color: var(--muted); } .small { font-size: 12px; } .mono { font-family: var(--mono); font-size: 12px; }
+  .bar { height: 8px; border-radius: 99px; background: var(--surface2); overflow: hidden; } .bar > i { display: block; height: 100%; background: var(--ready); }
+
+  .btn { background: var(--surface2); border: 1px solid var(--line); border-radius: 8px; padding: 7px 12px; cursor: pointer; white-space: nowrap; }
+  .btn:hover { border-color: var(--muted); }
+  .btn.primary { background: var(--accent); color: #2a1013; border-color: var(--accent); font-weight: 700; }
+  .btn.ok { background: #1f3a2b; border-color: #2f6b4b; color: var(--ready); }
+  .btn.warn { background: #3a2c17; border-color: #6b4f22; color: var(--warn); }
+  .btn.small { padding: 3px 8px; font-size: 12px; }
+  input[type=text], textarea, select { background: #120d0d; border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; width: 100%; }
+  textarea { min-height: 70px; resize: vertical; }
+  label.f { display: block; margin-bottom: 12px; } label.f span { display: block; color: var(--muted); font-size: 12px; margin-bottom: 4px; }
+
+  .chip { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px; font-size: 11px; border: 1px solid var(--line); white-space: nowrap; }
+  .chip.ready { color: var(--ready); border-color: #2f6b4b; } .chip.warn { color: var(--warn); border-color: #6b4f22; }
+  .chip.bad { color: var(--bad); border-color: #6b2a33; } .chip.info { color: var(--info); border-color: #2b406b; }
+  .chip.done { color: var(--muted); } .chip.agent { color: var(--accent); border-color: #6b3540; }
+  .dev-tag { font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: var(--info); border: 1px dashed #2b406b; border-radius: 6px; padding: 1px 6px; }
+  .prio { font-size: 11px; font-weight: 700; } .prio.Highest { color: var(--bad); } .prio.High { color: #ff9b6b; } .prio.Medium { color: var(--warn); } .prio.Low { color: var(--secondary); } .prio.Lowest { color: var(--muted); }
+  .key { font-family: var(--mono); font-size: 12px; color: var(--secondary); cursor: pointer; text-decoration: underline dotted; }
+
+  /* backlog */
+  .list { display: flex; flex-direction: column; gap: 6px; }
+  .bl { display: grid; grid-template-columns: 22px 64px 1fr 120px 150px 190px 120px; gap: 10px; align-items: center; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px; }
+  .bl.drag { opacity: .4; } .bl.over { border-color: var(--accent); }
+  .grip { cursor: grab; color: var(--muted); user-select: none; }
+  body.mobile .bl { grid-template-columns: 18px 1fr; } body.mobile .bl > .hm { display: none; }
+  .toggle { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; user-select: none; }
+  .toggle i { width: 32px; height: 18px; border-radius: 99px; background: var(--surface2); border: 1px solid var(--line); position: relative; transition: .15s; }
+  .toggle i::after { content: ""; position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 50%; background: var(--muted); transition: .15s; }
+  .toggle.on i { background: #1f3a2b; border-color: #2f6b4b; } .toggle.on i::after { left: 16px; background: var(--ready); }
+
+  /* board */
+  .board { display: grid; grid-template-columns: repeat(5, minmax(200px, 1fr)); gap: 12px; overflow-x: auto; }
+  .col { background: #191314; border: 1px solid var(--line); border-radius: 12px; padding: 10px; min-height: 300px; }
+  .col h3 { margin: 0 0 10px; font: 700 13px var(--title); display: flex; justify-content: space-between; }
+  .tcard { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px; margin-bottom: 8px; cursor: pointer; }
+  .tcard:hover { border-color: var(--muted); }
+
+  /* drawer / modal */
+  .shade { position: fixed; inset: 0; background: #0009; z-index: 20; display: flex; justify-content: flex-end; }
+  .shade.center { justify-content: center; align-items: center; }
+  .drawer { width: min(560px, 100%); height: 100%; overflow-y: auto; background: var(--surface); border-left: 1px solid var(--line); padding: 20px; }
+  .modal { width: min(560px, 94%); max-height: 90vh; overflow-y: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 20px; }
+  body.mobile .shade { position: absolute; }
+  .x { float: right; background: none; border: 0; font-size: 20px; cursor: pointer; color: var(--muted); }
+  .timeline { border-left: 2px solid var(--line); margin: 6px 0 0 6px; padding-left: 14px; }
+  .timeline div { margin-bottom: 10px; position: relative; } .timeline div::before { content: ""; position: absolute; left: -20px; top: 5px; width: 10px; height: 10px; border-radius: 50%; background: var(--line); }
+  .timeline div.now::before { background: var(--accent); }
+  .devbox { border: 1px dashed #2b406b; border-radius: 10px; padding: 12px; margin-top: 14px; background: #121722; }
+  .riskbox { border: 1px solid #6b4f22; background: #2a2114; border-radius: 10px; padding: 12px; margin: 10px 0; }
+
+  /* chat */
+  .chat { display: flex; flex-direction: column; gap: 10px; }
+  .msg { max-width: 85%; padding: 10px 12px; border-radius: 12px; background: var(--surface2); }
+  .msg.me { align-self: flex-end; background: #3a1f25; }
+  .msg.tool { font-family: var(--mono); font-size: 12px; background: #121722; color: var(--info); max-width: 100%; }
+  .rec { border: 1px solid #2f6b4b; border-radius: 10px; padding: 8px 10px; margin-top: 8px; background: #16261d; }
+  .meter { height: 10px; border-radius: 99px; background: var(--surface2); overflow: hidden; } .meter i { display: block; height: 100%; transition: width .4s; }
+
+  .stepper { display: flex; gap: 4px; flex-wrap: wrap; margin: 8px 0; }
+  .stepper span { font-size: 11px; padding: 3px 8px; border-radius: 99px; border: 1px solid var(--line); color: var(--muted); }
+  .stepper span.done { color: var(--ready); border-color: #2f6b4b; } .stepper span.cur { color: var(--accent); border-color: var(--accent); }
+
+  .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #1f3a2b; color: var(--ready); border: 1px solid #2f6b4b; border-radius: 10px; padding: 10px 16px; z-index: 40; box-shadow: 0 10px 30px #0008; }
+  body.mobile .toast { position: absolute; bottom: 70px; width: 90%; }
+
+  /* clients page */
+  .win { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--bg); }
+  .win .chrome { display: flex; align-items: center; gap: 6px; padding: 8px 10px; background: #221a1b; border-bottom: 1px solid var(--line); font-size: 12px; color: var(--muted); }
+  .win .chrome i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; } .win .chrome .url { flex: 1; background: #120d0d; border-radius: 6px; padding: 2px 8px; margin-left: 8px; }
+  .tui { background: #0b0b0b; color: #cfe8d6; font: 12px/1.35 var(--mono); padding: 12px; white-space: pre; overflow-x: auto; }
+  .phone { width: 220px; border: 7px solid #2b2223; border-radius: 28px; overflow: hidden; margin: 0 auto; background: var(--bg); }
+  .arch { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; align-items: stretch; }
+  body.mobile .arch { grid-template-columns: 1fr; }
+  .box { border: 1px solid var(--line); border-radius: 12px; padding: 12px; background: var(--surface); }
+  .box.container { border-style: dashed; border-color: var(--info); }
+  .box h4 { margin: 0 0 6px; font: 700 13px var(--title); }
+  svg text { fill: var(--muted); font: 11px var(--font); }
+  .legend { display: flex; gap: 12px; flex-wrap: wrap; font-size: 12px; color: var(--muted); } .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 4px; vertical-align: -1px; }
+
+  /* login */
+  .login { max-width: 760px; margin: 60px auto; text-align: center; }
+  body.mobile .login { margin: 30px auto; }
+  .login .grid { text-align: left; margin-top: 20px; }
+</style>
+</head>
+<body>
+<div id="frame"><div id="app"></div></div>
+<div id="overlay"></div>
+<script>
+// ---------------------------------------------------------------- sample data (everything is fictional)
+const USERS = {
+  lena: { id: "lena", name: "Lena Weber", short: "LW", role: "pm", title: "Product Owner" },
+  max: { id: "max", name: "Max Krüger", short: "MK", role: "dev", title: "Entwickler" },
+};
+const PROJECTS = [
+  { key: "SHOP", name: "Webshop Relaunch", repo: "gitlab.example.com/shop/storefront", branch: "develop", schema: "feature/{key}", label: "ready-for-agent", test: "npm run test", members: ["Lena Weber · PO", "Max Krüger · Dev", "Sara Yilmaz · Dev"], health: "ok" },
+  { key: "PORTAL", name: "Kundenportal", repo: "gitlab.example.com/portal/web", branch: "main", schema: "feature/{key}", label: "ready-for-agent", test: "npm test", members: ["Tom Becker · PM", "Max Krüger · Dev"], health: "warn" },
+  { key: "APP", name: "Mobile App", repo: "gitlab.example.com/app/client", branch: "develop", schema: "feat/{key_lower}", label: "ready-for-agent", test: "", members: ["Lena Weber · PO", "Jonas Hahn · Dev"], health: "ok" },
+];
+// flow: backlog | ready | grill | implement | review | mr | test | rework | done | blocked
+const T = (key, title, type, prio, flow, extra = {}) => ({ key, title, type, prio, flow, ready: ["ready","grill","implement","review","mr","test","rework","done","blocked"].includes(flow), ...extra });
+const TICKETS = [
+  T("SHOP-151", "Gutscheincodes im Checkout einlösen", "Story", "High", "grill", { lane: "feature", tier: "COMPLEX", kev: "vague", desc: "Kunden sollen im Checkout einen Gutscheincode eingeben können.", started: true }),
+  T("SHOP-149", "Warenkorb verliert Artikel nach Login", "Bug", "Highest", "implement", { lane: "ticket", tier: "MODERATE", kev: "ready", model: "Sonnet", desc: "Nach dem Login sind zuvor als Gast hinzugefügte Artikel weg.", started: true }),
+  T("SHOP-147", "Lieferzeit auf der Produktseite anzeigen", "Story", "Medium", "review", { lane: "ticket", tier: "MODERATE", kev: "ready", model: "Sonnet", started: true }),
+  T("SHOP-145", "Firmenkunden: Pflichtfelder fehlen bei Registrierung", "Bug", "High", "mr", { lane: "ticket", tier: "MODERATE", kev: "ready", model: "Sonnet", mr: "!3312", risks: ["checkout/Profile.ts:593 — Login-Handler sendet das Profil ohne die neuen Felder erneut; eine späte Antwort überschreibt den Warenkorb."], started: true }),
+  T("SHOP-141", "Newsletter-Checkbox standardmäßig abgewählt", "Task", "Low", "test", { lane: "quick", tier: "SIMPLE", kev: "ready", model: "Sonnet", mr: "!3301", stage: "https://dev.shop.example.com", started: true }),
+  T("SHOP-138", "Suche findet Artikel mit Umlauten nicht", "Bug", "High", "test", { lane: "ticket", tier: "MODERATE", kev: "ready", model: "Sonnet", mr: "!3297", stage: "https://dev.shop.example.com", started: true }),
+  T("SHOP-153", "Filter nach Marke auf Kategorieseiten", "Story", "Medium", "ready", { lane: "ticket", tier: "MODERATE", kev: "ready" }),
+  T("SHOP-154", "Rechtschreibfehler im Footer (\"Impresum\")", "Task", "Lowest", "ready", { lane: "quick", tier: "SIMPLE", kev: "ready" }),
+  T("SHOP-155", "Wie berechnet der Shop die Versandkosten?", "Task", "Low", "backlog", { lane: "question", tier: "SIMPLE", kev: "ready" }),
+  T("SHOP-156", "Wunschliste teilen", "Story", "Medium", "backlog", { lane: "feature", tier: "COMPLEX", kev: "vague" }),
+  T("SHOP-157", "Ladezeit der Startseite verbessern", "Story", "High", "backlog", { lane: "feature", tier: "COMPLEX", kev: "vague" }),
+  T("SHOP-158", "Cookie-Banner: Ablehnen-Button gleich groß", "Bug", "Medium", "backlog", { lane: "quick", tier: "SIMPLE", kev: "ready" }),
+  T("SHOP-131", "PayPal Express im Warenkorb", "Story", "High", "done", { lane: "ticket", tier: "MODERATE", kev: "ready", model: "Opus", mr: "!3260" }),
+  T("SHOP-129", "Preise mit 2 Nachkommastellen in der Mini-Cart", "Bug", "Medium", "done", { lane: "quick", tier: "SIMPLE", kev: "ready", model: "Sonnet", mr: "!3255" }),
+  T("SHOP-127", "Produktbilder lazy laden", "Task", "Low", "done", { lane: "ticket", tier: "MODERATE", kev: "ready", model: "Sonnet", mr: "!3249" }),
+  T("SHOP-150", "Rabatt wird doppelt abgezogen bei Teillieferung", "Bug", "Highest", "blocked", { lane: "ticket", tier: "COMPLEX", kev: "ready", model: "Opus", blockedWhy: "Review: Blocker nach 2 Versuchen – Teillieferungen sind im Backend nicht testbar.", started: true }),
+  T("PORTAL-88", "Passwort-Reset-Mail kommt nicht an", "Bug", "Highest", "implement", { lane: "ticket", tier: "MODERATE", kev: "ready", model: "Sonnet", started: true }),
+  T("PORTAL-86", "Rechnungen als PDF herunterladen", "Story", "High", "grill", { lane: "feature", tier: "COMPLEX", kev: "vague", started: true }),
+  T("PORTAL-84", "Profilbild hochladen", "Story", "Medium", "ready", { lane: "ticket", tier: "MODERATE", kev: "ready" }),
+  T("PORTAL-80", "Dark Mode", "Story", "Low", "backlog", { lane: "feature", tier: "COMPLEX", kev: "vague" }),
+  T("PORTAL-79", "Datumsformat im Verlauf", "Bug", "Low", "done", { lane: "quick", tier: "SIMPLE", kev: "ready", mr: "!412" }),
+  T("APP-41", "Push-Benachrichtigung bei Versand", "Story", "High", "review", { lane: "ticket", tier: "MODERATE", kev: "ready", model: "Sonnet", started: true }),
+  T("APP-39", "Absturz beim Öffnen alter Bestellungen", "Bug", "Highest", "done", { lane: "ticket", tier: "MODERATE", kev: "ready", mr: "!88" }),
+  T("APP-43", "Biometrischer Login", "Story", "Medium", "backlog", { lane: "feature", tier: "COMPLEX", kev: "vague" }),
+];
+TICKETS.forEach((t, i) => (t.rank = i));
+
+const GRILL = {
+  "SHOP-151": [
+    { q: "Wer darf Gutscheine einlösen – nur eingeloggte Kunden oder auch Gäste?", rec: "Auch Gäste. Sonst brechen Neukunden im Checkout ab, und genau die bekommen die meisten Gutscheine.", alt: "Nur eingeloggte Kunden" },
+    { q: "Dürfen mehrere Gutscheine kombiniert werden?", rec: "Nein, ein Gutschein pro Bestellung. Kombinationen machen Rabattlogik und Retouren deutlich komplexer.", alt: "Ja, bis zu zwei" },
+    { q: "Was passiert, wenn der Warenkorbwert nach dem Einlösen unter den Mindestbestellwert fällt?", rec: "Der Gutschein bleibt sichtbar, ist aber ausgegraut mit Hinweis \"Mindestbestellwert 50 € nicht erreicht\".", alt: "Gutschein wird automatisch entfernt" },
+    { q: "Wie gehen wir mit Retouren um, wenn ein Gutschein eingelöst wurde?", rec: "Der Gutscheinwert wird anteilig auf die Artikel verteilt und bei Retoure anteilig nicht erstattet.", alt: "Gutschein verfällt bei jeder Retoure" },
+  ],
+};
+const ACTIVITY = [
+  { at: "09:42", text: "Agent hat SHOP-147 fertig entwickelt – unabhängiges Review läuft", kind: "agent" },
+  { at: "09:15", text: "SHOP-151 wartet auf deine Antworten in der Klärung", kind: "you" },
+  { at: "08:58", text: "SHOP-141 ist auf der Dev-Stage – bereit zum Testen", kind: "test" },
+  { at: "Gestern", text: "SHOP-131 erledigt (MR !3260 gemerged)", kind: "done" },
+  { at: "Gestern", text: "Kev hat 3 neue Tickets eingeordnet", kind: "agent" },
+];
+
+// ---------------------------------------------------------------- state
+const S = { user: null, role: "pm", device: "desktop", project: "SHOP", agentSel: "SHOP-149", grill: {}, draft: null, transcript: {} };
+
+// Plain-language status for non-technical readers; tech stage names stay in the developer view.
+const PLAIN = {
+  backlog: ["Im Backlog", ""], ready: ["Freigegeben für Agent", "ready"], grill: ["Klärung mit dir", "warn"],
+  implement: ["Agent entwickelt", "agent"], review: ["Wird unabhängig geprüft", "info"], mr: ["Wartet auf Code-Review", "info"],
+  test: ["Auf Dev-Stage – bitte testen", "warn"], rework: ["Nacharbeit nach deinem Test", "agent"], done: ["Erledigt", "done"], blocked: ["Braucht Hilfe", "bad"],
+};
+const STAGES = { implement: "implement", review: "review", mr: "mr_open", test: "merged", rework: "implement", grill: "grill", blocked: "blocked" };
+const COLS = [["todo", "Zu erledigen", ["backlog", "ready"]], ["progress", "In Arbeit", ["grill", "implement", "rework", "blocked"]], ["review", "Review", ["review", "mr"]], ["test", "Testen (Dev-Stage)", ["test"]], ["done", "Erledigt", ["done"]]];
+const PRIOS = ["Highest", "High", "Medium", "Low", "Lowest"];
+const LANE = { question: "Frage", quick: "Klein", ticket: "Ticket", feature: "Feature" };
+
+const isDev = () => S.role === "dev";
+const proj = () => PROJECTS.find((p) => p.key === S.project);
+const tickets = (k = S.project) => TICKETS.filter((t) => t.key.startsWith(k + "-")).sort((a, b) => a.rank - b.rank);
+const byKey = (k) => TICKETS.find((t) => t.key === k);
+const chip = (flow) => `<span class="chip ${PLAIN[flow][1]}">${PLAIN[flow][0]}</span>`;
+const kevChip = (t) => t.kev === "ready" ? `<span class="chip ready" title="Kev: genug Infos zum Starten">Kev: startklar</span>` : `<span class="chip warn" title="Kev: braucht Klärung">Kev: zu vage</span>`;
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const needsYou = (k = S.project) => tickets(k).filter((t) => (t.flow === "grill" && !isDev()) || t.flow === "test" || (isDev() && (t.flow === "blocked" || (t.flow === "mr" && t.risks))));
+
+function toast(text) {
+  document.querySelectorAll(".toast").forEach((t) => t.remove()); // only the latest one
+  const el = document.createElement("div"); el.className = "toast"; el.textContent = text;
+  (S.device === "mobile" ? document.getElementById("frame") : document.body).appendChild(el);
+  setTimeout(() => el.remove(), 3200);
+}
+
+// ---------------------------------------------------------------- shell
+function route() {
+  const h = location.hash.replace(/^#\/?/, "").split("/");
+  if (!S.user) return { page: "login" };
+  if (h[0] === "p" && PROJECTS.some((p) => p.key === h[1])) { S.project = h[1]; return { page: "project", tab: h[2] || "overview", arg: h[3] }; }
+  if (h[0] === "clients") return { page: "clients" };
+  return { page: "projects" };
+}
+
+function shell(content, r) {
+  const u = USERS[S.user];
+  const tabs = [
+    ["overview", "Übersicht"], ["backlog", "Backlog"], ["board", "Board"], ["new", "Neues Ticket"],
+    ["clarify", "Klärung", tickets().filter((t) => t.flow === "grill").length], ["testing", "Testen", tickets().filter((t) => t.flow === "test").length],
+    ["reports", "Reports"], ...(isDev() ? [["agents", "Agents ⚙", tickets().filter((t) => t.flow === "blocked" || t.risks).length]] : []), ["settings", "Einstellungen"],
+  ];
+  return `
+  <div class="demo-bar">🧪 <b>Mockup</b> · Beispieldaten · Rolle und Gerät oben rechts umschalten ·
+    <a href="#/clients">Zugriffswege & Architektur ansehen →</a></div>
+  <div class="topbar">
+    <div class="brand" data-go="#/projects"><i></i><span class="hide-m">Flow Dashboard</span></div>
+    ${r.page === "project" ? `<select class="switcher" data-act="switch">${PROJECTS.map((p) => `<option value="${p.key}" ${p.key === S.project ? "selected" : ""}>${p.name}</option>`).join("")}</select>` : `<span class="muted hide-m">Alle Projekte</span>`}
+    <div class="spacer"></div>
+    <div class="seg hide-m" title="Demo: Rolle wechseln"><button class="${!isDev() ? "on" : ""}" data-act="role" data-v="pm">PM/PO</button><button class="${isDev() ? "on" : ""}" data-act="role" data-v="dev">Entwickler</button></div>
+    <div class="seg" title="Demo: Gerät wechseln"><button class="${S.device === "desktop" ? "on" : ""}" data-act="device" data-v="desktop">🖥</button><button class="${S.device === "mobile" ? "on" : ""}" data-act="device" data-v="mobile">📱</button></div>
+    <div class="who"><span class="hide-m">${u.name}</span><span class="avatar" title="${u.title} – abmelden" data-act="logout">${u.short}</span></div>
+  </div>
+  ${r.page === "project" ? `<div class="nav">${tabs.map(([id, label, n]) => `<a href="#/p/${S.project}/${id}" class="${r.tab === id ? "on" : ""}">${label}${n ? `<span class="count">${n}</span>` : ""}</a>`).join("")}</div>` : ""}
+  <main>${content}</main>`;
+}
+
+// ---------------------------------------------------------------- pages
+function pageLogin() {
+  return `<div class="login">
+    <div class="brand" style="justify-content:center;font-size:20px"><i></i>Flow Dashboard</div>
+    <p class="sub" style="margin-top:12px">Anmeldung über Einladungs-Account (Pilot). Später: Single Sign-on über GitLab.</p>
+    <div class="grid g2" style="grid-template-columns:1fr 1fr">
+      ${Object.values(USERS).map((u) => `<div class="card click" data-act="login" data-v="${u.id}">
+        <div class="row"><span class="avatar">${u.short}</span><div><b>${u.name}</b><div class="muted small">${u.title}</div></div></div>
+        <p class="small muted" style="margin:10px 0 0">${u.role === "pm" ? "Sieht: Projekte, Backlog, Priorisierung, Tickets anlegen, Klärung, Testen, Reports. <b>Kein</b> Zugriff auf Agenten." : "Sieht alles, was PMs sehen, plus Agents: Chat, Reviews, Risiken, Modelle, MRs."}</p>
+      </div>`).join("")}
+    </div></div>`;
+}
+
+function cfdMini(k) {
+  const ts = tickets(k); const done = ts.filter((t) => t.flow === "done").length; const all = ts.length;
+  return `<div class="bar"><i style="width:${Math.round((done / all) * 100)}%"></i></div><div class="small muted" style="margin-top:4px">${done} von ${all} erledigt · ${Math.round((done / all) * 100)}%</div>`;
+}
+
+function pageProjects() {
+  return `<div class="row between wrap"><div><h1>Projekte</h1><p class="sub">Alle Projekte, in denen du Mitglied bist. Ein Klick öffnet das Projekt-Dashboard.</p></div>
+    <button class="btn primary" data-act="newProject">+ Neues Projekt</button></div>
+    <div class="grid g3">${PROJECTS.map((p) => {
+      const ts = tickets(p.key); const c = (f) => ts.filter((t) => f.includes(t.flow)).length; const you = needsYou(p.key).length;
+      return `<div class="card click" data-go="#/p/${p.key}/overview">
+        <div class="row between"><div><b style="font-size:16px">${p.name}</b><div class="mono muted">${p.key} · ${p.repo.split("/").slice(1).join("/")}</div></div>
+          <span class="chip ${p.health === "ok" ? "ready" : "warn"}">${p.health === "ok" ? "Im Plan" : "Engpass Review"}</span></div>
+        <div class="grid g4" style="margin:14px 0;gap:8px">
+          <div class="kpi"><div class="n">${c(["backlog", "ready"])}</div><div class="l">Offen</div></div>
+          <div class="kpi"><div class="n">${c(["grill", "implement", "review", "mr", "rework"])}</div><div class="l">In Arbeit</div></div>
+          <div class="kpi warn"><div class="n">${you}</div><div class="l">Braucht dich</div></div>
+          <div class="kpi ok"><div class="n">${c(["done"])}</div><div class="l">Erledigt</div></div>
+        </div>${cfdMini(p.key)}
+        ${isDev() ? `<div class="small" style="margin-top:8px"><span class="dev-tag">Dev</span> ${ts.filter((t) => ["implement", "review", "rework"].includes(t.flow)).length} Agenten aktiv</div>` : ""}
+      </div>`;
+    }).join("")}</div>`;
+}
+
+function pageOverview() {
+  const ts = tickets(); const c = (f) => ts.filter((t) => f.includes(t.flow)).length; const you = needsYou();
+  return `<h1>${proj().name}</h1><p class="sub">Stand heute. Zahlen kommen live aus Jira, Agent-Status aus dem Flow.</p>
+    <div class="grid g5">
+      <div class="kpi card"><div class="n">${c(["backlog"])}</div><div class="l">Im Backlog</div></div>
+      <div class="kpi card ok"><div class="n">${c(["ready"])}</div><div class="l">Freigegeben für Agent</div></div>
+      <div class="kpi card"><div class="n">${c(["grill", "implement", "review", "mr", "rework"])}</div><div class="l">In Arbeit</div></div>
+      <div class="kpi card warn"><div class="n">${c(["test"])}</div><div class="l">Bereit zum Testen</div></div>
+      <div class="kpi card ok"><div class="n">${c(["done"])}</div><div class="l">Erledigt (30 Tage)</div></div>
+    </div>
+    <div class="grid g2" style="margin-top:14px">
+      <div class="card"><h2>Braucht deine Aufmerksamkeit</h2>
+        ${you.length ? `<div class="list">${you.map((t) => `<div class="row between" style="padding:8px 0;border-bottom:1px solid var(--line)">
+          <div><span class="key" data-ticket="${t.key}">${t.key}</span> ${esc(t.title)}<div>${chip(t.flow)} ${t.flow === "mr" && t.risks ? `<span class="chip warn">⚠ offenes Risiko</span>` : ""}</div></div>
+          ${t.flow === "grill" ? `<a class="btn small" href="#/p/${S.project}/clarify/${t.key}">Fragen beantworten</a>` : t.flow === "test" ? `<a class="btn small" href="#/p/${S.project}/testing">Testen</a>` : `<a class="btn small" href="#/p/${S.project}/agents/${t.key}">Ansehen</a>`}
+        </div>`).join("")}</div>` : `<p class="muted">Nichts offen. 🎉</p>`}
+      </div>
+      <div class="card"><h2>Aktivität</h2>${ACTIVITY.map((a) => `<div style="margin-bottom:10px"><div class="small muted">${a.at}</div>${a.text}</div>`).join("")}</div>
+    </div>
+    <div class="card" style="margin-top:14px"><div class="row between"><h2>Fluss der letzten 8 Wochen</h2><a href="#/p/${S.project}/reports" class="small">Alle Reports →</a></div>${cfdSvg(160)}</div>`;
+}
+
+function pageBacklog() {
+  const ts = tickets().filter((t) => !["done"].includes(t.flow));
+  return `<div class="row between wrap"><div><h1>Backlog</h1><p class="sub">Ziehen zum Sortieren (Rangfolge in Jira) · Priorität direkt ändern · Schalter gibt ein Ticket für den Agenten frei (Jira-Label <span class="mono">${proj().label}</span>).</p></div>
+    <a class="btn primary" href="#/p/${S.project}/new">+ Ticket formulieren</a></div>
+    <div class="list" id="backlog">${ts.map((t) => `<div class="bl" draggable="true" data-key="${t.key}">
+      <span class="grip" title="Ziehen">⋮⋮</span>
+      <span class="key" data-ticket="${t.key}">${t.key}</span>
+      <div><div>${esc(t.title)}</div><div class="small muted">${t.type} · ${LANE[t.lane]}${isDev() ? ` · <span class="dev-tag">${t.tier}</span>` : ""}</div></div>
+      <select class="hm" data-act="prio" data-key="${t.key}">${PRIOS.map((p) => `<option ${p === t.prio ? "selected" : ""}>${p}</option>`).join("")}</select>
+      <span class="hm">${kevChip(t)}</span>
+      <span class="hm">${chip(t.flow)}</span>
+      <span class="hm">${t.started ? `<span class="small muted">läuft</span>` : `<span class="toggle ${t.ready ? "on" : ""}" data-act="ready" data-key="${t.key}"><i></i><span class="small">${t.ready ? "Freigegeben" : "Freigeben"}</span></span>`}</span>
+    </div>`).join("")}</div>
+    <p class="small muted" style="margin-top:12px">Freigegebene Tickets starten ${isDev() ? "per Klick im Agents-Tab oder automatisch, wenn ein Slot frei ist" : "automatisch, sobald ein Entwickler-Rechner frei ist"}. Vage Tickets starten mit einer Klärung mit dir.</p>`;
+}
+
+function pageBoard() {
+  return `<h1>Board</h1><p class="sub">Kanban wie in Jira, ergänzt um den Agent-Status.</p>
+  <div class="board">${COLS.map(([id, name, flows]) => { const ts = tickets().filter((t) => flows.includes(t.flow));
+    return `<div class="col"><h3>${name}<span class="muted">${ts.length}</span></h3>${ts.map((t) => `<div class="tcard" data-ticket="${t.key}">
+      <div class="row between"><span class="mono muted">${t.key}</span><span class="prio ${t.prio}">${t.prio}</span></div>
+      <div style="margin:6px 0">${esc(t.title)}</div>${chip(t.flow)}${t.risks ? ` <span class="chip warn">⚠ Risiko</span>` : ""}
+    </div>`).join("")}</div>`; }).join("")}</div>`;
+}
+
+function pageNew() {
+  const d = S.draft || (S.draft = { step: 0, idea: "", answers: [], created: null });
+  const Q = [
+    { q: "Für wen soll das gelten – nur eingeloggte Kunden oder auch Gäste?", rec: "Nur eingeloggte Kunden: Gäste haben kein Konto, in dem Adressen gespeichert werden könnten.", alt: "Auch Gäste (per E-Mail-Link)" },
+    { q: "Wie viele Adressen darf ein Kunde speichern?", rec: "Bis zu 5, eine davon als Standard markiert.", alt: "Unbegrenzt" },
+    { q: "Was gilt für Lieferungen ins Ausland?", rec: "Nur Adressen in DE, AT und CH; andere Länder zeigen einen Hinweis.", alt: "Alle Länder, in die wir liefern" },
+  ];
+  const score = d.step === 0 ? 0 : [35, 58, 76, 92][Math.min(d.answers.length, 3)];
+  const ready = score >= 85;
+  const acs = ["Ein eingeloggter Kunde kann im Checkout eine neue Lieferadresse speichern.", d.answers[1] ? `Es können ${d.answers[1].includes("5") ? "bis zu 5 Adressen" : "beliebig viele Adressen"} gespeichert werden; eine ist die Standardadresse.` : null, d.answers[0] ? (d.answers[0].startsWith("Nur") ? "Gäste sehen die Option nicht." : "Gäste erhalten einen Link per E-Mail.") : null, d.answers[2] ? (d.answers[2].startsWith("Nur") ? "Adressen außerhalb DE/AT/CH werden mit Hinweis abgelehnt." : "Alle Lieferländer sind erlaubt.") : null].filter(Boolean);
+  const chat = [`<div class="msg">Beschreib kurz in deinen Worten, was gebraucht wird. Ich formuliere daraus ein Ticket und frage nach, wo etwas fehlt. Den Code fasse ich nicht an.</div>`];
+  if (d.idea) chat.push(`<div class="msg me">${esc(d.idea)}</div>`);
+  Q.forEach((q, i) => {
+    if (d.step < 1 || i > d.answers.length) return;
+    chat.push(`<div class="msg">${q.q}${i === d.answers.length ? `<div class="rec"><b>Empfehlung:</b> ${q.rec}</div><div class="row wrap" style="margin-top:8px"><button class="btn small ok" data-act="draftAns" data-v="${esc(q.rec)}">Empfehlung übernehmen</button><button class="btn small" data-act="draftAns" data-v="${esc(q.alt)}">${q.alt}</button></div>` : ""}</div>`);
+    if (d.answers[i]) chat.push(`<div class="msg me">${esc(d.answers[i])}</div>`);
+  });
+  if (d.answers.length === 3) chat.push(`<div class="msg">Danke – das Ticket ist vollständig. Kev stuft es als <b>startklar</b> ein.</div>`);
+  return `<h1>Neues Ticket formulieren</h1><p class="sub">Ein Assistent ohne Code-Zugriff hilft beim Schreiben. Kev prüft live, ob ein Agent damit starten könnte.</p>
+  <div class="grid g2">
+    <div class="card"><div class="chat">${chat.join("")}</div>
+      ${d.step === 0 ? `<div style="margin-top:12px"><textarea id="idea" placeholder="z. B. Kunden sollen im Checkout mehrere Lieferadressen speichern können">Kunden sollen im Checkout ihre Lieferadressen speichern können, damit sie sie nicht jedes Mal neu eingeben müssen.</textarea><button class="btn primary" style="margin-top:8px" data-act="draftStart">Senden</button></div>` : ""}
+    </div>
+    <div class="card"><h2>Entwurf</h2>
+      <label class="f"><span>Titel</span><input type="text" value="${d.step ? "Lieferadressen im Checkout speichern" : ""}" placeholder="…" /></label>
+      <label class="f"><span>Typ · Priorität</span><div class="row"><select><option>Story</option><option>Bug</option><option>Task</option></select><select>${PRIOS.map((p) => `<option ${p === "Medium" ? "selected" : ""}>${p}</option>`).join("")}</select></div></label>
+      <div class="small muted">Akzeptanzkriterien</div><ol style="margin:6px 0 14px;padding-left:18px">${acs.length && d.step ? acs.map((a) => `<li>${a}</li>`).join("") : `<li class="muted">entstehen beim Gespräch</li>`}</ol>
+      <div class="small muted">Kev: Kann ein Agent damit starten?</div>
+      <div class="meter" style="margin:6px 0"><i style="width:${score}%;background:${ready ? "var(--ready)" : "var(--warn)"}"></i></div>
+      <div class="small">${d.step === 0 ? "—" : ready ? "✓ startklar · Lane „Ticket“, mittlere Komplexität" : "noch zu vage – der Assistent fragt nach"}</div>
+      <div class="row wrap" style="margin-top:14px">
+        <button class="btn primary" data-act="draftCreate" ${ready && !d.created ? "" : "disabled style='opacity:.5'"}>In Jira anlegen</button>
+        ${d.created ? `<span class="chip ready">✓ ${d.created} angelegt</span> <span class="toggle ${byKey(d.created).ready ? "on" : ""}" data-act="ready" data-key="${d.created}"><i></i><span class="small">für Agent freigeben</span></span>` : ""}
+      </div>
+    </div></div>`;
+}
+
+function pageClarify(arg) {
+  const list = tickets().filter((t) => t.flow === "grill");
+  const key = arg || list[0]?.key;
+  if (!key || !byKey(key) || byKey(key).flow !== "grill") return `<h1>Klärung</h1><p class="sub">Keine offenen Klärungen. Neue Features mit offenen Fragen landen hier.</p>`;
+  const t = byKey(key); const qs = GRILL[key] || GRILL["SHOP-151"]; const ans = S.grill[key] || (S.grill[key] = []);
+  const done = ans.length === qs.length;
+  return `<h1>Klärung</h1><p class="sub">Bevor der Agent ein Feature baut, klärt er mit dir alle fachlichen Fragen – eine nach der anderen, jeweils mit Empfehlung. Technisches bleibt beim Entwickler.</p>
+  <div class="grid g2">
+    <div class="card"><div class="row between"><div><span class="key" data-ticket="${t.key}">${t.key}</span> <b>${esc(t.title)}</b></div><span class="small muted">Frage ${Math.min(ans.length + 1, qs.length)} von ${qs.length}</span></div>
+      <div class="bar" style="margin:10px 0 16px"><i style="width:${(ans.length / qs.length) * 100}%"></i></div>
+      <div class="chat">${qs.map((q, i) => i > ans.length ? "" : `<div class="msg">${q.q}${i === ans.length ? `<div class="rec"><b>Empfehlung:</b> ${q.rec}</div>
+        <div class="row wrap" style="margin-top:8px"><button class="btn small ok" data-act="grillAns" data-key="${key}" data-v="${esc(q.rec)}">Empfehlung übernehmen</button><button class="btn small" data-act="grillAns" data-key="${key}" data-v="${esc(q.alt)}">${q.alt}</button><button class="btn small" data-act="grillOwn" data-key="${key}">Eigene Antwort…</button></div>` : ""}</div>${ans[i] ? `<div class="msg me">${esc(ans[i])}</div>` : ""}`).join("")}
+      ${done ? `<div class="msg">Damit sind alle Fragen geklärt. Hier ist der Scope zum Bestätigen →</div>` : ""}</div>
+    </div>
+    <div class="card"><h2>Scope ${done ? "zum Bestätigen" : "(entsteht)"}</h2>
+      <p class="muted small">Das Jira-Ticket bleibt die Spezifikation. Der bestätigte Scope schärft es und geht an Agent und Reviewer.</p>
+      <ol style="padding-left:18px">${ans.map((a, i) => `<li><b>AC-${i + 1}</b> ${esc(a)}</li>`).join("") || `<li class="muted">noch leer</li>`}</ol>
+      ${done ? `<button class="btn primary" data-act="grillConfirm" data-key="${key}">Scope bestätigen – Agent darf loslegen</button>` : ""}
+      ${list.length > 1 ? `<div style="margin-top:16px" class="small muted">Weitere Klärungen: ${list.filter((x) => x.key !== key).map((x) => `<a href="#/p/${S.project}/clarify/${x.key}">${x.key}</a>`).join(", ")}</div>` : ""}
+    </div></div>`;
+}
+
+function pageTesting() {
+  const ts = tickets().filter((t) => ["test", "rework"].includes(t.flow));
+  return `<h1>Testen</h1><p class="sub">Diese Tickets sind gemerged und auf der Dev-Stage. Funktioniert alles? Oder hast du etwas gefunden?</p>
+  ${ts.length ? `<div class="grid g2" style="grid-template-columns:1fr 1fr">${ts.map((t) => `<div class="card">
+    <div class="row between"><span class="key" data-ticket="${t.key}">${t.key}</span>${chip(t.flow)}</div>
+    <h2 style="margin:8px 0">${esc(t.title)}</h2>
+    ${t.flow === "test" ? `<p class="small muted">Testen auf: <a href="#" onclick="return false">${t.stage}</a> · MR ${t.mr}</p>
+      <div class="row wrap"><button class="btn ok" data-act="testOk" data-key="${t.key}">✓ Funktioniert</button><button class="btn warn" data-act="finding" data-key="${t.key}">Finding melden</button></div>`
+    : `<p class="small">${esc(t.finding || "")}</p><p class="small muted">Der Agent arbeitet nach. Ein neuer MR wird geöffnet; danach kommt das Ticket wieder hierher.</p>`}
+  </div>`).join("")}</div>` : `<p class="muted">Gerade ist nichts zum Testen da.</p>`}`;
+}
+
+function cfdSvg(h = 220) {
+  // 8 weeks, stacked: done, test, review, progress, todo (cumulative counts)
+  const weeks = 8, w = 760, pad = 26; const data = [];
+  for (let i = 0; i < weeks; i++) { const done = 3 + i * 2.2, test = 1 + (i % 3) * 0.6, review = 1.5 + (i % 2), prog = 2.5 + Math.sin(i) * 0.8, todo = 9 - i * 0.4; data.push([done, test, review, prog, todo]); }
+  const max = Math.max(...data.map((d) => d.reduce((a, b) => a + b, 0))) * 1.1;
+  const colors = ["#7fd6a4", "#f2b25c", "#8ab4ff", "#ff8997", "#5a4a4b"]; const names = ["Erledigt", "Testen", "Review", "In Arbeit", "Zu erledigen"];
+  const x = (i) => pad + (i * (w - pad * 2)) / (weeks - 1); const y = (v) => h - 20 - (v / max) * (h - 30);
+  let layers = "", base = Array(weeks).fill(0);
+  for (let l = 0; l < 5; l++) {
+    const top = data.map((d, i) => base[i] + d[l]);
+    const pts = top.map((v, i) => `${x(i)},${y(v)}`).join(" ") + " " + base.map((v, i) => `${x(i)},${y(v)}`).reverse().join(" ");
+    layers += `<polygon points="${pts}" fill="${colors[l]}" opacity=".85"/>`; base = top;
+  }
+  const labels = Array.from({ length: weeks }, (_, i) => `<text x="${x(i)}" y="${h - 4}" text-anchor="middle">KW ${36 + i}</text>`).join("");
+  return `<svg viewBox="0 0 ${w} ${h}" width="100%" preserveAspectRatio="none" style="max-height:${h}px">${layers}${labels}</svg>
+    <div class="legend">${names.map((n, i) => `<span><i style="background:${colors[i]}"></i>${n}</span>`).join("")}</div>`;
+}
+
+function pageReports() {
+  const thr = [3, 4, 2, 5, 4, 6, 5, 7];
+  return `<h1>Reports</h1><p class="sub">Kanban-Kennzahlen, berechnet aus der Jira-Historie (Changelog). Burndown gibt es nur mit Sprints – für Kanban zeigen Fluss, Durchsatz und Durchlaufzeit, wie es läuft.</p>
+  <div class="grid g4">
+    <div class="card kpi ok"><div class="n">63%</div><div class="l">Projektfortschritt (Story-Tickets)</div><div class="bar" style="margin-top:8px"><i style="width:63%"></i></div></div>
+    <div class="card kpi"><div class="n">5,3</div><div class="l">Tickets pro Woche (Ø 8 Wochen)</div></div>
+    <div class="card kpi"><div class="n">2,4 Tage</div><div class="l">Durchlaufzeit (Median, Start → Erledigt)</div></div>
+    <div class="card kpi"><div class="n">71%</div><div class="l">von Agenten umgesetzt</div></div>
+  </div>
+  <div class="card" style="margin-top:14px"><h2>Kumulativer Fluss (CFD)</h2><p class="small muted">Wird ein Band breiter, staut es sich dort. Hier: Review nimmt seit KW 41 leicht zu.</p>${cfdSvg(240)}</div>
+  <div class="grid g2" style="margin-top:14px">
+    <div class="card"><h2>Durchsatz pro Woche</h2><svg viewBox="0 0 400 150" width="100%">${thr.map((v, i) => `<rect x="${20 + i * 46}" y="${130 - v * 15}" width="30" height="${v * 15}" rx="4" fill="#ff8997"/><text x="${35 + i * 46}" y="145" text-anchor="middle">KW${36 + i}</text><text x="${35 + i * 46}" y="${124 - v * 15}" text-anchor="middle">${v}</text>`).join("")}</svg></div>
+    <div class="card"><h2>Burnup bis zum Release-Ziel</h2><p class="small muted">Für Kanban mit Ziel: erledigt vs. Gesamtumfang. Steigt die obere Linie, wächst der Scope.</p>
+      <svg viewBox="0 0 400 150" width="100%"><polyline points="20,60 70,58 120,55 170,52 220,48 270,47 320,45 370,44" fill="none" stroke="#c9a87c" stroke-width="2" stroke-dasharray="4 3"/><polyline points="20,135 70,125 120,118 170,105 220,96 270,85 320,76 370,66" fill="none" stroke="#7fd6a4" stroke-width="3"/><text x="372" y="40">Umfang</text><text x="372" y="62">erledigt</text></svg></div>
+  </div>`;
+}
+
+function pageAgents(arg) {
+  if (!isDev()) return `<h1>Kein Zugriff</h1><p class="sub">Agents sind nur für Entwickler sichtbar. Als PM/PO steuerst du über Backlog, Klärung und Testen.</p>`;
+  const ts = tickets().filter((t) => t.started && t.flow !== "done");
+  const sel = byKey(arg && byKey(arg)?.started ? arg : ts.find((t) => t.key === S.agentSel)?.key || ts[0]?.key); if (!sel) return `<h1>Agents</h1><p class="sub">Keine laufenden Agenten.</p>`;
+  S.agentSel = sel.key;
+  const steps = sel.lane === "feature" ? ["classify", "grill", "implement", "review", "mr_open"] : sel.lane === "quick" ? ["classify", "implement", "review", "mr_open"] : ["classify", "implement", "review", "mr_open"];
+  const cur = steps.indexOf(STAGES[sel.flow]);
+  const tr = S.transcript[sel.key] || (S.transcript[sel.key] = [
+    { k: "me", t: `${sel.key} — ${sel.title}\nLane: ${LANE[sel.lane]} · Kev: ${sel.tier}` },
+    { k: "tool", t: "read checkout/Cart.ts · read checkout/Profile.ts" },
+    { k: "agent", t: sel.flow === "grill" ? "Ich kläre zuerst den Scope mit der PO (4 Fragen, 2 beantwortet)." : "Ursache gefunden: Beim Login wird der Gast-Warenkorb nicht übernommen. Ich ergänze das Mergen in mergeGuestCart() und einen Test." },
+    ...(["review", "mr", "blocked"].includes(sel.flow) ? [{ k: "tool", t: "submit_fix → 3f2a91c · request_review → Runde 1" }] : []),
+  ]);
+  return `<div class="row between wrap"><div><h1>Agents <span class="dev-tag">nur Entwickler</span></h1><p class="sub">Die Orchestrierung: jeder gestartete Ticket-Agent mit Chat, Review und MR.</p></div></div>
+  <div class="grid" style="grid-template-columns:260px 1fr">
+    <div class="list">${ts.map((t) => `<div class="card click" style="padding:10px;${t.key === sel.key ? "border-color:var(--accent)" : ""}" data-go="#/p/${S.project}/agents/${t.key}">
+      <div class="row between"><span class="mono">${t.key}</span><span class="chip">${STAGES[t.flow] || t.flow}</span></div><div class="small" style="margin-top:4px">${esc(t.title)}</div>
+      ${t.risks ? `<span class="chip warn" style="margin-top:6px">⚠ Decision needed</span>` : t.flow === "blocked" ? `<span class="chip bad" style="margin-top:6px">blocked</span>` : ""}</div>`).join("")}</div>
+    <div class="card">
+      <div class="row between wrap"><div><span class="mono">${sel.key}</span> <b>${esc(sel.title)}</b></div>
+        <div class="row"><span class="chip">${LANE[sel.lane]}</span><select style="width:auto"><option>${sel.model || "Sonnet"}</option><option>Opus</option></select></div></div>
+      <div class="stepper">${steps.map((s, i) => `<span class="${i < cur ? "done" : i === cur ? "cur" : ""}">${s}</span>`).join("")}</div>
+      ${sel.risks ? `<div class="riskbox"><b>⚠ Decision needed: offene Risiken nach Review</b><ul>${sel.risks.map((r) => `<li class="small">${esc(r)}</li>`).join("")}</ul><div class="small muted">MR ${sel.mr} ist ein Draft. Agent um Fix bitten oder Risiko akzeptieren.</div></div>` : ""}
+      ${sel.flow === "blocked" ? `<div class="riskbox" style="border-color:#6b2a33;background:#2a1418"><b>Blockiert</b><div class="small">${esc(sel.blockedWhy)}</div></div>` : ""}
+      <div class="chat" style="margin:12px 0">${tr.map((m) => `<div class="msg ${m.k === "me" ? "me" : m.k === "tool" ? "tool" : ""}" style="white-space:pre-wrap">${esc(m.t)}</div>`).join("")}</div>
+      <div class="row"><input type="text" id="agentMsg" placeholder="Nachricht an den ${sel.key}-Agenten…" /><button class="btn primary" data-act="agentSend" data-key="${sel.key}">Senden</button></div>
+      <div class="row wrap small" style="margin-top:10px">${sel.mr ? `<a href="#" onclick="return false">MR ${sel.mr} öffnen</a> ·` : ""} <a href="#" onclick="return false">Review-Session öffnen</a> · <a href="#" onclick="return false">Diff ansehen</a></div>
+    </div></div>`;
+}
+
+function pageSettings() {
+  const p = proj();
+  return `<h1>Einstellungen · ${p.name}</h1><p class="sub">Projekt-Konfiguration. Ein Jira-Projekt kann nur einmal angelegt werden.</p>
+  <div class="grid g2" style="grid-template-columns:1fr 1fr">
+    <div class="card"><h2>Projekt</h2>
+      <label class="f"><span>Name</span><input type="text" value="${p.name}"></label>
+      <label class="f"><span>Jira-Projekt</span><input type="text" value="${p.key}" disabled></label>
+      <label class="f"><span>Label für „Freigegeben für Agent“</span><input type="text" value="${p.label}"></label>
+      <label class="f"><span>Mitglieder & Rollen</span><textarea>${p.members.join("\n")}</textarea></label>
+    </div>
+    <div class="card"><h2>Entwicklung ${isDev() ? "" : `<span class="dev-tag">nur Entwickler können ändern</span>`}</h2>
+      <label class="f"><span>GitLab-Repository</span><input type="text" value="${p.repo}" ${isDev() ? "" : "disabled"}></label>
+      <label class="f"><span>Ziel-Branch</span><input type="text" value="${p.branch}" ${isDev() ? "" : "disabled"}></label>
+      <label class="f"><span>Branch-Schema</span><input type="text" value="${p.schema}" ${isDev() ? "" : "disabled"}></label>
+      ${isDev() ? `<label class="f"><span>Test-Befehl</span><input type="text" value="${p.test}"></label>
+      <label class="f"><span>Modelle (Kev-Tier → Modell)</span><input type="text" value="simple/moderate → Sonnet · complex → Opus · Reviewer → Opus"></label>
+      <label class="f"><span>Agenten laufen auf</span><select><option>Entwickler-Rechner (Max, Sara)</option><option>Server-Worker (später)</option></select></label>` : ""}
+    </div></div><button class="btn primary">Speichern</button>`;
+}
+
+function pageClients() {
+  const mini = `<div style="padding:10px"><b style="font:700 13px var(--title)">Webshop Relaunch</b><div class="grid g3" style="gap:6px;margin-top:8px"><div class="card" style="padding:8px"><b>2</b><div class="small muted">Braucht dich</div></div><div class="card" style="padding:8px"><b>5</b><div class="small muted">In Arbeit</div></div><div class="card" style="padding:8px"><b>3</b><div class="small muted">Erledigt</div></div></div></div>`;
+  return `<h1>Zugriffswege & Architektur</h1><p class="sub">Eine API, viele Clients – wie bei Durable Pi. Die Tauri-App ist ein Client unter mehreren.</p>
+  <div class="grid g2" style="grid-template-columns:1fr 1fr">
+    <div class="win"><div class="chrome"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i><span style="margin-left:8px">Flow Dashboard — Tauri-App (macOS)</span></div>${mini}<div class="small muted" style="padding:0 10px 10px">Native Mitteilungen, Dock-Badge, Menüleiste, startet optional den lokalen Worker.</div></div>
+    <div class="win"><div class="chrome"><i style="background:#555"></i><i style="background:#555"></i><i style="background:#555"></i><span class="url">https://flow.team.local/p/SHOP</span></div>${mini}<div class="small muted" style="padding:0 10px 10px">Web-UI im Browser – identisch, ohne Installation.</div></div>
+    <div class="card"><div class="phone">${mini}</div><p class="small muted" style="text-align:center">Handy: dieselbe Web-UI, responsiv (oben rechts 📱 probieren). Später als PWA installierbar.</p></div>
+    <div class="win"><div class="chrome"><span>Terminal — flow-tui</span></div><div class="tui">$ flow status SHOP
+ Webshop Relaunch                       63% ██████░░░░
+ BRAUCHT DICH
+  SHOP-151  Klärung: 2/4 Fragen offen      → flow clarify SHOP-151
+  SHOP-141  Bereit zum Testen              → flow test SHOP-141
+ AGENTS (dev)
+  SHOP-149  implement  sonnet   ▸ läuft 12 min
+  SHOP-145  mr_open    ⚠ 1 Risiko · MR !3312 (draft)
+$ flow ready SHOP-153
+ ✓ SHOP-153 für Agent freigegeben (Jira-Label gesetzt)</div></div>
+  </div>
+  <h2 style="margin-top:24px">Lokal wie auf einem Server (Pilot)</h2>
+  <p class="sub">Ohne eigenen Server: der Flow-Server läuft in einem Container auf deinem Mac (Podman oder Docker Compose) und verhält sich wie später auf einer VM. Die Agenten laufen auf Entwickler-Rechnern – im Pilot auf deinem Mac außerhalb des Containers, mit deinem eigenen Claude-Abo.</p>
+  <div class="arch">
+    <div class="box"><h4>Clients</h4><div class="small">Tauri-App · Browser · Handy · Terminal</div><div class="small muted" style="margin-top:6px">Login (Einladungs-Account) → Rolle PM/PO oder Dev</div></div>
+    <div class="box container"><h4>📦 Container „flow-server“</h4><div class="small">Projekte, Benutzer, Rollen (Rechte serverseitig) · Poller + Kev pro Projekt · Lanes, Review-Policy · PM-API (Jira mit persönlichem Token) · Reporting aus Jira-Changelog · SQLite auf Volume</div><div class="small muted" style="margin-top:6px">Später 1:1 auf einer VM</div></div>
+    <div class="box"><h4>💻 Worker (Entwickler-Rechner)</h4><div class="small">dpi-backend mit den Ticket-Agenten, Worktrees, git/glab, eigenes Claude-Abo des Entwicklers · meldet sich beim Flow-Server an und holt Aufträge</div><div class="small muted" style="margin-top:6px">Später zusätzlich: Server-Worker</div></div>
+  </div>
+  <div class="arch" style="margin-top:14px">
+    <div class="box"><h4>Jira Cloud</h4><div class="small">Quelle der Wahrheit: Tickets, Priorität, Rangfolge, Label, Status, Historie</div></div>
+    <div class="box"><h4>GitLab</h4><div class="small">MRs, Draft/Ready, Notizen</div></div>
+    <div class="box"><h4>Kev</h4><div class="small">lokal neben dem Flow-Server (eigener Container oder Host)</div></div>
+  </div>`;
+}
+
+// ---------------------------------------------------------------- drawer & modals
+function ticketDrawer(key) {
+  const t = byKey(key);
+  const tl = [["Entdeckt", "Kev: " + (t.kev === "ready" ? "startklar" : "zu vage") + ` · ${LANE[t.lane]}`], ...(t.ready ? [["Für Agent freigegeben", "von Lena Weber"]] : []), ...(t.started ? [["Agent gestartet", t.model ? `Modell ${t.model}` : ""]] : []), ...(["review", "mr", "test", "done"].includes(t.flow) ? [["Unabhängig geprüft", t.risks ? "bestanden mit 1 offenem Risiko" : "bestanden"]] : []), ...(t.mr ? [["Merge Request " + t.mr, t.flow === "done" ? "gemerged" : "offen"]] : [])];
+  return `<div class="shade" data-act="close"><div class="drawer" data-stop>
+    <button class="x" data-act="close">×</button>
+    <div class="mono muted">${t.key} · ${t.type}</div><h1 style="margin:6px 0">${esc(t.title)}</h1>
+    <div class="row wrap">${chip(t.flow)} ${kevChip(t)} <span class="prio ${t.prio}">${t.prio}</span></div>
+    <p>${esc(t.desc || "Beschreibung aus Jira …")}</p>
+    <h2>Verlauf</h2><div class="timeline">${tl.map(([a, b], i) => `<div class="${i === tl.length - 1 ? "now" : ""}"><b>${a}</b><div class="small muted">${b}</div></div>`).join("")}</div>
+    <h2 style="margin-top:14px">Aktionen</h2><div class="row wrap">
+      ${t.started ? "" : `<span class="toggle ${t.ready ? "on" : ""}" data-act="ready" data-key="${t.key}"><i></i><span class="small">${t.ready ? "Freigegeben" : "Für Agent freigeben"}</span></span>`}
+      ${t.flow === "grill" ? `<a class="btn small" href="#/p/${S.project}/clarify/${t.key}" data-act="close">Fragen beantworten</a>` : ""}
+      ${t.flow === "test" ? `<button class="btn small warn" data-act="finding" data-key="${t.key}">Finding melden</button>` : ""}
+      <a class="btn small" href="#" onclick="return false">In Jira öffnen ↗</a></div>
+    ${isDev() ? `<div class="devbox"><span class="dev-tag">nur Entwickler</span><div class="small" style="margin-top:8px">Lane <b>${t.lane}</b> · Tier <b>${t.tier}</b>${t.model ? ` · Modell <b>${t.model}</b>` : ""}${t.mr ? ` · MR <b>${t.mr}</b>` : ""}</div>
+      ${t.risks ? `<div class="riskbox small">⚠ ${esc(t.risks[0])}</div>` : ""}
+      <div class="row wrap" style="margin-top:8px">${t.started ? `<a class="btn small" href="#/p/${S.project}/agents/${t.key}" data-act="close">Agent öffnen</a>` : `<button class="btn small" data-act="startAgent" data-key="${t.key}">Agent jetzt starten</button>`}<button class="btn small">Lane ändern</button></div></div>` : ""}
+  </div></div>`;
+}
+
+function findingModal(key) {
+  const t = byKey(key);
+  return `<div class="shade center" data-act="close"><div class="modal" data-stop>
+    <button class="x" data-act="close">×</button><h1>Finding melden</h1><p class="sub"><span class="mono">${t.key}</span> · ${esc(t.title)}</p>
+    <label class="f"><span>Was hast du gemacht?</span><textarea id="fSteps">1. Suche nach „Müsli“ auf der Dev-Stage\n2. Ergebnisliste ansehen</textarea></label>
+    <div class="grid g2" style="grid-template-columns:1fr 1fr"><label class="f"><span>Erwartet</span><textarea>Artikel „Bio-Müsli Classic“ erscheint</textarea></label><label class="f"><span>Tatsächlich</span><textarea id="fActual">Keine Treffer; mit „Muesli“ geht es</textarea></label></div>
+    <label class="f"><span>Screenshot</span><div class="card small muted" style="text-align:center;border-style:dashed">📎 Bild hierher ziehen</div></label>
+    <label class="f"><span>Wie schlimm?</span><select><option>Funktion fehlt / falsch</option><option>Schönheitsfehler</option><option>Blockiert den Release</option></select></label>
+    <p class="small muted">Danach: Der bisherige Agent (falls noch vorhanden, sonst ein neuer) bekommt dein Finding, arbeitet nach und öffnet einen neuen MR. Das Ticket erscheint wieder unter „Testen“, sobald es auf der Dev-Stage ist.</p>
+    <div class="row"><button class="btn primary" data-act="findingSend" data-key="${key}">Finding senden</button><button class="btn" data-act="close">Abbrechen</button></div>
+  </div></div>`;
+}
+
+function newProjectModal() {
+  return `<div class="shade center" data-act="close"><div class="modal" data-stop>
+    <button class="x" data-act="close">×</button><h1>Neues Projekt</h1><p class="sub">Jeder darf Projekte anlegen. Ein Jira-Projekt gibt es nur einmal.</p>
+    <label class="f"><span>Jira-Projekt (Schlüssel)</span><input type="text" id="npKey" placeholder="z. B. CRM oder SHOP" /></label><div id="npCheck" class="small" style="margin:-6px 0 12px"></div>
+    <label class="f"><span>Name</span><input type="text" id="npName" placeholder="CRM Integration" /></label>
+    <label class="f"><span>GitLab-Repository</span><input type="text" placeholder="gitlab.example.com/gruppe/projekt" /></label>
+    <div class="grid g2" style="grid-template-columns:1fr 1fr"><label class="f"><span>Ziel-Branch</span><input type="text" value="develop"/></label><label class="f"><span>Branch-Schema</span><input type="text" value="feature/{key}"/></label></div>
+    <label class="f"><span>Mitglieder einladen</span><input type="text" placeholder="E-Mail-Adressen, Rolle wählbar" /></label>
+    <div class="row"><button class="btn primary" data-act="npCreate">Projekt anlegen</button><button class="btn" data-act="close">Abbrechen</button></div>
+  </div></div>`;
+}
+
+// ---------------------------------------------------------------- render + events
+function render() {
+  document.body.classList.toggle("mobile", S.device === "mobile");
+  const r = route(); let html;
+  if (r.page === "login") html = pageLogin();
+  else if (r.page === "projects") html = shell(pageProjects(), r);
+  else if (r.page === "clients") html = shell(pageClients(), r);
+  else {
+    const pages = { overview: pageOverview, backlog: pageBacklog, board: pageBoard, new: pageNew, clarify: () => pageClarify(r.arg), testing: pageTesting, reports: pageReports, agents: () => pageAgents(r.arg), settings: pageSettings };
+    html = shell((pages[r.tab] || pageOverview)(), r);
+  }
+  document.getElementById("app").innerHTML = html;
+  wireDnD();
+}
+
+function overlay(html) {
+  if (S.device !== "mobile") { document.getElementById("overlay").innerHTML = html; return; }
+  // In the phone frame the overlay lives inside the frame, at its top.
+  document.getElementById("frame").scrollTop = 0;
+  const d = document.createElement("div"); d.id = "mOverlay"; d.innerHTML = html; document.getElementById("app").appendChild(d);
+}
+function closeOverlay() { document.getElementById("overlay").innerHTML = ""; document.getElementById("mOverlay")?.remove(); }
+
+function wireDnD() {
+  const list = document.getElementById("backlog"); if (!list) return; let dragKey = null;
+  list.querySelectorAll(".bl").forEach((row) => {
+    row.addEventListener("dragstart", () => { dragKey = row.dataset.key; row.classList.add("drag"); });
+    row.addEventListener("dragend", () => row.classList.remove("drag"));
+    row.addEventListener("dragover", (e) => { e.preventDefault(); row.classList.add("over"); });
+    row.addEventListener("dragleave", () => row.classList.remove("over"));
+    row.addEventListener("drop", (e) => {
+      e.preventDefault(); row.classList.remove("over"); if (!dragKey || dragKey === row.dataset.key) return;
+      const order = tickets().filter((t) => t.flow !== "done").map((t) => t.key).filter((k) => k !== dragKey);
+      order.splice(order.indexOf(row.dataset.key), 0, dragKey); order.forEach((k, i) => (byKey(k).rank = i));
+      render(); toast(`${dragKey} verschoben – Rangfolge in Jira aktualisiert`);
+    });
+  });
+}
+
+document.addEventListener("click", (e) => {
+  const stop = e.target.closest("[data-stop]"); const el = e.target.closest("[data-act],[data-go],[data-ticket]");
+  if (!el) return; if (stop && el.matches(".shade")) return;
+  if (el.dataset.ticket) { overlay(ticketDrawer(el.dataset.ticket)); return; }
+  if (el.dataset.go) { location.hash = el.dataset.go; return; }
+  const a = el.dataset.act, k = el.dataset.key, v = el.dataset.v;
+  const acts = {
+    login: () => { S.user = v; S.role = USERS[v].role; location.hash = "#/projects"; render(); },
+    logout: () => { S.user = null; location.hash = ""; render(); },
+    role: () => { S.role = v; S.user = v === "dev" ? "max" : "lena"; render(); toast(v === "dev" ? "Ansicht: Entwickler – Agents-Tab und Dev-Details sichtbar" : "Ansicht: PM/PO – keine Agent-Werkzeuge"); },
+    device: () => { S.device = v; closeOverlay(); render(); },
+    close: () => closeOverlay(),
+    ready: () => { const t = byKey(k); t.ready = !t.ready; t.flow = t.ready ? "ready" : "backlog"; closeOverlay(); render(); toast(t.ready ? `${k} für Agent freigegeben (Jira-Label gesetzt)` : `${k} zurück ins Backlog`); },
+    newProject: () => overlay(newProjectModal()),
+    npCreate: () => { const key = (document.getElementById("npKey").value || "CRM").toUpperCase(); if (PROJECTS.some((p) => p.key === key)) { document.getElementById("npCheck").innerHTML = `<span style="color:var(--warn)">${key} gibt es schon – <a href="#/p/${key}/overview">dort öffnen</a></span>`; return; }
+      PROJECTS.push({ key, name: document.getElementById("npName").value || "CRM Integration", repo: "gitlab.example.com/crm/core", branch: "develop", schema: "feature/{key}", label: "ready-for-agent", test: "", members: [USERS[S.user].name], health: "ok" });
+      TICKETS.push(T(key + "-1", "Erstes Ticket aus Jira", "Task", "Medium", "backlog", { lane: "ticket", tier: "SIMPLE", kev: "ready", rank: 0 })); closeOverlay(); location.hash = `#/p/${key}/overview`; toast(`Projekt ${key} angelegt – Poller läuft`); },
+    startAgent: () => { const t = byKey(k); t.started = true; t.flow = t.lane === "feature" || t.kev === "vague" ? "grill" : "implement"; t.model = t.tier === "COMPLEX" ? "Opus" : "Sonnet"; closeOverlay(); render(); toast(`Agent für ${k} gestartet (${t.model})`); },
+    draftStart: () => { S.draft.idea = document.getElementById("idea").value; S.draft.step = 1; render(); },
+    draftAns: () => { S.draft.answers.push(v); render(); },
+    draftCreate: () => { const key = `${S.project}-${160 + TICKETS.length}`; TICKETS.push(T(key, "Lieferadressen im Checkout speichern", "Story", "Medium", "backlog", { lane: "ticket", tier: "MODERATE", kev: "ready", rank: -1 })); S.draft.created = key; render(); toast(`${key} in Jira angelegt`); },
+    grillAns: () => { S.grill[k].push(v); render(); },
+    grillOwn: () => { const own = prompt("Deine Antwort:"); if (own) { S.grill[k].push(own); render(); } },
+    grillConfirm: () => { byKey(k).flow = "implement"; render(); toast(`Scope für ${k} bestätigt – der Agent entwickelt jetzt`); location.hash = `#/p/${S.project}/overview`; },
+    testOk: () => { byKey(k).flow = "done"; render(); toast(`${k} erledigt – in Jira auf Done gesetzt`); },
+    finding: () => { closeOverlay(); overlay(findingModal(k)); },
+    findingSend: () => { const t = byKey(k); t.flow = "rework"; t.finding = "Finding: " + (document.getElementById("fActual").value || ""); ACTIVITY.unshift({ at: "jetzt", text: `Finding zu ${k} – Agent arbeitet nach, neuer MR folgt`, kind: "agent" }); closeOverlay(); render(); toast(`Finding gesendet – Agent ${k} arbeitet nach, neuer MR folgt`); },
+    agentSend: () => { const inp = document.getElementById("agentMsg"); if (!inp.value) return; S.transcript[k].push({ k: "me", t: inp.value }, { k: "agent", t: "Verstanden – ich passe das an und reiche es danach erneut zum Review ein." }); render(); },
+  };
+  acts[a]?.();
+});
+
+document.addEventListener("change", (e) => {
+  const el = e.target;
+  if (el.dataset.act === "switch") location.hash = `#/p/${el.value}/overview`;
+  if (el.dataset.act === "prio") { byKey(el.dataset.key).prio = el.value; toast(`Priorität von ${el.dataset.key}: ${el.value} (in Jira gespeichert)`); }
+});
+// closing overlays: a click on the dark backdrop (not inside the panel)
+document.addEventListener("mousedown", (e) => { if (e.target.classList?.contains("shade")) closeOverlay(); });
+
+window.addEventListener("hashchange", () => { closeOverlay(); render(); });
+render();
+</script>
+</body>
+</html>
