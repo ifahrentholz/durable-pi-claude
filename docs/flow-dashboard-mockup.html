@@ -175,6 +175,13 @@ svg text { fill: #9d8889; font: 10.5px var(--font, "DM Sans"); }
 .steps li.done { color: #e9dede; } .steps li.done i { background: var(--accent); } .ok .steps li.done i { background: var(--ready); }
 .steps li.cur { color: #f2eeee; } .steps li.cur i { background: var(--accent); animation: pulse 1.2s infinite; }
 .isum { line-height: 1.5; color: #e9dede; font-size: 13.5px; }
+.jira { margin-top: 8px; border-top: 1px solid #ffffff14; padding-top: 6px; }
+.jira summary { cursor: pointer; color: var(--secondary); font-size: 13px; list-style: none; }
+.jira summary::before { content: "▸ "; } .jira[open] summary::before { content: "▾ "; }
+.jira .kv { margin: 8px 0; grid-template-columns: 90px 1fr; font-size: 12.5px; }
+.jira .desc { white-space: pre-wrap; line-height: 1.6; font-size: 13.5px; color: #e9dede; background: #0f0b0c; border: 1px solid #2f2425; border-radius: 7px; padding: 9px 11px; max-height: 260px; overflow: auto; }
+.jira ol { margin: 6px 0 0; padding-left: 18px; font-size: 13px; } .jira li.add { color: var(--ready); } .jira li.add::marker { color: var(--ready); }
+.jira .plus { font: 600 10px var(--mono); color: #10261a; background: var(--ready); border-radius: 3px; padding: 0 4px; margin-left: 6px; }
 .risk { margin-top: 8px; border: 1px solid #6b5222; background: #2a2114; border-radius: 8px; padding: 8px 10px; font-size: 13px; }
 .risk code { font-size: 12px; color: var(--secondary); }
 .chat { flex: 1; overflow: auto; padding: 14px 18px 8px; min-height: 0; }
@@ -349,6 +356,16 @@ const GRILL = [
   { q: "Was passiert, wenn der Warenkorbwert unter den Mindestbestellwert fällt?", rec: "Der Gutschein bleibt sichtbar, aber ausgegraut, mit Hinweis „Mindestbestellwert 50 € nicht erreicht“.", alt: "Gutschein wird entfernt" },
   { q: "Wie gehen wir mit Retouren um, wenn ein Gutschein eingelöst wurde?", rec: "Der Gutscheinwert wird anteilig auf die Artikel verteilt und bei Retoure anteilig nicht erstattet.", alt: "Gutschein verfällt bei jeder Retoure" },
 ];
+// What the ticket says in Jira (sample content). Tickets without an entry get a generic text.
+const JIRA = {
+  "SHOP-149": { reporter: "Kundenservice (Anna Roth)", labels: ["ready-for-agent", "checkout"], created: "Mo 08:02", desc: "Kunden melden, dass Artikel, die sie als Gast in den Warenkorb gelegt haben, nach dem Login verschwunden sind.\n\nSchritte:\n1. Als Gast zwei Artikel in den Warenkorb legen\n2. Im Checkout „Anmelden“ wählen und einloggen\n3. Warenkorb ist leer bzw. zeigt nur den alten Konto-Warenkorb\n\nErwartet: Gast-Artikel und Konto-Warenkorb werden zusammengeführt.", acs: ["Nach dem Login enthält der Warenkorb die Gast-Artikel und die Artikel des Kontos.", "Doppelte Artikel werden zusammengefasst (Menge addiert)."] },
+  "SHOP-151": { reporter: "Lena Weber", labels: ["ready-for-agent", "checkout", "marketing"], created: "Mo 08:31", desc: "Marketing möchte Gutscheincodes ausgeben. Kunden sollen sie im Checkout einlösen können." },
+  "SHOP-157": { reporter: "Tom Becker", labels: ["ready-for-agent", "performance"], created: "Di 09:22", desc: "Die Startseite lädt zu langsam, bitte verbessern." },
+  "SHOP-156": { reporter: "Kundenservice (Anna Roth)", labels: ["ready-for-agent"], created: "Di 09:40", desc: "Mehrere Kunden wünschen sich, ihre Wunschliste mit Freunden oder Familie teilen zu können." },
+  "SHOP-145": { reporter: "Vertrieb B2B", labels: ["ready-for-agent", "b2b"], created: "Fr 14:10", desc: "Bei der Registrierung als Firmenkunde fehlen im Checkout v2 Pflichtfelder (Feld 113: USt-IdNr.). Die Bestellung bricht mit einem Fehler ab.", acs: ["Firmenkunden können sich im Checkout v2 registrieren und bestellen.", "Die USt-IdNr. wird gespeichert und an der Bestellung übergeben."] },
+};
+const jiraOf = (t) => JIRA[t.key] || { reporter: "Jira", labels: ["ready-for-agent"], created: t.found, desc: t.kev === "vague" ? `${t.title}.` : `${t.title}.\n\nBitte so umsetzen, dass das Verhalten auf der Dev-Stage nachvollziehbar ist.` };
+
 // "Ticket schärfen": the assistant (no code access) asks until Kev rates a vague ticket ready.
 const REFINE_Q = {
   "SHOP-157": [
@@ -376,7 +393,7 @@ const DRAFT_Q = [
 // ======================================================================= state
 const S = {
   role: "pm", device: "desktop", project: "SHOP", sel: null, mid: "feed", ctab: "ticket", mpanel: "mid",
-  open: { SHOP: true }, focus: true, treeMode: "projects", poll: { left: 9, span: 10 }, arrivals: 0, grill: {}, refine: {}, draft: null, finding: null,
+  open: { SHOP: true }, jiraOpen: {}, focus: true, treeMode: "projects", poll: { left: 9, span: 10 }, arrivals: 0, grill: {}, refine: {}, draft: null, finding: null,
   perm: { SHOP: "auto" }, compact: 200, live: 0, typing: false, transcripts: {},
 };
 const isDev = () => S.role === "dev";
@@ -683,6 +700,17 @@ function side() {
   return `<div class="col side ${S.mpanel === "side" ? "mshow" : ""}"><div class="col-head">${head}</div>${body}</div>`;
 }
 
+// The full ticket as it stands in Jira, collapsible. While sharpening, the new criteria show as "+ neu".
+function jiraDetails(t) {
+  const j = jiraOf(t), added = t.started ? [] : (S.refine[t.key]?.answers || []);
+  const acs = [...(j.acs || []), ...(t.scoped ? (t.acsAdded || []) : [])];
+  return `<details class="jira" id="jd" ${S.jiraOpen[t.key] ? "open" : ""}><summary>Ticket-Inhalt in Jira</summary>
+    <dl class="kv"><dt>Typ · Prio</dt><dd>${t.type} · ${t.prio}</dd><dt>Reporter</dt><dd>${esc(j.reporter)}</dd><dt>Labels</dt><dd>${j.labels.join(", ")}</dd><dt>Angelegt</dt><dd>${j.created}</dd></dl>
+    <div class="desc">${esc(j.desc)}</div>
+    <div style="font-size:12.5px;color:var(--secondary);margin-top:8px">Akzeptanzkriterien${added.length && !t.scoped ? `<span class="plus">+${added.length} NEU</span>` : ""}</div>
+    <ol>${acs.map((a) => `<li>${esc(a)}</li>`).join("")}${!t.scoped ? added.map((a) => `<li class="add">${esc(a)}</li>`).join("") : ""}${!acs.length && !added.length ? `<li style="color:#9d8889">keine</li>` : ""}</ol></details>`;
+}
+
 function card(t) {
   const st = steps(t), idx = stepIndex(t), [s, sc] = statusOf(t);
   const tone = { live: "", warn: "warn", bad: "bad", ok: "ok", idle: "" }[dotOf(t)];
@@ -690,7 +718,8 @@ function card(t) {
   return `<div class="icard ${tone}"><div class="itop"><span style="color:${tone === "ok" ? "var(--ready)" : "var(--bad)"}">⎇</span><strong>${t.key}</strong><span class="lchip">${LANE[t.lane]}</span><span class="ititle">${esc(t.title)}</span>${t.started || t.flow === "ready" ? `<span class="status ${sc}"><i></i>${s}</span>` : ""}</div>
     ${t.started ? `<ol class="steps">${st.map((n, i) => `<li class="${i < idx ? "done" : i === idx ? "cur" : ""}"><i></i>${n}</li>`).join("")}</ol>` : ""}
     <p class="isum">${esc(paused(t) ? `Pausiert – der Rechner von ${worker(t).owner} ist seit ${worker(t).since} offline. Der Agent macht weiter, sobald er wieder online ist.` : sum)}</p>
-    ${t.risks && isDev() ? `<div class="risk"><b>⚠ Decision needed</b>${t.risks.map(([l, s]) => `<div><code>${l}</code> — ${esc(s)}</div>`).join("")}</div>` : ""}</div>`;
+    ${t.risks && isDev() ? `<div class="risk"><b>⚠ Decision needed</b>${t.risks.map(([l, s]) => `<div><code>${l}</code> — ${esc(s)}</div>`).join("")}</div>` : ""}
+    ${jiraDetails(t)}</div>`;
 }
 
 function ticketBody(t) {
@@ -907,7 +936,7 @@ document.addEventListener("click", (e) => {
       setTimeout(() => { const w = WORKERS.find((x) => x.id === id); w.online = true; w.connecting = false; render(); toast(`${name} ist online – bereit für Agents`); }, 2500); },
     refineAns: () => { S.refine[key].answers.push(v); render(); },
     refineOwn: () => { const inp = document.getElementById("refineOwn"); const val = inp.value.trim(); if (val) { inp.value = ""; S.refine[key].answers.push(val); render(); } },
-    refineSave: () => { t.kev = "ready"; t.scoped = true; t.fresh = false; t.chipNew = true; render(); toast(`${key} in Jira aktualisiert – Kev: startklar`); },
+    refineSave: () => { t.acsAdded = [...S.refine[key].answers]; S.jiraOpen[key] = true; t.kev = "ready"; t.scoped = true; t.fresh = false; t.chipNew = true; render(); toast(`${key} in Jira aktualisiert – Kev: startklar`); },
     npCreate: () => { const kk = (document.getElementById("npKey").value || "CRM").toUpperCase(); if (PROJECTS.some((p) => p.key === kk)) { document.getElementById("npCheck").innerHTML = `<span style="color:var(--warn)">${kk} gibt es schon – <a href="#" data-act="project" data-v="${kk}">öffnen</a></span>`; return; }
       S.focus = true; PROJECTS.push({ key: kk, name: document.getElementById("npName").value || "CRM Integration", repo: "gitlab.example.com/crm/core", branch: "develop", schema: "feature/{key}", test: "", health: "ok", members: "Lena Weber · PO" });
       TICKETS.push(T(kk + "-1", "Erstes Ticket aus Jira", "Task", "Medium", "backlog", { lane: "ticket", tier: "SIMPLE", kev: "ready", rank: 0, found: "jetzt" })); closeOverlay(); S.project = kk; S.open[kk] = true; S.sel = null; render(); toast(`Projekt ${kk} angelegt – Poller läuft`); },
@@ -947,6 +976,7 @@ document.addEventListener("input", (e) => {
   set("labR", (el) => { el.style.left = a + 5 + "%"; el.textContent = `Reserve at ${S.compact + 50}.0k`; });
   set("cphA", (el) => (el.textContent = S.compact + ".0k")); set("cphR", (el) => (el.textContent = S.compact + 50 + ".0k"));
 });
+document.addEventListener("toggle", (e) => { if (e.target.id === "jd" && S.sel) S.jiraOpen[S.sel] = e.target.open; }, true);
 document.addEventListener("mousedown", (e) => { if (e.target.classList?.contains("shade")) closeOverlay(); });
 
 // ======================================================================= the clock: polling, arrivals, live agent
